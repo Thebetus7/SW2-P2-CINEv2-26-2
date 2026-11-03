@@ -1,0 +1,57 @@
+version: '3.8'
+
+networks:
+  cinev2-network:
+    name: cinev2-network
+
+volumes:
+  postgres_auth_data:
+
+services:
+  postgres-auth:
+    image: postgres:15-alpine
+    container_name: SW2-P2-CINEv2-postgres-auth
+    environment:
+      POSTGRES_DB: db_tickets_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ticket-auth-backend
+    environment:
+      DB_HOST: postgres-auth
+      DB_PORT: 5432
+      DB_NAME: db_tickets_auth
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      CINEMA_CORE_URL: ${CINEMA_CORE_URL:-http://SW2-P2-CINEv2-ms-cinema-core-backend:3000}
+      MULTIMEDIA_URL: ${MULTIMEDIA_URL:-http://SW2-P2-CINEv2-ms-multimedia-backend:3001}
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres-auth
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ticket-auth-frontend
+    ports:
+      - "5174:80"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+

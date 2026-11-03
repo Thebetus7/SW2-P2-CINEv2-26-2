@@ -1,0 +1,128 @@
+# ===================================================================
+# Monorepo Master .gitignore - CINEv2
+# ===================================================================
+
+# --- Dependencias de Paquetes ---
+node_modules/
+**/node_modules/
+vendor/
+**/vendor/
+target/
+**/target/
+venv/
+**/venv/
+.venv/
+**/.venv/
+env/
+**/env/
+
+# --- Artefactos de Compilación y Distribución ---
+dist/
+**/dist/
+build/
+**/build/
+out/
+**/out/
+.angular/
+**/.angular/
+.vite/
+**/.vite/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+# --- Python ---
+__pycache__/
+**/__pycache__/
+*.py[cod]
+**/*.py[cod]
+*$py.class
+**/*$py.class
+.pytest_cache/
+**/.pytest_cache/
+.mypy_cache/
+**/.mypy_cache/
+.ruff_cache/
+**/.ruff_cache/
+*.egg-info/
+**/*.egg-info/
+.eggs/
+
+# --- PHP / Laravel ---
+storage/*.key
+**/storage/*.key
+storage/oauth-*.key
+**/storage/oauth-*.key
+storage/framework/cache/*
+**/storage/framework/cache/*
+storage/framework/sessions/*
+**/storage/framework/sessions/*
+storage/framework/views/*
+**/storage/framework/views/*
+storage/logs/*
+**/storage/logs/*
+!**/storage/framework/cache/.gitkeep
+!**/storage/framework/sessions/.gitkeep
+!**/storage/framework/views/.gitkeep
+!**/storage/logs/.gitkeep
+.phpunit.result.cache
+**/.phpunit.result.cache
+
+# --- Entornos y Secretos ---
+.env
+**/.env
+.env.local
+**/.env.local
+.env.*.local
+**/.env.*.local
+!.env.example
+!**/.env.example
+
+# --- Logs y Bases de Datos Locales / Temporales ---
+*.log
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+tempmediaStorage/
+**/tempmediaStorage/
+*.sqlite
+**/*.sqlite
+*.sqlite-journal
+**/*.sqlite-journal
+
+# --- IDEs y Editores de Código ---
+.idea/
+**/.idea/
+.vscode/
+**/.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.iml
+**/*.iml
+.project
+**/.project
+.classpath
+**/.classpath
+.settings/
+**/.settings/
+
+# --- Sistema Operativo ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# --- Docker Local Data / Volumes ---
+docker/data/
+postgres_auth_data/
+postgres_core_data/
+minio_data/
+n8n_data/
+

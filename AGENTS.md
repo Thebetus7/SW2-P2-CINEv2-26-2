@@ -134,14 +134,13 @@ flowchart TD
 | Operación | Comando en Consola | Servicio / Herramienta |
 | :--- | :--- | :--- |
 | **Infraestructura Completa (Docker)** | `docker-compose up -d` / `docker-compose down` | PostgreSQL, DynamoDB Local, MinIO S3, n8n |
-| **Backend: MS TICKET-AUTH** | `cd services/ms-ticket-auth && ./mvnw spring-boot:run` | Spring Boot 3 (Java 21) |
-| **Backend: MS CINEMA-CORE** | `cd services/ms-cinema-core && npm run start:dev` | NestJS (Node 20 LTS, TypeORM) |
-| **Backend: MS MULTIMEDIA** | `cd services/ms-multimedia && npm run start:dev` | NestJS (TensorFlow COCO-SSD, AWS SDK Local) |
-| **Backend: MS IA-MCP** | `cd services/ms-ia-mcp && uvicorn main:app --reload --port 8001` | FastAPI (Python 3.11+, MCP JSON-RPC, GrokCloud) |
-| **Fullstack: PANEL DE BOLETEO** | `cd apps/boleteo-validator && php artisan serve` | Laravel 11 + React / Jetstream |
-| **Frontend: FRONTWEB (Admin)** | `cd apps/frontweb-admin && npm start` | Angular 17+ (Lazy Loading, IA WebLLM) |
-| **Frontend: MOVIL APP (Cliente)** | `cd apps/movil-client && npm run dev` | React 18+ PWA (Service Workers, Capacitor) |
-| **Pruebas de Backend** | `mvn test` / `npm test` / `pytest` | JUnit, Jest, Pytest |
+| **MS TICKET-AUTH (Backend / Frontend)** | `cd ms/ms-ticket-auth/backend && ./mvnw spring-boot:run`<br>`cd ms/ms-ticket-auth/frontend && npm run dev` | Spring Boot 3 (Java 21) / React 18 Portal Login & Stepper |
+| **MS CINEMA-CORE (Backend / Frontend)** | `cd ms/ms-cinema-core/backend && npm run start:dev`<br>`cd ms/ms-cinema-core/frontend && npm start` | NestJS (TypeORM) / Angular 17 Admin + WebLLM |
+| **MS MULTIMEDIA (Backend / Frontend)** | `cd ms/ms-multimedia/backend && npm run start:dev`<br>`cd ms/ms-multimedia/frontend && npm run dev` | NestJS (TensorFlow COCO-SSD) / React Simulador |
+| **MS IA-MCP (Backend / Frontend)** | `cd ms/ms-ia-mcp/backend && uvicorn main:app --reload --port 8001`<br>`cd ms/ms-ia-mcp/frontend && npm run dev` | FastAPI (GrokCloud + MCP JSON-RPC) / React Consola |
+| **MS BOLETEO-VALIDATOR (Backend / Frontend)** | `cd ms/ms-boleteo-validator/backend && php artisan serve`<br>`cd ms/ms-boleteo-validator/frontend && npm run dev` | Laravel 11 / React + Inertia Lector Cámara |
+| **CANAL CLIENTE (MOVIL APP)** | `cd ms/movil-client && npm run dev` | React 18+ PWA (Service Workers, Capacitor) |
+| **Pruebas de Backend** | `mvn test` / `npm test` / `pytest` / `php artisan test` | JUnit, Jest, Pytest, Pest/PHPUnit |
 | **Linters y Type-Check** | `npm run lint` / `./vendor/bin/pint` | ESLint, TypeScript, Laravel Pint |
 
 ---

@@ -1,7 +1,7 @@
 # Constitution: Ecosistema CineV2 - Plataforma Distribuida de Gestión y Experiencia Cinematográfica
 
 > **Estado:** APPROVED  
-> **Versión:** 1.2.0  
+> **Versión:** 1.3.0  
 > **Última actualización:** 2026-11-03  
 > **Gobernanza:** Nivel 1 en Jerarquía SDD (Precedencia Absoluta sobre Spec, Plan, Tasks y Code)
 
@@ -10,16 +10,18 @@
 ## 1. Visión, Dominio y Propósito del Sistema
 
 ### 1.1 Misión Principal
-El ecosistema **CineV2** es una solución universitaria avanzada de ingeniería de software diseñada para modelar de punta a punta las operaciones cinematográficas comerciales modernas mediante una arquitectura desacoplada de microservicios políglotas, inteligencia artificial contextual y canales de usuario especializados.
+El ecosistema **CineV2** es una solución universitaria avanzada de ingeniería de software diseñada para modelar de punta a punta las operaciones cinematográficas comerciales modernas mediante una arquitectura desacoplada de microservicios políglotas autocontenidos (backend y frontend integrados), inteligencia artificial contextual y canales de usuario especializados.
 
 El sistema resuelve la interoperabilidad en tiempo real entre la administración de complejos (salas, butacas y proyecciones), la experiencia de compra asistida por IA para clientes finales (web y móvil híbrido con soporte offline y geolocalización en sala), la validación física de acceso mediante códigos QR dinámicos criptográficamente firmados, el procesamiento analítico de video mediante visión artificial (conteo de personas en filas de taquilla) y la auditoría comercial autónoma mediante el protocolo MCP (Model Context Protocol) integrado con GrokCloud y orquestaciones reactivas en n8n.
 
 ### 1.2 Contexto Operativo
 - **Entorno de Despliegue:** Arquitectura contenerizada sobre Docker y Docker Compose con persistencia políglota local (PostgreSQL, DynamoDB Local y MinIO S3 Object Storage).
+- **Estructura Raíz Unificada (`ms/`):** Todos los microservicios y aplicaciones del ecosistema residen en el directorio raíz `ms/`, garantizando que cada componente de dominio sea autocontenido con sus capas `backend/` y `frontend/`.
 - **Canales de Interacción:** 
-  1. *Panel Administrativo (FRONTWEB):* Aplicación Angular con arquitectura modular (Lazy Loading) e inferencia local de IA (WebLLM / Transformers.js).
-  2. *Canal Cliente (MOVIL APP / Web Cliente):* Aplicación híbrida unificada en React PWA + Capacitor, con soporte offline (Service Workers + IndexedDB) y geolocalización GPS interna en terminal.
-  3. *Control de Acceso (PANEL DE BOLETEO):* Aplicación monolítica en Laravel 11 con React (Inertia.js/Jetstream) y captura de video/cámara para escaneo de credenciales QR.
+  1. *Panel Administrativo (FRONTWEB):* Aplicación Angular con arquitectura modular (Lazy Loading) e inferencia local de IA (WebLLM / Transformers.js), alojada en `ms/ms-cinema-core/frontend/`.
+  2. *Canal Cliente (MOVIL APP / Web Cliente):* Aplicación híbrida unificada en React PWA + Capacitor, con soporte offline (Service Workers + IndexedDB) y geolocalización GPS interna en terminal, ubicada en `ms/movil-client/`.
+  3. *Portal de Acceso y Pago Centralizado:* Interfaz React con Stepper UI de 4 pasos para checkout y login demo centralizado, alojada en `ms/ms-ticket-auth/frontend/`.
+  4. *Control de Acceso (PANEL DE BOLETEO):* Aplicación desacoplada en Laravel 11 con React e interfaz de cámara continua para escaneo y validación de credenciales QR, alojada en `ms/ms-boleteo-validator/`.
 - **Población Inicial de Datos:** Entorno precargado con *seeders* y *factories* realistas con un volumen de ~300 registros variables (películas, salas, butacas, funciones y compras históricas) y 3 usuarios predefinidos con roles asignados.
 
 ### 1.3 Alcance Global del Sistema (In-Scope Macro)
@@ -64,15 +66,15 @@ El sistema resuelve la interoperabilidad en tiempo real entre la administración
 ### 3.1 Actores Humanos
 1. **Administrador (`admin`):**
    - Operador central con credenciales maestras predefinidas (`admin@cine.local`).
-   - Acceso exclusivo al panel **FRONTWEB (Angular)**.
+   - Acceso exclusivo al panel **FRONTWEB (Angular)** en `ms/ms-cinema-core/frontend/`.
    - Responsable de la creación y mantenimiento del catálogo de películas, estructuración de salas y matrices de butacas, fijación de carteleras/horarios, inspección de dashboards ejecutivos, visualización de métricas de visión artificial y descarga de reportes predictivos de n8n.
 2. **Cliente (`cliente`):**
    - Usuario final registrado o precargado (`cliente@cine.local`).
-   - Acceso a la **MOVIL APP (React PWA + Capacitor)** y visualización web de cartelera.
+   - Acceso a la **MOVIL APP (React PWA + Capacitor)** en `ms/movil-client/` y visualización web de cartelera.
    - Puede consultar funciones, seleccionar butacas disponibles en mapa interactivo, interactuar con el chatbot conversacional deslizable, emitir pagos simulados con Stripe, recibir boletos digitales, almacenarlos offline en IndexedDB y utilizar el GPS interno para guiarse en el cine.
 3. **Boletero (`boletero`):**
    - Personal operativo de control de acceso en puertas físicas (`boletero@cine.local`).
-   - Acceso exclusivo al **PANEL DE BOLETEO (Laravel 11 + React)**.
+   - Acceso exclusivo al **PANEL DE BOLETEO (Laravel 11 + React)** en `ms/ms-boleteo-validator/`.
    - Utiliza la cámara web/móvil para escanear en tiempo real el código QR del boleto, valida localmente la firma criptográfica HMAC-SHA256 y gatilla el cambio de estado del ticket a `Utilizado`.
 
 ### 3.2 Actores de Sistema y Servicios Externos
@@ -109,7 +111,7 @@ Queda estrictamente prohibido registrar entidades, tablas o endpoints para venta
 ### `INV-BIZ-02` (Inmutabilidad Financiera y Ciclo de Vida de Boletos)
 Ningún registro de boleto (`Ticket`) confirmado o cobrado puede ser eliminado físicamente de la base de datos (DELETE SQL terminantemente prohibido).
 El ciclo de vida del boleto transiciona rígidamente por los siguientes estados:
-- `PENDING_PAYMENT`: Butaca bloqueada temporalmente durante la sesión de checkout en Stripe (tiempo máximo de retención: 5 minutos).
+- `PENDING_PAYMENT`: Butaca bloqueada temporalmente durante la sesión de checkout en Stripe (tiempo máximo de retención: 60 segundos).
 - `CONFIRMED`: Pago en Stripe completado exitosamente; boleto emitido, imagen renderizada en MinIO y QR firmado generado.
 - `USED`: Boleto escaneado legítimamente por el boletero en puerta física; no admite reingresos.
 - `CANCELLED`: Reserva expirada por inactividad de pago o cancelada por compensación SAGA ante fallo de transacción de Stripe.
@@ -141,13 +143,13 @@ El script de inicialización de datos (seeders) debe generar obligatoriamente lo
 Cada microservicio debe gobernar sus credenciales sensibles mediante su propio archivo `.env` local, debidamente ignorado en el control de versiones (`.gitignore`). Queda prohibida la consolidación de un `.env` global compartido que mezcle credenciales de bases de datos o llaves de servicios de microservicios independientes.
 
 ### `INV-BIZ-08` (Ruta Principal Única de Entrada y Redirección Centralizada por Rol)
-Debe existir una única ruta de acceso principal al sistema para todos los usuarios. Queda terminantemente prohibido acceder de forma directa o anónima a las rutas internas de los paneles (`FRONTWEB`, `MOVIL APP` o `PANEL DE BOLETEO`).
-- **Punto Único de Entrada (`/login`):** Gestionado centralmente desde el canal de autenticación de `MS TICKET-AUTH`.
+Debe existir una única ruta de acceso principal al sistema para todos los usuarios. Queda terminantemente prohibido acceder de forma directa o anónima a las vistas operativas de los microservicios sin autenticación.
+- **Punto Único de Entrada (`/login`):** Gestionado centralmente desde el canal de autenticación de `ms/ms-ticket-auth/frontend/`.
 - **Pre-requisito Obligatorio:** Todo usuario debe autenticarse (o registrarse si es un nuevo cliente) antes de entrar a cualquier vista operativa.
 - **Redirección Estricta por Rol:**
-  - `admin` $\rightarrow$ Redirecciona automáticamente a la consola de administración **FRONTWEB (Angular)**.
-  - `cliente` $\rightarrow$ Redirecciona automáticamente al catálogo y cartelera de la **MOVIL APP (React PWA)**.
-  - `boletero` $\rightarrow$ Redirecciona automáticamente a la cámara de escaneo del **PANEL DE BOLETEO (Laravel 11 + React)**.
+  - `admin` $\rightarrow$ Redirecciona automáticamente a la consola de administración **FRONTWEB (Angular)** en `ms/ms-cinema-core/frontend/`.
+  - `cliente` $\rightarrow$ Redirecciona automáticamente al catálogo y cartelera de la **MOVIL APP (React PWA)** en `ms/movil-client/`.
+  - `boletero` $\rightarrow$ Redirecciona automáticamente a la cámara de escaneo del **PANEL DE BOLETEO (Laravel 11 + React)** en `ms/ms-boleteo-validator/`.
 - **Protección de Rutas (Guards / Middleware):** Todo intento de navegación no autenticado o con rol inadecuado hacia cualquier sub-ruta de los frontends debe ser interceptado y devuelto de forma inmediata a la pantalla única de inicio de sesión.
 
 ---
@@ -158,98 +160,117 @@ Debe existir una única ruta de acceso principal al sistema para todos los usuar
 
 ```mermaid
 flowchart TB
-    subgraph CANALES_USUARIO ["Canales de Usuario"]
-        FW["FRONTWEB (Admin)<br/>Angular 17 + Lazy Loading<br/>IA Local (WebLLM/Transformers.js)"]
-        MA["MOVIL APP (Cliente)<br/>React PWA + Capacitor<br/>Offline (Service Workers + IndexedDB)<br/>GPS Terminal"]
-        PB["PANEL DE BOLETEO<br/>Laravel 11 + React / Jetstream<br/>Escáner QR Cámara + HMAC-SHA256"]
-    end
+    subgraph CARPETA_MS ["Directorio Raíz Unificado: ms/"]
+        subgraph MS_AUTH ["ms/ms-ticket-auth"]
+            AUTH_BACK["backend/ (Spring Boot 3 + BCrypt)<br/>GraphQL Federado + SAGA + Stripe API"]
+            AUTH_FRONT["frontend/ (React 18)<br/>Login Central Demo + Stepper Checkout"]
+        end
 
-    subgraph API_ORQUESTACION ["Capa de Autenticación y Entrada"]
-        GW["MS TICKET-AUTH<br/>Spring Boot 3 + BCrypt<br/>GraphQL Resolver Federado<br/>Orquestador SAGA de Compra"]
-    end
+        subgraph MS_CORE ["ms/ms-cinema-core"]
+            CORE_BACK["backend/ (NestJS 10 + TypeORM)<br/>Salas, Butacas, Películas, Cartelera"]
+            CORE_FRONT["frontend/ (Angular 17 + Lazy Loading)<br/>Admin Salas/Cartelera + WebLLM Local"]
+        end
 
-    subgraph MICROSERVICIOS_DOMINIO ["Microservicios de Negocio y Dominio"]
-        CORE["MS CINEMA-CORE<br/>NestJS + PostgreSQL (TypeORM)<br/>Salas, Butacas, Películas, Cartelera"]
-        MEDIA["MS MULTIMEDIA<br/>NestJS + AWS SDK Local<br/>TensorFlow.js (COCO-SSD)<br/>MinIO S3 + DynamoDB Local<br/>Firma QR HMAC-SHA256"]
-        IA["MS IA-MCP<br/>FastAPI + Protocolo MCP (JSON-RPC)<br/>Agente Auditor GrokCloud<br/>Chatbot Endpoint"]
+        subgraph MS_MEDIA ["ms/ms-multimedia"]
+            MEDIA_BACK["backend/ (NestJS 10 + TensorFlow)<br/>MinIO S3 + DynamoDB Local + HMAC-SHA256"]
+            MEDIA_FRONT["frontend/ (React 18)<br/>Simulador Afluencia y Métricas"]
+        end
+
+        subgraph MS_IA ["ms/ms-ia-mcp"]
+            IA_BACK["backend/ (FastAPI + Python 3.11)<br/>Protocolo MCP + GrokCloud + Webhook n8n"]
+            IA_FRONT["frontend/ (React 18)<br/>Consola Auditoría + Testing Chatbot"]
+        end
+
+        subgraph MS_BOLETEO ["ms/ms-boleteo-validator"]
+            BOL_BACK["backend/ (Laravel 11 + PHP 8.2)<br/>Control de Acceso y Logs de Entrada"]
+            BOL_FRONT["frontend/ (React + Inertia)<br/>Escáner Cámara Web + Feedback Verde/Rojo"]
+        end
+
+        subgraph MS_MOVIL ["ms/movil-client"]
+            MOVIL_APP["Frontend Directo (React 18 PWA + Capacitor)<br/>Catálogo, Mapa Butacas, Stripe Elements<br/>IndexedDB Offline + GPS Interno"]
+        end
     end
 
     subgraph INFRAESTRUCTURA_LOCAL ["Infraestructura Persistente Local (Docker)"]
-        PG_AUTH[("PostgreSQL<br/>Auth & Tickets")]
-        PG_CORE[("PostgreSQL<br/>Cinema Core")]
-        DYNAMO[("DynamoDB Local<br/>Metadatos & Analítica")]
-        MINIO[("MinIO S3 Local<br/>Imágenes y Tickets")]
-        N8N["n8n Automation Engine<br/>Webhooks -> Reportes Excel (.xlsx)"]
+        PG_AUTH[("PostgreSQL 5432<br/>db_tickets_auth")]
+        PG_CORE[("PostgreSQL 5433<br/>db_cinema_core")]
+        DYNAMO[("DynamoDB Local 8002<br/>Metadatos & Analítica")]
+        MINIO[("MinIO S3 Local 9000<br/>Imágenes y Tickets")]
+        N8N["n8n Automation Engine 5678<br/>Webhooks -> Reportes Excel (.xlsx)"]
         STRIPE["Stripe Payment Gateway<br/>Modo Desarrollador (4242...)"]
     end
 
     %% Conexiones Canales a Servicios
-    FW -->|"REST / Analíticas"| CORE
-    FW -->|"Descarga Reportes"| N8N
-    MA -->|"GraphQL Queries / Mutations"| GW
-    MA -->|"Chatbot Deslizable"| IA
-    PB -->|"Validación Estado / Token"| GW
+    CORE_FRONT -->|"REST / Analíticas"| CORE_BACK
+    CORE_FRONT -->|"Descarga Reportes"| N8N
+    MOVIL_APP -->|"GraphQL Queries / Mutations"| AUTH_BACK
+    MOVIL_APP -->|"Chatbot Deslizable"| IA_BACK
+    MOVIL_APP -->|"Descarga Imágenes"| MINIO
+    BOL_FRONT -->|"Validación Estado / Token"| AUTH_BACK
     
-    %% Conexiones Backend
-    GW -->|"Database per Service"| PG_AUTH
-    CORE -->|"Database per Service"| PG_CORE
-    MEDIA -->|"Persistencia Híbrida"| MINIO
-    MEDIA -->|"Series Temporales y Meta"| DYNAMO
+    %% Conexiones Backend a DB
+    AUTH_BACK -->|"Database per Service"| PG_AUTH
+    CORE_BACK -->|"Database per Service"| PG_CORE
+    MEDIA_BACK -->|"Persistencia Híbrida"| MINIO
+    MEDIA_BACK -->|"Series Temporales y Meta"| DYNAMO
 
     %% Orquestación SAGA y Comunicación Inter-Servicios
-    GW -->|"1. Bloqueo de Butaca"| CORE
-    GW -->|"2. Emisión Ticket / Firma QR"| MEDIA
-    GW -->|"3. Cobro Tarjeta Prueba"| STRIPE
+    AUTH_BACK -->|"1. Bloqueo de Butaca"| CORE_BACK
+    AUTH_BACK -->|"2. Emisión Ticket / Firma QR"| MEDIA_BACK
+    AUTH_BACK -->|"3. Cobro Tarjeta Prueba"| STRIPE
     
     %% Flujo MCP y Automatización
-    IA -->|"MCP Tool: get_occupancy_metrics()"| CORE
-    IA -->|"MCP Tool: get_line_analytics()"| MEDIA
-    IA -->|"MCP Tool: trigger_n8n_contingency()"| N8N
+    IA_BACK -->|"MCP Tool: get_occupancy_metrics()"| CORE_BACK
+    IA_BACK -->|"MCP Tool: get_line_analytics()"| MEDIA_BACK
+    IA_BACK -->|"MCP Tool: trigger_n8n_contingency()"| N8N
 ```
 
 ### 5.2 Secuencia de la Transacción Distribuida de Compra (Patrón SAGA)
-1. **Solicitud de Compra:** El cliente en la `MOVIL APP` selecciona función y butaca; la interfaz gatilla la mutación GraphQL `initiateTicketPurchase(...)` hacia `MS TICKET-AUTH`.
-2. **Reserva Temporal de Butaca (Compensable):** `MS TICKET-AUTH` solicita síncronamente a `MS CINEMA-CORE` el bloqueo transaccional de la butaca a estado `RESERVADA_TEMPORAL`.
-3. **Generación Gráfica y Firma de Boleto:** `MS TICKET-AUTH` solicita a `MS MULTIMEDIA` la construcción de la imagen del ticket, almacenamiento en MinIO S3 y cálculo de la firma HMAC-SHA256 del código QR dinámico.
-4. **Previsualización en Cliente:** La `MOVIL APP` recupera la URL de la imagen del ticket desde MinIO S3 y renderiza la vista preliminar en el componente deslizable antes de activar el contenedor `<Elements>` de Stripe.
-5. **Procesamiento de Pago en Stripe:** El cliente suministra la tarjeta de prueba de Stripe. Si el pago es exitoso, `MS TICKET-AUTH` confirma la compra, marca el ticket como `CONFIRMED` en su PostgreSQL y notifica a `MS CINEMA-CORE` para marcar la butaca como `OCUPADA_DEFINITIVA`.
-6. **Compensación SAGA (Manejo de Fallo):** Si el pago es rechazado, expira o el usuario cancela la pasarela, `MS TICKET-AUTH` ejecuta de inmediato la acción compensatoria: solicita a `MS CINEMA-CORE` liberar la butaca a estado `DISPONIBLE` y marca el ticket local como `CANCELLED`.
-7. **Descarga Offline:** Una vez emitido el boleto confirmado, el Service Worker de la `MOVIL APP` descarga el payload JSON y la imagen del código QR en el IndexedDB local del cliente.
+1. **Solicitud de Compra:** El cliente en la `MOVIL APP` (`ms/movil-client/`) o el Stepper web selecciona función y butaca; la interfaz gatilla la mutación GraphQL `initiateTicketPurchase(...)` hacia `ms/ms-ticket-auth/backend/`.
+2. **Reserva Temporal de Butaca (Compensable):** `ms/ms-ticket-auth/backend/` solicita síncronamente a `ms/ms-cinema-core/backend/` el bloqueo transaccional de la butaca a estado `RESERVADA_TEMPORAL` con temporizador de 60 segundos.
+3. **Generación Gráfica y Firma de Boleto:** `ms/ms-ticket-auth/backend/` solicita a `ms/ms-multimedia/backend/` la construcción de la imagen del ticket, almacenamiento en MinIO S3 y cálculo de la firma HMAC-SHA256 del código QR dinámico.
+4. **Previsualización en Cliente:** La interfaz recupera la URL de la imagen del ticket desde MinIO S3 y renderiza la vista preliminar en el componente deslizable antes de activar el contenedor `<Elements>` de Stripe.
+5. **Procesamiento de Pago en Stripe:** El cliente suministra la tarjeta de prueba de Stripe (`4242424...`). Si el pago es exitoso, `ms/ms-ticket-auth/backend/` confirma la compra, marca el ticket como `CONFIRMED` en PostgreSQL y notifica a `ms/ms-cinema-core/backend/` para marcar la butaca como `OCUPADA_DEFINITIVA`.
+6. **Compensación SAGA (Manejo de Fallo):** Si el pago es rechazado, expira tras 60 segundos o el usuario cancela la pasarela, `ms/ms-ticket-auth/backend/` ejecuta de inmediato la acción compensatoria: solicita a `ms/ms-cinema-core/backend/` liberar la butaca a estado `DISPONIBLE` y marca el ticket local como `CANCELLED`.
+7. **Descarga Offline:** Una vez emitido el boleto confirmado, el Service Worker de la `MOVIL APP` descarga el payload JSON y la imagen del código QR en el `IndexedDB` local del cliente.
 
 ### 5.3 Flujo de Validación en Puerta de Acceso (Boleteo)
-1. El `boletero` enfoca la cámara del dispositivo en el `PANEL DE BOLETEO` (Laravel 11 + React).
+1. El `boletero` enfoca la cámara del dispositivo en `ms/ms-boleteo-validator/frontend/` (Laravel 11 + React).
 2. El lector decodifica el JSON del código QR dinámico y extrae `{ ticketId, seatId, showtimeId, issuedAt, sig }`.
-3. El frontend de React en Laravel verifica de forma autónoma la firma `sig` mediante HMAC-SHA256 utilizando la clave secreta institucional.
-4. Si la firma es legítima, Laravel despacha una solicitud autenticada con JWT a `MS TICKET-AUTH` para actualizar el estado del ticket a `USED`.
+3. El frontend de React verifica de forma autónoma la firma `sig` mediante HMAC-SHA256 utilizando la clave secreta compartida (`clave_secreta_universitaria_mcp`).
+4. Si la firma es legítima, se despacha una solicitud autenticada con JWT a `ms/ms-ticket-auth/backend/` para actualizar el estado del ticket a `USED`.
 5. Si la firma es inválida, el ticket ya figura como `USED` o está cancelado, el sistema despliega una alerta visual roja y bloquea el acceso.
 
 ### 5.4 Flujo de Auditoría Comercial MCP y Automatización n8n
-1. `MS IA-MCP` ejecuta en background su ciclo de auditoría continua asistido por el Agente GrokCloud.
+1. `ms/ms-ia-mcp/backend/` ejecuta en background su ciclo de auditoría continua asistido por el Agente GrokCloud.
 2. El agente consume las herramientas MCP declaradas en el manifiesto JSON-RPC:
-   - `get_occupancy_metrics()`: Lee la ocupación y volumen de ventas de `MS CINEMA-CORE`.
-   - `get_line_analytics()`: Lee el conteo de personas obtenido por el modelo TensorFlow en `MS MULTIMEDIA`.
+   - `get_occupancy_metrics()`: Lee la ocupación y volumen de ventas de `ms/ms-cinema-core/backend/`.
+   - `get_line_analytics()`: Lee el conteo de personas obtenido por el modelo TensorFlow en `ms/ms-multimedia/backend/`.
 3. Si el agente detecta una condición anómala (ej. taquilla con >40 personas en fila o función a 15 min de inicio con ocupación <5%), invoca `trigger_n8n_contingency()`.
-4. `MS IA-MCP` emite un Webhook saliente hacia `n8n` con un payload tipado estructurado.
+4. `ms/ms-ia-mcp/backend/` emite un Webhook saliente hacia `n8n` con un payload tipado estructurado.
 5. `n8n` recibe el evento, procesa las reglas de contingencia y genera el archivo real de hoja de cálculo en formato `.xlsx` para la visualización del Administrador en el FRONTWEB.
 
 ---
 
 ## 6. Stack Tecnológico Oficial y Restricciones de Plataforma
 
-| Capa / Módulo | Tecnología / Framework Oficial | Versión / Runtime | Responsabilidad e Invariantes |
-| :--- | :--- | :--- | :--- |
-| **MS TICKET-AUTH (Backend)** | Spring Boot | 3.2+ (Java 21) | Autenticación centralizada (BCrypt), GraphQL federado, orquestador SAGA de compras, SDK Stripe. |
-| **MS CINEMA-CORE (Backend)** | NestJS | 10+ (Node.js 20 LTS) | Arquitectura Hexagonal / Modular, TypeORM, gestión de salas, butacas anidadas, películas y cartelera. |
-| **MS MULTIMEDIA (Backend)** | NestJS | 10+ (Node.js 20 LTS) | Integración `@aws-sdk/client-s3` (MinIO) y `@aws-sdk/client-dynamodb` local, `@tensorflow/tfjs-node` con COCO-SSD, firma HMAC-SHA256. |
-| **MS IA-MCP (Backend)** | FastAPI | 0.110+ (Python 3.11+) | Protocolo Model Context Protocol (MCP JSON-RPC), Agente GrokCloud (`${GROQ_API_KEY}`), webhooks hacia n8n y endpoint de chatbot de compra. |
-| **PANEL DE BOLETEO (Fullstack)** | Laravel 11 + React | PHP 8.2+ / Node 20 | Monolito desacoplado con Inertia.js o Jetstream, lector de cámara web HTML5 (ZXing/html5-qrcode), verificación de firma HMAC y llamada JWT a Auth. |
-| **FRONTWEB (Admin Frontend)** | Angular | 17+ (TypeScript 5+) | Panel administrativo modular con Lazy Loading, consumo de APIs de salas/cartelera, IA en navegador (WebLLM / Transformers.js para analítica offline). |
-| **MOVIL APP (Cliente Frontend)** | React + PWA + Capacitor | React 18+ / Capacitor 5+ | Aplicación híbrida unificada con Service Workers, IndexedDB para tickets offline, geolocalización GPS interna, drawer de Chatbot y Stripe Elements. |
-| **Base de Datos Relacional** | PostgreSQL | 16+ | Bases de datos independientes por microservicio (`db_tickets_auth`, `db_cinema_core`). |
-| **Base de Datos NoSQL** | Amazon DynamoDB Local | Imagen Docker oficial | Almacenamiento local de metadatos de tickets y series de analítica de video (`http://localhost:8000`). |
-| **Almacenamiento de Objetos** | MinIO S3 Object Storage | Imagen Docker oficial | Bucket local para portadas de películas y credenciales gráficas de tickets (`http://localhost:9000`). |
-| **Motor de Automatización** | n8n | Imagen Docker oficial | Orquestador de webhooks y generador de reportes en hojas de cálculo Excel (`.xlsx`). |
-| **Visión Artificial / Deep Learning** | TensorFlow.js Core / Node | `@tensorflow/tfjs-node` | Modelo preentrenado COCO-SSD para detección y conteo de personas en imágenes de fila de taquilla. |
+| Componente / Módulo | Ubicación Física | Tecnología / Framework Oficial | Versión / Runtime | Responsabilidad e Invariantes |
+| :--- | :--- | :--- | :--- | :--- |
+| **MS TICKET-AUTH (Backend)** | `ms/ms-ticket-auth/backend/` | Spring Boot | 3.2+ (Java 21) | Autenticación centralizada (BCrypt), GraphQL federado, orquestador SAGA de compras, SDK Stripe. |
+| **MS TICKET-AUTH (Frontend)** | `ms/ms-ticket-auth/frontend/` | React + Vite | 18+ (Node.js 20) | Portal centralizado de Login con botones Demo 1-Click, Stepper de compra y contenedor Stripe Elements. |
+| **MS CINEMA-CORE (Backend)** | `ms/ms-cinema-core/backend/` | NestJS | 10+ (Node.js 20 LTS) | Arquitectura Hexagonal / Modular, TypeORM, gestión de salas, butacas anidadas, películas y cartelera. |
+| **MS CINEMA-CORE (Frontend Admin)** | `ms/ms-cinema-core/frontend/` | Angular | 17+ (TypeScript 5+) | Panel administrativo modular con Lazy Loading, cuadrícula interactiva de salas, cartelera e IA local (WebLLM / Transformers.js). |
+| **MS MULTIMEDIA (Backend)** | `ms/ms-multimedia/backend/` | NestJS | 10+ (Node.js 20 LTS) | Integración `@aws-sdk/client-s3` (MinIO) y `@aws-sdk/client-dynamodb` local, `@tensorflow/tfjs-node` con COCO-SSD, firma HMAC-SHA256. |
+| **MS MULTIMEDIA (Frontend)** | `ms/ms-multimedia/frontend/` | React + Vite | 18+ (Node.js 20) | Simulador de cámaras de taquilla, generador de eventos de afluencia y visualizador de métricas en DynamoDB. |
+| **MS IA-MCP (Backend)** | `ms/ms-ia-mcp/backend/` | FastAPI | 0.110+ (Python 3.11+) | Protocolo Model Context Protocol (MCP JSON-RPC), Agente GrokCloud (`${GROQ_API_KEY}`), webhooks hacia n8n y endpoint de chatbot. |
+| **MS IA-MCP (Frontend)** | `ms/ms-ia-mcp/frontend/` | React + Vite | 18+ (Node.js 20) | Consola interactiva de auditoría con botón de ejecución forzada, monitor de webhooks y banco de pruebas de chat. |
+| **MS BOLETEO-VALIDATOR (Backend)** | `ms/ms-boleteo-validator/backend/` | Laravel 11 | PHP 8.2+ | API de registro de escaneos, autenticación de boleteros y sincronización con MS Ticket-Auth. |
+| **MS BOLETEO-VALIDATOR (Frontend)** | `ms/ms-boleteo-validator/frontend/` | React + Inertia | React 18+ / Node 20 | Lector continuo de cámara HTML5 (ZXing/html5-qrcode), verificación de firma HMAC y feedback visual Verde/Rojo. |
+| **MOVIL CLIENT (Canal Cliente)** | `ms/movil-client/` | React + PWA + Capacitor | React 18+ / Capacitor 5+ | Aplicación híbrida cliente con Service Workers, IndexedDB offline, GPS interno, drawer de Chatbot y Stripe Elements. |
+| **Base de Datos Relacional** | Infraestructura Docker | PostgreSQL | 16+ | Bases de datos independientes por microservicio (`db_tickets_auth` puerto 5432, `db_cinema_core` puerto 5433). |
+| **Base de Datos NoSQL** | Infraestructura Docker | Amazon DynamoDB Local | Imagen Docker oficial | Almacenamiento local de metadatos de tickets y series de analítica de video (`http://localhost:8002`). |
+| **Almacenamiento de Objetos** | Infraestructura Docker | MinIO S3 Object Storage | Imagen Docker oficial | Bucket local para portadas de películas y credenciales gráficas de tickets (`http://localhost:9000`). |
+| **Motor de Automatización** | Infraestructura Docker | n8n | Imagen Docker oficial | Orquestador de webhooks y generador de reportes en hojas de cálculo Excel (`.xlsx`, puerto 5678). |
 
 ---
 
@@ -261,22 +282,22 @@ Cada microservicio es dueño absoluto de su capa de persistencia. Queda terminan
 ### `INV-ARCH-02` (Configuración de Endpoints Locales de AWS SDK)
 En `MS MULTIMEDIA`, todas las inicializaciones de clientes de AWS SDK (`S3Client` y `DynamoDBClient`) deben fijar explícitamente la propiedad `endpoint` hacia las instancias contenerizadas en Docker:
 - S3 / MinIO: `endpoint: "http://localhost:9000"`, `forcePathStyle: true`, credenciales locales simuladas (`accessKeyId: "minioadmin"`, `secretAccessKey: "minioadmin"`).
-- DynamoDB: `endpoint: "http://localhost:8000"`, `region: "us-east-1"`, credenciales locales simuladas.
+- DynamoDB: `endpoint: "http://localhost:8002"`, `region: "us-east-1"`, credenciales locales simuladas.
 Queda prohibido intentar autenticarse contra la nube pública de AWS o buscar credenciales en variables de entorno del sistema operativo host.
 
 ### `INV-ARCH-03` (Persistencia Híbrida: Binarios vs. Metadatos)
 Los archivos binarios pesados (imágenes PNG/JPG de portadas y gráficos de boletos) deben persistirse exclusivamente en buckets de MinIO S3. DynamoDB y PostgreSQL almacenarán únicamente el identificador del objeto (`key`), la URL de acceso firmada, los identificadores relacionales y los metadatos numéricos.
 
 ### `INV-ARCH-04` (Arquitectura Hexagonal en Servicios de Dominio)
-En `MS TICKET-AUTH` y `MS CINEMA-CORE`, el código debe organizarse respetando la separación en tres capas independientes:
+En `ms/ms-ticket-auth/backend/` y `ms/ms-cinema-core/backend/`, el código debe organizarse respetando la separación en tres capas independientes:
 1. **Dominio:** Entidades puras y reglas de negocio, libres de anotaciones de ORM o dependencias de frameworks externos.
 2. **Aplicación:** Casos de uso, orquestación SAGA, puertos de entrada y salida, DTOs tipados.
 3. **Infraestructura:** Adaptadores de base de datos (Spring Data JPA / TypeORM), controladores REST/GraphQL, clientes HTTP y adaptadores de pasarela externa (Stripe).
 
 ### `INV-ARCH-05` (Manifiesto MCP y Payload de Webhook n8n)
-`MS IA-MCP` debe implementar el protocolo Model Context Protocol (MCP) exponiendo obligatoriamente su manifiesto JSON-RPC con tres herramientas:
-1. `get_occupancy_metrics`: Interroga a `MS CINEMA-CORE` para computar aforo por sala.
-2. `get_line_analytics`: Interroga a `MS MULTIMEDIA` para leer el conteo de personas de TensorFlow.
+`ms/ms-ia-mcp/backend/` debe implementar el protocolo Model Context Protocol (MCP) exponiendo obligatoriamente su manifiesto JSON-RPC con tres herramientas:
+1. `get_occupancy_metrics`: Interroga a `ms/ms-cinema-core/backend/` para computar aforo por sala.
+2. `get_line_analytics`: Interroga a `ms/ms-multimedia/backend/` para leer el conteo de personas de TensorFlow.
 3. `trigger_n8n_contingency`: Emite el Webhook saliente hacia `n8n` con la firma:
 ```json
 {
@@ -287,28 +308,38 @@ En `MS TICKET-AUTH` y `MS CINEMA-CORE`, el código debe organizarse respetando l
 }
 ```
 
-### `INV-ARCH-06` (Estrategia Dual de Contenerización: Defensa Todo-en-Uno vs. Despliegue Aislado en Cloud)
-El sistema debe soportar dos modalidades de empaquetamiento y despliegue para garantizar la excelencia académica y la viabilidad en producción:
-1. **Modalidad Cloud Desacoplada (Buena Práctica para AWS / GCP / Azure):**
-   - Cada microservicio backend (`ms-ticket-auth`, `ms-cinema-core`, `ms-multimedia`, `ms-ia-mcp`) y cada aplicación frontend (`frontweb-admin`, `movil-client`, `boleteo-validator`) debe disponer de su propio **`Dockerfile` multi-stage autónomo** en su directorio respectivo.
-   - Estos archivos compilan imágenes autocontenidas y ligeras (Alpine/Slim) capaces de desplegarse de manera independiente en contenedores serverless o clusters distribuidos (ej. AWS ECS/Fargate, Google Cloud Run, Azure Container Apps o Kubernetes).
-2. **Modalidad Raíz Todo-en-Uno para Defensa y Evaluación Local:**
-   - La raíz del proyecto provee un artefacto de despliegue consolidado (**`Dockerfile.all-in-one`** y el orquestador maestro **`docker-compose.yml`**) diseñado para que cualquier evaluador docente o jurado pueda compilar, inicializar los *seeders* y levantar el 100% de los servicios, bases de datos y frontends con un solo comando en su máquina local sin configuraciones manuales.
+### `INV-ARCH-06` (Estrategia Tripartita de Contenerización: Modular por Servicio, Centralizada y Cloud)
+El sistema debe soportar tres modalidades armónicas de empaquetamiento y despliegue:
+1. **Modalidad Modular Autónoma por Microservicio (Despliegue Aislado en Servidores / EC2):**
+   - Cada carpeta en `ms/<microservicio>/` (`ms/ms-ticket-auth`, `ms/ms-cinema-core`, `ms/ms-multimedia`, `ms/ms-ia-mcp`, `ms/ms-boleteo-validator`, `ms/movil-client`) dispone obligatoriamente de su propio archivo **`docker-compose.yml` autónomo**.
+   - Estos orquestadores configuran la red compartida unificada `cinev2-network` y levantan de forma autocontenida el backend, frontend y bases de datos dedicadas de ese microservicio con un simple `cd ms/<microservicio> && docker compose up -d`.
+   - Permite alojar uno o varios microservicios en instancias independientes (ej. AWS EC2, VPS) sin dependencias rígidas del resto del monorepositorio.
+2. **Modalidad Orquestada Centralizada (Raíz Todo-en-Uno para Evaluación y Desarrollo Local):**
+   - La raíz del proyecto provee el orquestador maestro **`docker-compose.yml`** (y `Dockerfile.all-in-one`) para compilar, sembrar datos de prueba y levantar el 100% de los 16 servicios, bases de datos y frontends con un solo comando en la máquina local (`docker-compose up --build -d`).
+3. **Modalidad Cloud Desacoplada (Imágenes Multi-Stage para Container Registries):**
+   - Cada microservicio backend y frontend (`ms/ms-ticket-auth/backend`, `ms/ms-ticket-auth/frontend`, `ms/ms-cinema-core/backend`, `ms/ms-cinema-core/frontend`, etc.) dispone de su propio **`Dockerfile` multi-stage autónomo** en su directorio respectivo, compilando imágenes ligeras (Alpine/Slim) para despliegue independiente en Kubernetes, ECS o Cloud Run.
 
 ### `INV-ARCH-07` (Nomenclatura Estandarizada de Contenedores Docker)
-Todos los contenedores generados u orquestados en el ecosistema (definidos en `docker-compose.yml`, scripts de despliegue o comandos `docker run`) deben llevar obligatoriamente el prefijo institucional **`SW2-P2-CINEv2-`** en su propiedad `container_name`, garantizando trazabilidad y orden absoluto en Docker Desktop o terminal:
-- `SW2-P2-CINEv2-ms-ticket-auth` (Backend Spring Boot 8081)
-- `SW2-P2-CINEv2-ms-cinema-core` (Backend NestJS 3000)
-- `SW2-P2-CINEv2-ms-multimedia` (Backend NestJS + TensorFlow 3001)
-- `SW2-P2-CINEv2-ms-ia-mcp` (Backend FastAPI + GrokCloud 8001)
-- `SW2-P2-CINEv2-boleteo-validator` (Fullstack Laravel 11 + React 8000)
-- `SW2-P2-CINEv2-frontweb-admin` (Frontend Angular 4200)
-- `SW2-P2-CINEv2-movil-client` (Frontend React PWA 5173)
-- `SW2-P2-CINEv2-postgres-auth` (Base de datos PostgreSQL 5432)
-- `SW2-P2-CINEv2-postgres-core` (Base de datos PostgreSQL 5433)
-- `SW2-P2-CINEv2-minio-s3` (Almacén de objetos S3 9000 / Consola 9001)
-- `SW2-P2-CINEv2-dynamodb-local` (NoSQL DynamoDB 8002)
-- `SW2-P2-CINEv2-n8n` (Automatizaciones y Reportes Excel 5678)
+Todos los contenedores generados u orquestados en el ecosistema deben llevar obligatoriamente el prefijo institucional **`SW2-P2-CINEv2-`** en su propiedad `container_name`:
+- `SW2-P2-CINEv2-ms-ticket-auth-backend` (Spring Boot 8081)
+- `SW2-P2-CINEv2-ms-ticket-auth-frontend` (React Portal Login/Checkout 5174)
+- `SW2-P2-CINEv2-ms-cinema-core-backend` (NestJS 3000)
+- `SW2-P2-CINEv2-ms-cinema-core-frontend` (Angular Admin 4200)
+- `SW2-P2-CINEv2-ms-multimedia-backend` (NestJS + TensorFlow 3001)
+- `SW2-P2-CINEv2-ms-multimedia-frontend` (React Simulador 5175)
+- `SW2-P2-CINEv2-ms-ia-mcp-backend` (FastAPI + GrokCloud 8001)
+- `SW2-P2-CINEv2-ms-ia-mcp-frontend` (React Consola Auditoría 5176)
+- `SW2-P2-CINEv2-ms-boleteo-validator-backend` (Laravel 11 API 8000)
+- `SW2-P2-CINEv2-ms-boleteo-validator-frontend` (React Escáner 8000/Inertia)
+- `SW2-P2-CINEv2-movil-client` (React PWA 5173)
+- `SW2-P2-CINEv2-postgres-auth` (PostgreSQL 5432)
+- `SW2-P2-CINEv2-postgres-core` (PostgreSQL 5433)
+- `SW2-P2-CINEv2-minio-s3` (MinIO S3 9000 / Consola 9001)
+- `SW2-P2-CINEv2-dynamodb-local` (DynamoDB 8002)
+- `SW2-P2-CINEv2-n8n` (n8n 5678)
+
+### `INV-ARCH-08` (Estructura Unificada ms/ con Backend y Frontend Contenidos)
+Todo microservicio del ecosistema debe residir obligatoriamente dentro de la carpeta raíz `ms/`, conteniendo en su interior sus subdirectorios `backend/` y `frontend/` (con excepción del canal móvil `ms/movil-client/` que opera como cliente directo). Queda terminantemente prohibida la existencia de directorios raíz `services/` o `apps/`.
 
 ---
 
@@ -340,7 +371,7 @@ Queda prohibido descartar excepciones en bloques `catch` vacíos o exponer traza
 ### 9.1 Pruebas de Caja Negra (BDD / Escenarios Observables)
 Todo flujo de negocio crítico debe contar con escenarios Gherkin automatizados que certifiquen el comportamiento de usuario:
 - Flujo BDD de compra completa de boleto con Stripe y emisión de QR.
-- Flujo BDD de compensación SAGA ante tarjeta rechazada en Stripe.
+- Flujo BDD de compensación SAGA ante tarjeta rechazada o expiración de 60s en Stripe.
 - Flujo BDD de escaneo y validación HMAC-SHA256 en el Panel de Boleteo.
 - Flujo BDD de consulta de boleto offline en IndexedDB.
 
@@ -358,93 +389,112 @@ Todo flujo de negocio crítico debe contar con escenarios Gherkin automatizados 
 # ===================================================================
 # GESTIÓN DE INFRAESTRUCTURA Y CONTENEDORES (DOCKER)
 # ===================================================================
-# Levantar todo el ecosistema (Bases de datos, MinIO, DynamoDB, n8n)
-docker-compose up -d
+# Levantar todo el ecosistema coordinado (16 contenedores)
+docker-compose up --build -d
 
-# Detener los servicios contenerizados
+# Detener el ecosistema completo
 docker-compose down
 
 # ===================================================================
-# MICROSERVICIOS BACKEND
+# ORQUESTACIÓN MODULAR AUTÓNOMA POR MICROSERVICIO (INV-ARCH-06)
 # ===================================================================
-# MS TICKET-AUTH (Spring Boot)
-cd services/ms-ticket-auth && ./mvnw spring-boot:run
-
-# MS CINEMA-CORE (NestJS)
-cd services/ms-cinema-core && npm run start:dev
-
-# MS MULTIMEDIA (NestJS + TensorFlow + AWS SDK Local)
-cd services/ms-multimedia && npm run start:dev
-
-# MS IA-MCP (FastAPI + GrokCloud + MCP)
-cd services/ms-ia-mcp && uvicorn main:app --reload --port 8001
+# Levantar cualquier microservicio de forma independiente (ej. en AWS EC2/VPS)
+cd ms/ms-ticket-auth && docker compose up -d
+cd ms/ms-cinema-core && docker compose up -d
+cd ms/ms-multimedia && docker compose up -d
+cd ms/ms-ia-mcp && docker compose up -d
+cd ms/ms-boleteo-validator && docker compose up -d
+cd ms/movil-client && docker compose up -d
 
 # ===================================================================
-# CANALES DE USUARIO Y FRONTENDS
+# MICROSERVICIOS EN CARPETA ms/ (BACKEND Y FRONTEND)
 # ===================================================================
-# FRONTWEB (Angular Admin)
-cd apps/frontweb-admin && npm start
+# 01-ms-ticket-auth (Spring Boot 3 + React Portal)
+cd ms/ms-ticket-auth/backend && ./mvnw spring-boot:run
+cd ms/ms-ticket-auth/frontend && npm run dev
 
-# MOVIL APP (React PWA + Capacitor Cliente)
-cd apps/movil-client && npm run dev
+# 02-ms-cinema-core (NestJS 10 + Angular 17 Admin)
+cd ms/ms-cinema-core/backend && npm run start:dev
+cd ms/ms-cinema-core/frontend && npm start
 
-# PANEL DE BOLETEO (Laravel 11 + React)
-cd apps/boleteo-validator && php artisan serve
+# 03-ms-multimedia (NestJS + TensorFlow + React Simulator)
+cd ms/ms-multimedia/backend && npm run start:dev
+cd ms/ms-multimedia/frontend && npm run dev
+
+# 04-ms-ia-mcp (FastAPI + GrokCloud + React Console)
+cd ms/ms-ia-mcp/backend && uvicorn main:app --reload --port 8001
+cd ms/ms-ia-mcp/frontend && npm run dev
+
+# 05-ms-boleteo-validator (Laravel 11 + React Escáner)
+cd ms/ms-boleteo-validator/backend && php artisan serve
+cd ms/ms-boleteo-validator/frontend && npm run dev
+
+# 06-movil-client (React 18 PWA + Capacitor)
+cd ms/movil-client && npm run dev
 
 # ===================================================================
 # SUITES DE PRUEBA Y AUDITORÍA
 # ===================================================================
 # Ejecutar todas las pruebas de backend
-cd services/ms-ticket-auth && ./mvnw test
-cd services/ms-cinema-core && npm test
-cd services/ms-multimedia && npm test
-cd services/ms-ia-mcp && pytest
+cd ms/ms-ticket-auth/backend && ./mvnw test
+cd ms/ms-cinema-core/backend && npm test
+cd ms/ms-multimedia/backend && npm test
+cd ms/ms-ia-mcp/backend && pytest
+cd ms/ms-boleteo-validator/backend && php artisan test
 
 # Ejecutar linters y verificación de tipos
-cd apps/frontweb-admin && npm run lint
-cd apps/movil-client && npm run lint
-cd apps/boleteo-validator && ./vendor/bin/pint
+cd ms/ms-cinema-core/frontend && npm run lint
+cd ms/movil-client && npm run lint
+cd ms/ms-boleteo-validator/backend && ./vendor/bin/pint
 ```
 
 ---
 
 ## 11. Mapa Maestro de Módulos y Bóveda de Semillas de Especificación (Zero-Loss Backlog)
 
-> Esta sección resguarda el 100% de los detalles específicos y restricciones funcionales proporcionadas por el usuario en el enunciado inicial, preservándolas intactas para alimentar sin pérdida las fases futuras de `/sdd-spec-*`.
+> Esta sección resguarda el 100% de los detalles específicos y restricciones funcionales del sistema, organizado en los 6 módulos oficiales del ecosistema.
 
-### Módulo `01-auth-tickets` (MS TICKET-AUTH)
-- **Objetivo:** Autenticación centralizada, gestión de sesiones, resolver GraphQL federado, orquestación SAGA de compra de boletos e integración con pasarela de prueba Stripe.
+### Módulo `01-ms-ticket-auth` (MS TICKET-AUTH)
+- **Ubicación Física:** `ms/ms-ticket-auth/backend/` y `ms/ms-ticket-auth/frontend/`.
+- **Objetivo:** Autenticación centralizada, gestión de sesiones, resolver GraphQL federado, orquestador SAGA de compra de boletos, integración con pasarela de prueba Stripe y portal unificado de inicio de sesión con botones Demo 1-Click.
 - **Dependencias:** Ninguna (Núcleo fundacional de usuarios).
 - **Semilla Funcional Detallada (Zero-Loss):**
   - Roles soportados: `admin`, `cliente`, `boletero`.
-  - Precarga de los 3 usuarios predefinidos en script de base de datos con contraseñas encriptadas obligatoriamente con **BCrypt**.
-  - Login y Register obligatorios antes de acceder a las operaciones del sistema.
+  - Precarga de los 3 usuarios predefinidos en script de base de datos con contraseñas encriptadas obligatoriamente con **BCrypt** (`admin@cine.local`, `cliente@cine.local`, `boletero@cine.local`).
+  - Login y Register obligatorios antes de acceder a las operaciones del sistema con redirección estricta por rol.
   - Exposición de API mediante GraphQL con esquema federado donde el tipo `Ticket` unifica la URL del código QR firmado generado por `MS MULTIMEDIA`.
   - Integración de Stripe a nivel de desarrollador utilizando tarjetas de prueba `4242424...`.
-  - Por fines demostrativos de defensa académica, cada compra de entrada debe abrir el contenedor dinámico de `<Elements>` de Stripe.
-  - Orquestador del flujo SAGA para reservar butaca en `MS CINEMA-CORE` y disparar compensación si el pago falla.
+  - Cada compra de entrada debe abrir el contenedor dinámico de `<Elements>` de Stripe con Stepper UI de 4 etapas y cronómetro regresivo de 60 segundos.
+  - Orquestador del flujo SAGA para reservar butaca en `MS CINEMA-CORE` y disparar compensación si el pago falla o expira.
+  - Endpoint de validación y cambio de estado a `USED` consumido por `MS BOLETEO-VALIDATOR`.
 
-### Módulo `02-cinema-core` (MS CINEMA-CORE)
-- **Objetivo:** Administración y persistencia de salas de cine, butacas anidadas, catálogo de películas y cartelera horaria.
-- **Dependencias:** `01-auth-tickets` (para autorización de administradores).
+### Módulo `02-ms-cinema-core` (MS CINEMA-CORE)
+- **Ubicación Física:** `ms/ms-cinema-core/backend/` y `ms/ms-cinema-core/frontend/`.
+- **Objetivo:** Administración y persistencia de salas de cine, butacas anidadas, catálogo de películas, cartelera horaria y panel administrativo FRONTWEB en Angular con Lazy Loading e inferencia local de IA (WebLLM / Transformers.js).
+- **Dependencias:** `01-ms-ticket-auth` (para autorización de administradores).
 - **Semilla Funcional Detallada (Zero-Loss):**
   - CRUD completo de Salas (`CinemaHall`) y CRUD anidado de Butacas (`Seat`) donde una sala contiene la matriz de sus butacas.
-  - Panel administrativo para definición de capacidad, disposición de asientos y películas en cartelera / estrenos.
+  - Panel administrativo para definición de capacidad, disposición de asientos y películas en cartelera / estrenos con cuadrícula interactiva.
+  - Programación de cartelera asegurando intervalo mínimo de +20 minutos para limpieza de sala entre funciones consecutivas.
   - Cálculo de KPIs de ocupación y dashboards de rendimiento de salas.
   - Endpoint de bloqueo atómico de butaca (`RESERVAR_TEMPORAL`, `LIBERAR_COMPENSACION`, `CONFIRMAR_OCUPACION`).
+  - Inferencia de lenguaje natural local en el navegador mediante WebLLM o Transformers.js en Web Worker para consultas operativas offline.
 
-### Módulo `03-multimedia-analytics` (MS MULTIMEDIA)
-- **Objetivo:** Gestión de binarios en MinIO S3, almacenamiento de metadatos en DynamoDB local, visión artificial con TensorFlow.js para conteo de personas en taquilla y generación/firma de códigos QR.
+### Módulo `03-ms-multimedia` (MS MULTIMEDIA)
+- **Ubicación Física:** `ms/ms-multimedia/backend/` y `ms/ms-multimedia/frontend/`.
+- **Objetivo:** Gestión de binarios en MinIO S3, almacenamiento de metadatos en DynamoDB local, visión artificial con TensorFlow.js para conteo de personas en taquilla, generador de gráficos de tickets, firma criptográfica de QR y frontend de simulación de filas.
 - **Dependencias:** Ninguna (Servicio de infraestructura y procesamiento).
 - **Semilla Funcional Detallada (Zero-Loss):**
-  - Estrategia de persistencia híbrida: imágenes físicas (portadas de películas y gráficos de tickets) en MinIO S3 (`http://localhost:9000`); metadatos y series temporales de afluencia en DynamoDB Local (`http://localhost:8000`).
-  - Configuración explícita de AWS SDK (`@aws-sdk/client-s3`, `@aws-sdk/client-dynamodb`) con `endpoint: "http://localhost:9000"` y `"http://localhost:8000"`.
+  - Estrategia de persistencia híbrida: imágenes físicas (portadas de películas y gráficos de tickets) en MinIO S3 (`http://localhost:9000`); metadatos y series temporales de afluencia en DynamoDB Local (`http://localhost:8002`).
+  - Configuración explícita de AWS SDK (`@aws-sdk/client-s3`, `@aws-sdk/client-dynamodb`) con `endpoint: "http://localhost:9000"` y `"http://localhost:8002"`.
   - Script de TensorFlow.js/Core cargando el modelo preentrenado COCO-SSD para procesar imágenes enviadas por HTTP, filtrando cajas clasificadas exclusivamente como `"person"` e impactando el conteo entero en DynamoDB.
   - Generador de códigos QR dinámicos con firma criptográfica HMAC-SHA256 (`clave_secreta_universitaria_mcp`) sobre el payload `{ ticketId, seatId, showtimeId, issuedAt }`.
+  - Frontend interactivo con botones de simulación `[Simular Fila Normal]` y `[Simular Fila Congestionada]` para pruebas visuales de defensa.
 
-### Módulo `04-ia-mcp-agent` (MS IA-MCP)
-- **Objetivo:** Servidor MCP (Model Context Protocol) en FastAPI, agente auditor autónomo con GrokCloud, orquestación n8n y endpoint de soporte para Chatbot de compra.
-- **Dependencias:** `01-auth-tickets`, `02-cinema-core`, `03-multimedia-analytics`.
+### Módulo `04-ms-ia-mcp` (MS IA-MCP)
+- **Ubicación Física:** `ms/ms-ia-mcp/backend/` y `ms/ms-ia-mcp/frontend/`.
+- **Objetivo:** Servidor MCP (Model Context Protocol) en FastAPI, agente auditor autónomo con GrokCloud, orquestación n8n, endpoint de chatbot de compra y frontend de consola de auditoría.
+- **Dependencias:** `01-ms-ticket-auth`, `02-ms-cinema-core`, `03-ms-multimedia`.
 - **Semilla Funcional Detallada (Zero-Loss):**
   - Implementación en FastAPI bajo el estándar Model Context Protocol (MCP JSON-RPC).
   - Tres herramientas obligatorias:
@@ -454,36 +504,32 @@ cd apps/boleteo-validator && ./vendor/bin/pint
   - Inyección de la API Key de GrokCloud (`${GROQ_API_KEY}`) en un Agente Autónomo preconfigurado como *Auditor Comercial de Operaciones de Cine*.
   - Disparo de Webhook hacia n8n con payload: `{ anomaly_type, severity_level, raw_mcp_data, timestamp }`.
   - n8n compila y genera hojas de cálculo reales en formato EXCEL (`.xlsx`) sin placeholders.
+  - Consola web interactiva con botón `[Ejecutar Auditoría MCP Ahora]` y logs de eventos.
   - Endpoint de procesamiento conversacional para el Chatbot deslizable de clientes.
 
-### Módulo `05-boleteo-validator` (PANEL DE BOLETEO)
-- **Objetivo:** Canal operativo para el personal de taquilla/acceso para escanear y autenticar entradas en tiempo real.
-- **Dependencias:** `01-auth-tickets`, `03-multimedia-analytics`.
+### Módulo `05-ms-boleteo-validator` (MS BOLETEO-VALIDATOR)
+- **Ubicación Física:** `ms/ms-boleteo-validator/backend/` y `ms/ms-boleteo-validator/frontend/`.
+- **Objetivo:** Canal operativo para el personal de taquilla/acceso para escanear y autenticar entradas en tiempo real con cámara continua.
+- **Dependencias:** `01-ms-ticket-auth`, `03-ms-multimedia`.
 - **Semilla Funcional Detallada (Zero-Loss):**
-  - Fullstack en Laravel 11 (monolito desacoplado) con React integrado mediante Inertia.js / Jetstream.
-  - Uso de la cámara del dispositivo para decodificar el JSON del código QR dinámico.
+  - Backend en Laravel 11 (API y logging de escaneos) y frontend en React con Inertia.js.
+  - Uso de la cámara del dispositivo para decodificar el JSON del código QR dinámico mediante ZXing o html5-qrcode.
   - Verificación autónoma de la firma HMAC-SHA256 con la clave `clave_secreta_universitaria_mcp` contrastando `ticket_id`, `seat_id` y timestamp.
-  - Si la firma es legítima, actualiza el estado del boleto a `Utilizado` mediante llamada autenticada a `MS TICKET-AUTH`.
+  - Si la firma es legítima, actualiza el estado del boleto a `USED` mediante llamada autenticada a `MS TICKET-AUTH`.
   - Despliegue visual inmediato: interfaz verde de confirmación exitosa o pantalla de alerta roja crítica en caso de firma fraudulenta o boleto ya utilizado.
+  - Opción de digitación manual de identificador de ticket ante fallos de cámara.
 
-### Módulo `06-frontweb-admin` (FRONTWEB ADMINISTRACIÓN)
-- **Objetivo:** Interfaz gráfica para la gestión ejecutiva y operativa del cine.
-- **Dependencias:** `01-auth-tickets`, `02-cinema-core`, `04-ia-mcp-agent`.
+### Módulo `06-movil-client` (MOVIL CLIENT)
+- **Ubicación Física:** `ms/movil-client/`.
+- **Objetivo:** Experiencia integral del cliente para compra de boletos, visualización de tickets, soporte offline y navegación en cine.
+- **Dependencias:** `01-ms-ticket-auth`, `02-ms-cinema-core`, `03-ms-multimedia`, `04-ms-ia-mcp`.
 - **Semilla Funcional Detallada (Zero-Loss):**
-  - Desarrollada de forma modular e independiente en Angular con Lazy Loading.
-  - Módulos aislados: Administración de salas/butacas, gestión de cartelera/películas, visualización de dashboards/KPIs y descarga de reportes predictivos en Excel de n8n.
-  - Integración de IA local en el navegador mediante Transformers.js o WebLLM para consultas en lenguaje natural y analíticas rápidas de negocio en modo local/offline sin conexión a internet.
-
-### Módulo `07-mobile-client` (MOVIL APP CLIENTE)
-- **Objetivo:** Experiencia integral del cliente para compra de boletos, visualización de tickets y asistencia de navegación.
-- **Dependencias:** `01-auth-tickets`, `02-cinema-core`, `03-multimedia-analytics`, `04-ia-mcp-agent`.
-- **Semilla Funcional Detallada (Zero-Loss):**
-  - Arquitectura híbrida unificada en React configurada como PWA offline y empaquetada con Capacitor para ejecución nativa.
+  - Aplicación híbrida unificada en React 18 configurada como PWA offline y empaquetada con Capacitor para ejecución nativa.
   - Autenticación y registro exclusivo de clientes.
   - Chatbot de IA en panel deslizable (drawer de izquierda a derecha contraíble) para asistir en la compra.
   - Previsualización gráfica de la imagen del ticket consumida desde MinIO S3 antes de desplegar el wrapper dinámico de `<Elements>` de Stripe.
   - Descarga automática mediante Service Workers de los códigos QR dinámicos e imágenes en la base de datos local `IndexedDB`.
-  - Modo Offline garantizado: visualización fluida de los boletos adquiridos en "Mis Boletos" sin conexión a red celular.
+  - Modo Offline garantizado: visualización fluida de los boletos adquiridos en "Mis Boletos" sin conexión a red celular ni Wi-Fi.
   - Uso de la API de geolocalización GPS nativa del terminal para guiar al cliente por el complejo de cine hacia su sala correspondiente.
 
 ---
@@ -495,4 +541,5 @@ cd apps/boleteo-validator && ./vendor/bin/pint
 | `1.0.0` | 2026-11-03 | Fundación | Creación inicial de la Constitución del proyecto Ecosistema CineV2 tras resolver en Tiempo 1 (/grill-me) las contradicciones de dulcería, distribución de microservicios, soporte offline PWA/Capacitor, orquestación SAGA y validación de boleteo. | Todos (`01` a `07`) |
 | `1.1.0` | 2026-11-03 | Enmienda | Incorporación de `INV-BIZ-08` (Ruta única de entrada `/login` con redirección centralizada por rol) y formalización de `INV-ARCH-06` (Estrategia dual de Docker: `Dockerfile.all-in-one` y `docker-compose.yml` para defensa local + `Dockerfile` independiente por servicio para despliegue desacoplado en AWS/GCP/Azure). | Todos (`01` a `07`) |
 | `1.2.0` | 2026-11-03 | Enmienda | Incorporación de `INV-ARCH-07` (Nomenclatura estandarizada obligatoria `SW2-P2-CINEv2-*` en todos los `container_name` de Docker del ecosistema). | Todos (`01` a `07`) |
-
+| `1.3.0` | 2026-11-03 | Enmienda | Incorporación de `INV-ARCH-08` (Estructura unificada bajo la carpeta raíz `ms/` con backend y frontend autocontenidos). Reemplazo total de carpetas raíz `services/` y `apps/`. Reorganización de la suite SDD en 6 módulos oficiales con contratos inter-servicios explícitos (`IC-CONTRACT-XX`). | Todos (`01` a `06`) |
+| `1.4.0` | 2026-11-03 | Enmienda | Evolución de `INV-ARCH-06` a Estrategia Tripartita de Contenerización: Formalización de `docker-compose.yml` autónomo obligatorio dentro de cada microservicio en `ms/<microservicio>/` enlazado a la red unificada `cinev2-network`, permitiendo alojar microservicios independientes o combinados en servidores dedicados (AWS EC2 / VPS) con aislamiento de ciclo de vida. | Todos (`01` a `06`) |

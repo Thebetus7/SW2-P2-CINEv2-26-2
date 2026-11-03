@@ -1,0 +1,34 @@
+version: '3.8'
+
+networks:
+  cinev2-network:
+    name: cinev2-network
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-boleteo-validator-backend
+    environment:
+      TICKET_AUTH_URL: ${TICKET_AUTH_URL:-http://SW2-P2-CINEv2-ms-ticket-auth-backend:8081}
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:-base64:XG8dFqQ3wZ5m9e1YvL8cK4jN2bA0sE7uR1tY6uI3oP8=}
+    ports:
+      - "8000:8000"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-boleteo-validator-frontend
+    ports:
+      - "5177:80"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+

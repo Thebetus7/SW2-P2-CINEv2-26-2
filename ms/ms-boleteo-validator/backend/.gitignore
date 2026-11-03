@@ -1,0 +1,34 @@
+/vendor/
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment
+.env
+.env.backup
+.env.production
+!.env.example
+
+# Laravel storage & cache
+/storage/*.key
+/storage/oauth-*.key
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+!/storage/framework/cache/.gitkeep
+!/storage/framework/sessions/.gitkeep
+!/storage/framework/views/.gitkeep
+!/storage/logs/.gitkeep
+
+# Testing
+.phpunit.result.cache
+
+# IDEs
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

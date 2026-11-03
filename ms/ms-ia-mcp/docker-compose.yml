@@ -1,0 +1,34 @@
+version: '3.8'
+
+networks:
+  cinev2-network:
+    name: cinev2-network
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ia-mcp-backend
+    environment:
+      CORE_API_URL: ${CORE_API_URL:-http://SW2-P2-CINEv2-ms-cinema-core-backend:3000}
+      MULTIMEDIA_API_URL: ${MULTIMEDIA_API_URL:-http://SW2-P2-CINEv2-ms-multimedia-backend:3001}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://SW2-P2-CINEv2-n8n:5678/webhook/contingency}
+      GROQ_API_KEY: ${GROQ_API_KEY:-gsk_mock_grok_key_for_local_testing_2026}
+    ports:
+      - "8001:8001"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ia-mcp-frontend
+    ports:
+      - "5176:80"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+

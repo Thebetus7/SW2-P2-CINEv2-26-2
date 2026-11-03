@@ -1,0 +1,75 @@
+enum TicketStatus {
+    PENDING_PAYMENT
+    CONFIRMED
+    USED
+    CANCELLED
+}
+
+enum UserRole {
+    ADMIN
+    CLIENTE
+    BOLETERO
+}
+
+type User {
+    id: ID!
+    fullName: String!
+    email: String!
+    role: UserRole!
+    createdAt: String!
+}
+
+type Ticket {
+    id: ID!
+    userId: ID!
+    showtimeId: ID!
+    seatId: ID!
+    pricePaid: Float!
+    status: TicketStatus!
+    ticketImageUrl: String
+    qrSignature: String
+    lockExpiresAt: String
+    createdAt: String!
+}
+
+type AuthPayload {
+    token: String!
+    user: User!
+}
+
+type PendingTicketPayload {
+    ticket: Ticket!
+    lockExpiresAt: String!
+    remainingSeconds: Int!
+}
+
+input LoginInput {
+    email: String!
+    password: String!
+}
+
+input RegisterInput {
+    fullName: String!
+    email: String!
+    password: String!
+}
+
+input InitiatePurchaseInput {
+    userId: ID!
+    showtimeId: ID!
+    seatId: ID!
+    pricePaid: Float!
+}
+
+type Query {
+    myTickets(userId: ID!): [Ticket!]!
+    getTicketById(id: ID!): Ticket
+    me: User
+}
+
+type Mutation {
+    login(input: LoginInput!): AuthPayload!
+    register(input: RegisterInput!): AuthPayload!
+    initiatePurchase(input: InitiatePurchaseInput!): PendingTicketPayload!
+    confirmPurchase(ticketId: ID!, stripePaymentIntentId: String!): Ticket!
+}

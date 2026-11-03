@@ -1,0 +1,67 @@
+version: '3.8'
+
+networks:
+  cinev2-network:
+    name: cinev2-network
+
+volumes:
+  minio_data:
+
+services:
+  minio-s3:
+    image: minio/minio:latest
+    container_name: SW2-P2-CINEv2-minio-s3
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: SW2-P2-CINEv2-dynamodb-local
+    command: "-jar DynamoDBLocal.jar -sharedDb"
+    ports:
+      - "8002:8000"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-multimedia-backend
+    environment:
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio-s3:9000}
+      DYNAMODB_ENDPOINT: ${DYNAMODB_ENDPOINT:-http://dynamodb-local:8000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - minio-s3
+      - dynamodb-local
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-multimedia-frontend
+    ports:
+      - "5175:80"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+

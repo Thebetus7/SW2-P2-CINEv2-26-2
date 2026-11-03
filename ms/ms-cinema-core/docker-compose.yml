@@ -1,0 +1,56 @@
+version: '3.8'
+
+networks:
+  cinev2-network:
+    name: cinev2-network
+
+volumes:
+  postgres_core_data:
+
+services:
+  postgres-core:
+    image: postgres:15-alpine
+    container_name: SW2-P2-CINEv2-postgres-core
+    environment:
+      POSTGRES_DB: db_cinema_core
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_core_data:/var/lib/postgresql/data
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-cinema-core-backend
+    environment:
+      DB_HOST: postgres-core
+      DB_PORT: 5432
+      DB_NAME: db_cinema_core
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres-core
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-cinema-core-frontend
+    ports:
+      - "4200:80"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+

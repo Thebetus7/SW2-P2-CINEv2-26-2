@@ -1,0 +1,42 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: ms-ticket-auth
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:db_tickets_auth}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  graphql:
+    graphiql:
+      enabled: true
+    path: /graphql
+
+jwt:
+  secret: ${JWT_SECRET:dGhpc19pc19hX3Zlcnlfc2VjdXJlX2tleV9mb3Jfand0X3NpZ25pbmdfY2luZV9hdXRoXzIwMjZfc3cyX2FneV9sZXNz}
+  expiration-ms: ${JWT_EXPIRATION_MS:28800000} # 8 horas
+
+services:
+  cinema-core:
+    base-url: ${CINEMA_CORE_URL:http://localhost:3000}
+    timeout-ms: 5000
+  multimedia:
+    base-url: ${MULTIMEDIA_URL:http://localhost:3001}
+    timeout-ms: 5000
+
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY:mock_stripe_secret_key_cinev2_test}

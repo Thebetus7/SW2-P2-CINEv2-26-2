@@ -1,0 +1,250 @@
+version: '3.8'
+
+networks:
+  cinev2-network:
+    driver: bridge
+
+volumes:
+  postgres_auth_data:
+  postgres_core_data:
+  minio_data:
+  n8n_data:
+
+services:
+  # ===================================================================
+  # 1. INFRAESTRUCTURA DE DATOS Y STORAGE (INV-ARCH-07)
+  # ===================================================================
+
+  postgres-auth:
+    image: postgres:15-alpine
+    container_name: SW2-P2-CINEv2-postgres-auth
+    environment:
+      POSTGRES_DB: db_tickets_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  postgres-core:
+    image: postgres:15-alpine
+    container_name: SW2-P2-CINEv2-postgres-core
+    environment:
+      POSTGRES_DB: db_cinema_core
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_core_data:/var/lib/postgresql/data
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  minio-s3:
+    image: minio/minio:latest
+    container_name: SW2-P2-CINEv2-minio-s3
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: SW2-P2-CINEv2-dynamodb-local
+    command: "-jar DynamoDBLocal.jar -sharedDb"
+    ports:
+      - "8002:8000"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: SW2-P2-CINEv2-n8n
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "false"
+      GENERIC_TIMEZONE: America/La_Paz
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  # ===================================================================
+  # 2. MICROSERVICIOS Y FRONTENDS CONTENERIZADOS (INV-ARCH-06)
+  # ===================================================================
+
+  # --- 01-ms-ticket-auth ---
+  ms-ticket-auth-backend:
+    build:
+      context: ./ms/ms-ticket-auth/backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ticket-auth-backend
+    environment:
+      DB_HOST: postgres-auth
+      DB_PORT: 5432
+      DB_NAME: db_tickets_auth
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      CINEMA_CORE_URL: http://ms-cinema-core-backend:3000
+      MULTIMEDIA_URL: http://ms-multimedia-backend:3001
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres-auth
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  ms-ticket-auth-frontend:
+    build:
+      context: ./ms/ms-ticket-auth/frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ticket-auth-frontend
+    ports:
+      - "5174:80"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  # --- 02-ms-cinema-core ---
+  ms-cinema-core-backend:
+    build:
+      context: ./ms/ms-cinema-core/backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-cinema-core-backend
+    environment:
+      DB_HOST: postgres-core
+      DB_PORT: 5432
+      DB_NAME: db_cinema_core
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres-core
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  ms-cinema-core-frontend:
+    build:
+      context: ./ms/ms-cinema-core/frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-cinema-core-frontend
+    ports:
+      - "4200:80"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  # --- 03-ms-multimedia ---
+  ms-multimedia-backend:
+    build:
+      context: ./ms/ms-multimedia/backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-multimedia-backend
+    environment:
+      S3_ENDPOINT: http://minio-s3:9000
+      DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "3001:3001"
+    depends_on:
+      - minio-s3
+      - dynamodb-local
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  ms-multimedia-frontend:
+    build:
+      context: ./ms/ms-multimedia/frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-multimedia-frontend
+    ports:
+      - "5175:80"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  # --- 04-ms-ia-mcp ---
+  ms-ia-mcp-backend:
+    build:
+      context: ./ms/ms-ia-mcp/backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ia-mcp-backend
+    environment:
+      CORE_API_URL: http://ms-cinema-core-backend:3000
+      MULTIMEDIA_API_URL: http://ms-multimedia-backend:3001
+      N8N_WEBHOOK_URL: http://n8n:5678/webhook/contingency
+    ports:
+      - "8001:8001"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  ms-ia-mcp-frontend:
+    build:
+      context: ./ms/ms-ia-mcp/frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ia-mcp-frontend
+    ports:
+      - "5176:80"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  # --- 05-ms-boleteo-validator ---
+  ms-boleteo-validator-backend:
+    build:
+      context: ./ms/ms-boleteo-validator/backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-boleteo-validator-backend
+    environment:
+      TICKET_AUTH_URL: http://ms-ticket-auth-backend:8081
+    ports:
+      - "8000:8000"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  ms-boleteo-validator-frontend:
+    build:
+      context: ./ms/ms-boleteo-validator/frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-boleteo-validator-frontend
+    ports:
+      - "5177:80"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+
+  # --- 06-movil-client ---
+  movil-client:
+    build:
+      context: ./ms/movil-client
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-movil-client
+    ports:
+      - "5173:80"
+    networks:
+      - cinev2-network
+    restart: unless-stopped
+

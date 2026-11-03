@@ -1,0 +1,22 @@
+# Compiled output
+/dist
+/tmp
+/out-tsc
+/.angular
+
+# Node dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.iml
+
+# Environment
+.env
+.env.*
+!.env.example
+
