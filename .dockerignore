@@ -1,0 +1,12 @@
+node_modules
+vendor
+target
+dist
+.angular
+.vite
+.pytest_cache
+__pycache__
+venv
+.venv
+.git
+

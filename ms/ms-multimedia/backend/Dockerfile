@@ -15,4 +15,4 @@ RUN npm ci --only=production
 COPY --from=builder /app/dist ./dist
 COPY src/assets ./dist/src/assets
 EXPOSE 3001
-CMD ["node", "dist/src/main.js"]
+CMD ["sh", "-c", "if [ -f dist/main.js ]; then node dist/main.js; else node dist/src/main.js; fi"]

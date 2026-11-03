@@ -60,21 +60,28 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     setLoadingRole(roleOverride || 'FORM');
 
     try {
-      // Intentar llamada GraphQL al backend Spring Boot
+      // Llamada GraphQL al backend Spring Boot
       const graphqlQuery = {
         query: `
-          mutation Login($email: String!, $password: String!) {
-            login(email: $email, password: $password) {
+          mutation Login($input: LoginInput!) {
+            login(input: $input) {
               token
-              userId
-              fullName
-              email
-              role
-              redirectUrl
+              user {
+                id
+                fullName
+                email
+                role
+                createdAt
+              }
             }
           }
         `,
-        variables: { email: targetEmail, password: targetPass },
+        variables: {
+          input: {
+            email: targetEmail,
+            password: targetPass,
+          },
+        },
       };
 
       const response = await fetch('http://localhost:8081/graphql', {
@@ -91,8 +98,15 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         const json = await response.json();
         if (json.data && json.data.login) {
           jwtToken = json.data.login.token;
-          userRole = json.data.login.role;
-          redirectUrl = json.data.login.redirectUrl;
+          userRole = json.data.login.user?.role || roleOverride || 'CLIENTE';
+          
+          if (userRole === 'ADMIN') {
+            redirectUrl = 'http://localhost:4200';
+          } else if (userRole === 'BOLETERO') {
+            redirectUrl = 'http://localhost:5177';
+          } else {
+            redirectUrl = 'http://localhost:5173';
+          }
         } else if (json.errors && json.errors.length > 0) {
           throw new Error(json.errors[0].message || 'Credenciales inválidas');
         }
