@@ -16,11 +16,7 @@ export async function runSeeder(dataSource: DataSource) {
   console.log('--- Iniciando Seeder de MS CINEMA-CORE ---');
 
   // Limpiar en orden de dependencia si existen registros
-  await showtimeSeatRepo.delete({});
-  await showtimeRepo.delete({});
-  await movieRepo.delete({});
-  await seatRepo.delete({});
-  await hallRepo.delete({});
+  await dataSource.query('TRUNCATE TABLE showtime_seats, showtimes, movies, seats, cinema_halls CASCADE');
 
   // 1. Crear Salas con sus Butacas
   const hallsData = [

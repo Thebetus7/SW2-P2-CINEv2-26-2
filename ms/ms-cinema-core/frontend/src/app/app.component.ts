@@ -31,6 +31,9 @@ import { RouterModule } from '@angular/router';
           <a routerLink="/audit-demo" routerLinkActive="text-rose-400 border-b-2 border-rose-500 pb-1" class="text-slate-300 hover:text-white transition">
             Auditoría Jurado
           </a>
+          <button (click)="logout()" class="text-xs px-3 py-1.5 rounded bg-slate-800 hover:bg-rose-950 text-rose-300 border border-rose-900/40 transition">
+            Cerrar Sesión (Portal)
+          </button>
         </nav>
       </header>
 
@@ -43,4 +46,10 @@ import { RouterModule } from '@angular/router';
 })
 export class AppComponent {
   title = 'ms-cinema-core-frontend';
+
+  logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    window.location.href = 'http://localhost:5174';
+  }
 }

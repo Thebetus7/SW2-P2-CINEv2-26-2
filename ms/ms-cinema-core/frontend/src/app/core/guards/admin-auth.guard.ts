@@ -2,15 +2,30 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
 export const adminAuthGuard: CanActivateFn = (route, state) => {
-  const router = inject(Router);
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
+  // 1. Detección y captura de SSO Cross-Origin vía URL params
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const qToken = urlParams.get('token');
+    const qRole = urlParams.get('role');
 
-  if (token && role === 'admin') {
+    if (qToken) {
+      localStorage.setItem('token', qToken);
+      localStorage.setItem('role', (qRole || 'admin').toLowerCase());
+      // Limpiar query params de la URL sin recargar la página para una URL limpia
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return true;
+    }
+  }
+
+  const token = localStorage.getItem('token');
+  const role = (localStorage.getItem('role') || '').toLowerCase();
+
+  // Aceptar roles de administrador
+  if (token && (role === 'admin' || role === 'administrator')) {
     return true;
   }
 
-  // Redirección al portal login de MS TICKET-AUTH si no está autenticado como admin
-  window.location.href = 'http://localhost:3001/login';
+  // Redirección al portal principal de autenticación si no está autenticado como admin
+  window.location.href = 'http://localhost:5174';
   return false;
 };
