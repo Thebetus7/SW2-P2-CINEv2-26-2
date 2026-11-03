@@ -5,10 +5,52 @@ import { StepperPayment } from './components/StepperPayment';
 import { MyTicketsEmptyView } from './components/MyTicketsEmptyView';
 
 export const App: React.FC = () => {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('jwt_token'));
-  const [role, setRole] = useState<string | null>(() => localStorage.getItem('user_role'));
-  const [userName, setUserName] = useState<string>(() => localStorage.getItem('user_name') || 'cliente');
-  const [fullName, setFullName] = useState<string>(() => localStorage.getItem('full_name') || 'Cliente Frecuente');
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('action') === 'logout' || p.get('logout') === 'true') {
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+        } catch {
+          // Entorno de prueba
+        }
+        return null;
+      }
+    }
+    return localStorage.getItem('jwt_token');
+  });
+
+  const [role, setRole] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('action') === 'logout' || p.get('logout') === 'true') {
+        return null;
+      }
+    }
+    return localStorage.getItem('user_role');
+  });
+
+  const [userName, setUserName] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('action') === 'logout' || p.get('logout') === 'true') {
+        return 'cliente';
+      }
+    }
+    return localStorage.getItem('user_name') || 'cliente';
+  });
+
+  const [fullName, setFullName] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('action') === 'logout' || p.get('logout') === 'true') {
+        return 'Cliente Frecuente';
+      }
+    }
+    return localStorage.getItem('full_name') || 'Cliente Frecuente';
+  });
+
   const [view, setView] = useState<'billboard' | 'stepper' | 'empty'>('billboard');
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [pendingPurchase, setPendingPurchase] = useState<{
@@ -20,6 +62,27 @@ export const App: React.FC = () => {
 
   // Redirección estricta e inmediata si se detecta sesión de ADMIN o BOLETERO en el portal cliente
   useEffect(() => {
+    // 1. Manejo prioritario de acción logout global entre dominios/puertos
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('action') === 'logout' || urlParams.get('logout') === 'true') {
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch {
+          // Entorno de prueba
+        }
+        setToken(null);
+        setRole(null);
+        setUserName('cliente');
+        setFullName('Cliente Frecuente');
+        setView('billboard');
+        setShowAuthModal(false);
+        return; // Detener cualquier redirección posterior
+      }
+    }
+
     const storedToken = localStorage.getItem('jwt_token');
     const storedRole = localStorage.getItem('user_role');
     const storedUser = localStorage.getItem('user_name') || 'admin';
@@ -107,15 +170,18 @@ export const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {
+      // Entorno de prueba
+    }
     setToken(null);
     setRole(null);
     setUserName('cliente');
     setFullName('Cliente Frecuente');
-    localStorage.removeItem('jwt_token');
-    localStorage.removeItem('user_role');
-    localStorage.removeItem('user_name');
-    localStorage.removeItem('full_name');
     setPendingPurchase(null);
+    setShowAuthModal(false);
     setView('billboard');
   };
 

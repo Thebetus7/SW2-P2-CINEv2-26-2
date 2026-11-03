@@ -39,11 +39,11 @@ export const App: React.FC = () => {
   });
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    localStorage.removeItem('user');
-    localStorage.removeItem('name');
-    window.location.href = 'http://localhost:5174';
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+    window.location.href = 'http://localhost:5174/?action=logout';
   };
 
   return (

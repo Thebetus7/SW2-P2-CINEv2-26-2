@@ -47,11 +47,11 @@ export const BoleteoScanner: React.FC<BoleteoScannerProps> = ({
   const displayRole = validatorRole || 'BOLETERO';
   const displayName = validatorName || 'Validador de Puerta';
   const handleLogoutAction = onLogout || (() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    localStorage.removeItem('user');
-    localStorage.removeItem('name');
-    window.location.href = 'http://localhost:5174';
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+    window.location.href = 'http://localhost:5174/?action=logout';
   });
   const [isPaused, setIsPaused] = useState(false);
   const [currentOverlayStatus, setCurrentOverlayStatus] = useState<ScanStatus | null>(null);
