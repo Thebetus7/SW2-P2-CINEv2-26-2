@@ -274,55 +274,56 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
   };
 
   return (
-    <div className={`w-full max-w-xl mx-auto p-6 md:p-8 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl backdrop-blur relative animate-fadeIn`}>
+    <div className="w-full max-w-lg mx-auto p-4 sm:p-6 bg-slate-900/95 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl backdrop-blur relative max-h-[85vh] sm:max-h-[90vh] overflow-y-auto animate-fadeIn">
       {/* Botón Cerrar (en caso de Modal) */}
       {isModal && onClose && (
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-slate-400 hover:text-white p-2 rounded-full hover:bg-slate-800 transition"
+          aria-label="Cerrar modal"
+          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-slate-800 transition z-10"
         >
           ✕
         </button>
       )}
 
       {/* Cabecera */}
-      <div className="text-center mb-6">
-        <span className="inline-block px-3 py-1 text-xs font-semibold tracking-wider text-rose-400 uppercase bg-rose-950/60 border border-rose-800/60 rounded-full mb-3">
-          Microservicio MS TICKET-AUTH
+      <div className="text-center mb-4 sm:mb-5">
+        <span className="inline-block px-2.5 py-0.5 text-[10px] font-semibold tracking-wider text-rose-400 uppercase bg-rose-950/40 border border-rose-800/40 rounded-full mb-2">
+          MS TICKET-AUTH
         </span>
-        <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+        <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
           Portal de Autenticación Centralizada
         </h2>
-        <p className="text-slate-400 text-xs md:text-sm mt-1">
+        <p className="text-slate-400 text-xs mt-1 max-w-sm mx-auto">
           {contextualPurchase
-            ? 'Inicia sesión o regístrate para continuar con la reserva de tus entradas'
+            ? 'Inicia sesión o regístrate para continuar con la reserva'
             : activeTab === 'LOGIN'
-            ? 'Acceso único institucional con federación de roles y redirección'
-            : 'Regístrate para comprar entradas, acumular puntos y reservar butacas'}
+            ? 'Acceso único institucional con federación de roles'
+            : 'Regístrate para comprar entradas y reservar butacas'}
         </p>
       </div>
 
-      {/* Tarjeta Contextual de Compra en Curso */}
+      {/* Tarjeta Contextual de Compra en Curso (Compacta y Responsiva) */}
       {contextualPurchase && (
-        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-rose-950/80 via-slate-900 to-amber-950/30 border border-rose-500/50 shadow-xl flex items-center justify-between gap-3 animate-fadeIn">
-          <div className="flex items-center gap-3">
-            <div className="text-2xl p-2.5 rounded-xl bg-rose-600/20 border border-rose-500/40 text-rose-400 shadow-inner">
+        <div className="mb-4 p-3 rounded-xl bg-slate-950/80 border border-rose-500/30 shadow-md flex items-center justify-between gap-2.5 animate-fadeIn">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-lg p-2 rounded-lg bg-rose-600/20 text-rose-400 border border-rose-500/20 shrink-0">
               🎟️
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-rose-400">
-                  Función Seleccionada
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-rose-400">
+                  Reserva en curso
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-950 text-amber-300 font-mono font-bold border border-amber-400/30">
-                  Bs {contextualPurchase.price.toFixed(2)} c/u
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-900 text-amber-300 font-mono font-semibold">
+                  Bs {contextualPurchase.price.toFixed(2)}
                 </span>
               </div>
-              <h4 className="text-sm font-extrabold text-white mt-0.5">
+              <h4 className="text-xs sm:text-sm font-bold text-white truncate">
                 {contextualPurchase.movieTitle}
               </h4>
-              <p className="text-xs text-slate-300">
-                {contextualPurchase.hallName} • <strong className="text-rose-300">{contextualPurchase.time}</strong>
+              <p className="text-[11px] text-slate-400 truncate">
+                {contextualPurchase.hallName} • {contextualPurchase.time}
               </p>
             </div>
           </div>
@@ -330,7 +331,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
             <button
               type="button"
               onClick={onClose}
-              className="text-xs font-semibold text-rose-300 hover:text-white px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-rose-900/60 border border-rose-800/50 transition shrink-0"
+              className="text-[11px] font-medium text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800/70 hover:bg-slate-700 transition shrink-0"
             >
               Cancelar
             </button>
@@ -339,14 +340,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       )}
 
       {/* Selector de Pestañas (Login / Registro) */}
-      <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 mb-6">
+      <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 mb-4">
         <button
           type="button"
           onClick={() => {
             setActiveTab('LOGIN');
             setErrorMsg(null);
           }}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+          className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition ${
             activeTab === 'LOGIN'
               ? 'bg-rose-600 text-white shadow'
               : 'text-slate-400 hover:text-slate-200'
@@ -360,13 +361,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
             setActiveTab('REGISTER');
             setErrorMsg(null);
           }}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+          className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition ${
             activeTab === 'REGISTER'
               ? 'bg-rose-600 text-white shadow'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          📝 Crear Cuenta Nueva
+          📝 Crear Cuenta
         </button>
       </div>
 
@@ -374,9 +375,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       {errorMsg && (
         <div
           role="alert"
-          className="mb-6 p-4 rounded-xl bg-rose-950/70 border border-rose-800 text-rose-200 text-xs flex items-start gap-3"
+          className="mb-4 p-3 rounded-xl bg-rose-950/70 border border-rose-800 text-rose-200 text-xs flex items-start gap-2.5"
         >
-          <span className="text-base">⚠️</span>
+          <span className="text-sm">⚠️</span>
           <div>
             <strong className="font-semibold">Atención:</strong>
             <p className="mt-0.5">{errorMsg}</p>
@@ -387,9 +388,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       {successInfo && (
         <div
           role="status"
-          className="mb-6 p-4 rounded-xl bg-emerald-950/70 border border-emerald-800 text-emerald-200 text-xs flex items-start gap-3 animate-pulse"
+          className="mb-4 p-3 rounded-xl bg-emerald-950/70 border border-emerald-800 text-emerald-200 text-xs flex items-start gap-2.5 animate-pulse"
         >
-          <span className="text-base">✅</span>
+          <span className="text-sm">✅</span>
           <div>
             <strong className="font-semibold">Sesión iniciada con éxito ({successInfo.role})</strong>
             <p className="mt-0.5">
@@ -401,52 +402,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
 
       {activeTab === 'LOGIN' ? (
         <>
-          {/* Sección Demo 1-Click para el Jurado */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-                ⚡ Acceso Rápido Demo (1-Click Jurado)
-              </span>
-              <div className="flex-1 h-px bg-slate-800"></div>
-            </div>
-            <div className="grid grid-cols-1 gap-2.5">
-              {DEMO_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.role}
-                  type="button"
-                  data-testid={`demo-btn-${acc.role.toLowerCase()}`}
-                  onClick={() => handleDemoClick(acc)}
-                  disabled={loadingRole !== null}
-                  className={`w-full p-3 rounded-xl text-left bg-gradient-to-r ${acc.color} text-white font-medium shadow-md transition-all duration-150 transform active:scale-[0.99] border disabled:opacity-50 flex items-center justify-between`}
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-xs">{acc.label}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/30 border border-white/20">
-                        {acc.badge}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-white/80 mt-0.5">{acc.desc}</p>
-                  </div>
-                  <span className="text-[10px] font-mono bg-black/30 px-2 py-1 rounded text-white/90">
-                    {acc.destination.replace('http://localhost', ':')}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Formulario Tradicional de Login */}
-          <form onSubmit={handleManualSubmit} className="space-y-3.5">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                O ingrese credenciales manualmente
-              </span>
-              <div className="flex-1 h-px bg-slate-800"></div>
-            </div>
-
+          {/* Formulario Tradicional de Login (Foco Principal) */}
+          <form onSubmit={handleManualSubmit} className="space-y-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1" htmlFor="email">
+              <label className="block text-[11px] font-medium text-slate-300 mb-1" htmlFor="email">
                 Correo Institucional
               </label>
               <input
@@ -455,12 +414,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="ej. cliente@cine.local"
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1" htmlFor="password">
+              <label className="block text-[11px] font-medium text-slate-300 mb-1" htmlFor="password">
                 Contraseña
               </label>
               <input
@@ -469,24 +428,66 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
               />
             </div>
 
             <button
               type="submit"
               disabled={loadingRole !== null}
-              className="w-full mt-2 py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition border border-rose-500/40 shadow-lg shadow-rose-950/50 disabled:opacity-50"
+              className="w-full mt-2 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition border border-rose-500/40 shadow-lg shadow-rose-950/50 disabled:opacity-50"
             >
               {loadingRole === 'FORM' ? 'Autenticando en GraphQL...' : 'Iniciar Sesión'}
             </button>
           </form>
+
+          {/* Accesos Rápidos Demo Simplificados al Mínimo (Discretos y Secundarios) */}
+          <div className="pt-3 mt-4 border-t border-slate-800/80 text-center">
+            <span className="text-[10px] text-slate-400 font-medium block mb-2">
+              Acceso rápido de prueba (1-Click Jurado):
+            </span>
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              <button
+                type="button"
+                data-testid="demo-btn-admin"
+                onClick={() => handleDemoClick(DEMO_ACCOUNTS[0])}
+                disabled={loadingRole !== null}
+                className="px-2.5 py-1 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 text-[11px] border border-slate-700/50 transition flex items-center gap-1"
+                title="Acceso directo a MS CINEMA-CORE (Angular :4200)"
+              >
+                <span>⚙️</span>
+                <span>Ingresar como Administrador</span>
+              </button>
+              <button
+                type="button"
+                data-testid="demo-btn-cliente"
+                onClick={() => handleDemoClick(DEMO_ACCOUNTS[1])}
+                disabled={loadingRole !== null}
+                className="px-2.5 py-1 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 text-[11px] border border-slate-700/50 transition flex items-center gap-1"
+                title="Acceso directo como Cliente"
+              >
+                <span>👤</span>
+                <span>Ingresar como Cliente</span>
+              </button>
+              <button
+                type="button"
+                data-testid="demo-btn-boletero"
+                onClick={() => handleDemoClick(DEMO_ACCOUNTS[2])}
+                disabled={loadingRole !== null}
+                className="px-2.5 py-1 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 text-[11px] border border-slate-700/50 transition flex items-center gap-1"
+                title="Acceso directo a Validador QR (:8000)"
+              >
+                <span>🎫</span>
+                <span>Ingresar como Boletero</span>
+              </button>
+            </div>
+          </div>
         </>
       ) : (
         /* Formulario de Registro Dinámico */
-        <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+        <form onSubmit={handleRegisterSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1" htmlFor="regFullName">
+            <label className="block text-[11px] font-medium text-slate-300 mb-1" htmlFor="regFullName">
               Nombre Completo
             </label>
             <input
@@ -496,12 +497,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
               onChange={(e) => setRegFullName(e.target.value)}
               placeholder="ej. Juan Pérez"
               required
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
+              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1" htmlFor="regEmail">
+            <label className="block text-[11px] font-medium text-slate-300 mb-1" htmlFor="regEmail">
               Correo Electrónico
             </label>
             <input
@@ -511,13 +512,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
               onChange={(e) => setRegEmail(e.target.value)}
               placeholder="juan.perez@ejemplo.com"
               required
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
+              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1" htmlFor="regPassword">
+              <label className="block text-[11px] font-medium text-slate-300 mb-1" htmlFor="regPassword">
                 Contraseña
               </label>
               <input
@@ -527,12 +528,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
                 onChange={(e) => setRegPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1" htmlFor="regPasswordConfirm">
+              <label className="block text-[11px] font-medium text-slate-300 mb-1" htmlFor="regPasswordConfirm">
                 Confirmar Contraseña
               </label>
               <input
@@ -542,7 +543,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
                 onChange={(e) => setRegPasswordConfirm(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-xs"
               />
             </div>
           </div>
@@ -550,9 +551,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
           <button
             type="submit"
             disabled={loadingRole !== null}
-            className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs transition border border-rose-500/40 shadow-lg shadow-rose-950/50 disabled:opacity-50"
+            className="w-full mt-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs transition border border-rose-500/40 shadow-lg shadow-rose-950/50 disabled:opacity-50"
           >
-            {loadingRole === 'REG_FORM' ? 'Creando cuenta en backend...' : 'Registrar Cuenta y Continuar'}
+            {loadingRole === 'REG_FORM' ? 'Creando cuenta...' : 'Registrar Cuenta y Continuar'}
           </button>
         </form>
       )}

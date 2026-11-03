@@ -237,8 +237,8 @@ export const App: React.FC = () => {
 
       {/* MODAL DE AUTENTICACIÓN / REGISTRO */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto animate-fadeIn">
+          <div className="relative w-full max-w-lg my-auto">
             <LoginView
               isModal={true}
               contextualPurchase={pendingPurchase}
