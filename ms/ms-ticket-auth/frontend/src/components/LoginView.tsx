@@ -53,7 +53,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     pass: 'boletero123',
     badge: 'MS BOLETEO-VALIDATOR (Laravel)',
     color: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 border-amber-500/40',
-    destination: 'http://localhost:8000',
+    destination: 'http://localhost:5177',
     desc: 'Validación por escaneo de QR y control de reingresos',
   },
 ];
@@ -117,6 +117,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
 
       let jwtToken = 'mock_jwt_' + btoa(targetEmail + ':' + Date.now());
       let userRole: 'ADMIN' | 'CLIENTE' | 'BOLETERO' = roleOverride || 'CLIENTE';
+      let userName = targetEmail.split('@')[0] || 'usuario';
+      let userFullName = 'Usuario CineV2';
       let redirectUrl = 'http://localhost:5173';
 
       if (response && response.ok) {
@@ -124,6 +126,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
         if (json.data && json.data.login) {
           jwtToken = json.data.login.token;
           userRole = json.data.login.user?.role || roleOverride || 'CLIENTE';
+          userFullName = json.data.login.user?.fullName || userFullName;
+          userName = json.data.login.user?.email?.split('@')[0] || userName;
         } else if (json.errors && json.errors.length > 0) {
           throw new Error(json.errors[0].message || 'Credenciales inválidas');
         }
@@ -131,10 +135,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
         // Fallback seguro de desarrollo/demostración
         if (targetEmail === 'admin@cine.local' && targetPass === 'admin123') {
           userRole = 'ADMIN';
+          userName = 'admin';
+          userFullName = 'Administrador General';
         } else if (targetEmail === 'cliente@cine.local' && targetPass === 'cliente123') {
           userRole = 'CLIENTE';
+          userName = 'cliente';
+          userFullName = 'Cliente Frecuente';
         } else if (targetEmail === 'boletero@cine.local' && targetPass === 'boletero123') {
           userRole = 'BOLETERO';
+          userName = 'boletero';
+          userFullName = 'Validador de Puerta';
         } else {
           throw new Error('Credenciales inválidas. Compruebe su correo y contraseña.');
         }
@@ -143,14 +153,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       if (userRole === 'ADMIN') {
         redirectUrl = 'http://localhost:4200';
       } else if (userRole === 'BOLETERO') {
-        redirectUrl = 'http://localhost:8000';
+        redirectUrl = 'http://localhost:5177';
       } else {
         redirectUrl = 'http://localhost:5173';
       }
 
-      // Persistir token y rol
+      // Persistir token, rol y datos de identidad
       localStorage.setItem('jwt_token', jwtToken);
       localStorage.setItem('user_role', userRole);
+      localStorage.setItem('user_name', userName);
+      localStorage.setItem('full_name', userFullName);
 
       setSuccessInfo({ role: userRole, redirectUrl });
 
@@ -158,19 +170,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
         onLoginSuccess(jwtToken, userRole, redirectUrl);
       }
 
-      // En el entorno del navegador real, ejecutar la redirección con soporte SSO por token
+      // En el entorno del navegador real, ejecutar la redirección inmediata con soporte SSO por token y usuario
       if (typeof window !== 'undefined' && (userRole === 'ADMIN' || userRole === 'BOLETERO')) {
-        const targetWithToken = `${redirectUrl}/?token=${encodeURIComponent(jwtToken)}&role=${userRole.toLowerCase()}`;
+        const targetWithToken = `${redirectUrl}/?token=${encodeURIComponent(jwtToken)}&role=${userRole.toLowerCase()}&user=${encodeURIComponent(userName)}&name=${encodeURIComponent(userFullName)}`;
         try {
-          setTimeout(() => {
-            if (window.location && typeof window.location.assign === 'function') {
-              window.location.assign(targetWithToken);
-            } else {
-              window.location.href = targetWithToken;
-            }
-          }, 300);
+          if (window.location && typeof window.location.assign === 'function') {
+            window.location.assign(targetWithToken);
+          } else {
+            window.location.href = targetWithToken;
+          }
         } catch {
-          // Ignorado en entorno de test vitest
+          // Ignorado en entorno de test vitest / jsdom
         }
       }
     } catch (err: any) {
@@ -475,7 +485,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
                 onClick={() => handleDemoClick(DEMO_ACCOUNTS[2])}
                 disabled={loadingRole !== null}
                 className="px-2.5 py-1 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 text-[11px] border border-slate-700/50 transition flex items-center gap-1"
-                title="Acceso directo a Validador QR (:8000)"
+                title="Acceso directo a Validador QR (:5177)"
               >
                 <span>🎫</span>
                 <span>Ingresar como Boletero</span>

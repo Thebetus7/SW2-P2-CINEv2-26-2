@@ -7,10 +7,14 @@ export const adminAuthGuard: CanActivateFn = (route, state) => {
     const urlParams = new URLSearchParams(window.location.search);
     const qToken = urlParams.get('token');
     const qRole = urlParams.get('role');
+    const qUser = urlParams.get('user');
+    const qName = urlParams.get('name');
 
     if (qToken) {
       localStorage.setItem('token', qToken);
       localStorage.setItem('role', (qRole || 'admin').toLowerCase());
+      if (qUser) localStorage.setItem('user', qUser);
+      if (qName) localStorage.setItem('name', qName);
       // Limpiar query params de la URL sin recargar la página para una URL limpia
       window.history.replaceState({}, document.title, window.location.pathname);
       return true;

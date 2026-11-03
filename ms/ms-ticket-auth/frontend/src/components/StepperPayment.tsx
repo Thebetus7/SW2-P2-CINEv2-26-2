@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { TicketPreview } from './TicketPreview';
 import { StripePaymentWrapper } from './StripePaymentWrapper';
+import { SeatMapComponent, SeatItem } from './SeatMapComponent';
 
 export interface StepperPaymentProps {
   initialStep?: number;
@@ -9,6 +10,7 @@ export interface StepperPaymentProps {
   hallName?: string;
   seatLabel?: string;
   price?: number;
+  showtimeId?: string;
   onFinished?: (ticketId: string) => void;
 }
 
@@ -19,6 +21,7 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
   hallName = 'Sala IMAX 1',
   seatLabel = 'C-8',
   price = 45.00,
+  showtimeId,
   onFinished,
 }) => {
   const [currentStep, setCurrentStep] = useState<number>(initialStep);
@@ -26,6 +29,31 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
   const [isExpired, setIsExpired] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [hasInteracted, setHasInteracted] = useState<boolean>(false);
+
+  // Inicializar butacas seleccionadas con el seatLabel / price predeterminado
+  const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>(() => {
+    if (seatLabel) {
+      const parts = seatLabel.split(',').map((s) => s.trim());
+      const basePerSeat = parts.length > 0 ? price / parts.length : price;
+      return parts.map((code) => {
+        const rowMatch = code.match(/^[A-Za-z]+/);
+        const numMatch = code.match(/\d+$/);
+        const row = rowMatch ? rowMatch[0].toUpperCase() : 'C';
+        const num = numMatch ? parseInt(numMatch[0], 10) : 8;
+        return {
+          id: `initial-seat-${code}`,
+          rowLetter: row,
+          seatNumber: num,
+          visibleCode: code,
+          seatType: 'ESTANDAR',
+          status: 'DISPONIBLE',
+          price: basePerSeat,
+        };
+      });
+    }
+    return [];
+  });
 
   // Temporizador regresivo estricto de 60 segundos para la etapa de pago
   useEffect(() => {
@@ -48,7 +76,45 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
     };
   }, [currentStep, secondsRemaining, isExpired]);
 
+  const handleToggleSeat = (seat: SeatItem) => {
+    setHasInteracted(true);
+    setSelectedSeats((prev) => {
+      const exists = prev.some((s) => s.id === seat.id || s.visibleCode === seat.visibleCode);
+      if (exists) {
+        return prev.filter((s) => s.id !== seat.id && s.visibleCode !== seat.visibleCode);
+      } else {
+        return [...prev, seat];
+      }
+    });
+  };
+
+  const totalPrice = selectedSeats.length > 0
+    ? selectedSeats.reduce((acc, curr) => acc + curr.price, 0)
+    : price;
+
+  const currentRawCodes = useMemo(() => {
+    if (selectedSeats.length === 0) return seatLabel || 'Ninguna seleccionada';
+    return selectedSeats.map((s) => s.visibleCode).join(', ');
+  }, [selectedSeats, seatLabel]);
+
+  const currentSeatLabel = useMemo(() => {
+    if (selectedSeats.length === 0) return seatLabel || 'Ninguna seleccionada';
+    if (!hasInteracted && seatLabel) {
+      return seatLabel;
+    }
+    const firstRow = selectedSeats[0].rowLetter;
+    const sameRow = selectedSeats.every((s) => s.rowLetter === firstRow);
+    if (sameRow) {
+      return `Fila ${firstRow}: ${selectedSeats.map((s) => s.visibleCode).join(', ')}`;
+    }
+    return selectedSeats.map((s) => s.visibleCode).join(', ');
+  }, [selectedSeats, seatLabel, hasInteracted]);
+
   const handleNextToPreview = () => {
+    if (selectedSeats.length === 0) {
+      setErrorMessage('Por favor selecciona al menos una butaca para continuar.');
+      return;
+    }
     setErrorMessage(null);
     setCurrentStep(2);
   };
@@ -79,19 +145,20 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
     setIsExpired(false);
     setErrorMessage(null);
     setPaymentIntentId(null);
+    setHasInteracted(false);
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl text-white">
+    <div className="max-w-3xl mx-auto p-4 sm:p-6 bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl text-white">
       {/* Stepper Header Indicator */}
       <div className="mb-8">
-        <h2 className="text-2xl font-black text-center mb-6 tracking-tight bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">
+        <h2 className="text-2xl font-black text-center mb-6 tracking-tight bg-gradient-to-r from-rose-400 via-purple-300 to-amber-300 bg-clip-text text-transparent">
           Flujo de Compra de Boletos
         </h2>
         <div className="flex items-center justify-between relative max-w-lg mx-auto">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-slate-800 w-full z-0" />
           <div
-            className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-indigo-500 transition-all duration-300 z-0"
+            className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-rose-600 transition-all duration-300 z-0"
             style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
           />
 
@@ -110,7 +177,7 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
                     isDone
                       ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20'
                       : isCurrent
-                      ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/40 ring-4 ring-indigo-500/20 scale-110'
+                      ? 'bg-rose-600 border-rose-400 text-white shadow-lg shadow-rose-600/40 ring-4 ring-rose-500/20 scale-110'
                       : 'bg-slate-900 border-slate-700 text-slate-500'
                   }`}
                 >
@@ -118,7 +185,7 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
                 </div>
                 <span
                   className={`text-xs mt-2 font-medium ${
-                    isCurrent ? 'text-indigo-400 font-bold' : isDone ? 'text-slate-300' : 'text-slate-600'
+                    isCurrent ? 'text-rose-400 font-bold' : isDone ? 'text-slate-300' : 'text-slate-600'
                   }`}
                 >
                   {s.label}
@@ -151,39 +218,67 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
         </div>
       )}
 
-      {/* ETAPA 1: Reserva y Selección */}
+      {/* ETAPA 1: Reserva y Selección Interactiva con Pantalla Curva */}
       {currentStep === 1 && (
-        <div className="space-y-6 bg-slate-900/60 p-6 rounded-2xl border border-slate-800">
-          <div className="border-b border-slate-800 pb-4">
+        <div className="space-y-6">
+          <div className="border-b border-slate-800 pb-3">
             <h3 className="text-lg font-bold text-slate-100">Etapa 1: Resumen de Selección</h3>
-            <p className="text-xs text-slate-400">Verifica los detalles antes de solicitar la reserva temporal</p>
+            <p className="text-xs text-slate-400">
+              Selecciona tus butacas en la pantalla cinemática curva antes de solicitar la reserva temporal
+            </p>
           </div>
 
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between py-2 border-b border-slate-800/60">
+          {/* Grilla visual interactiva con pantalla curva */}
+          <SeatMapComponent
+            showtimeId={showtimeId}
+            hallName={hallName}
+            basePrice={price}
+            selectedSeats={selectedSeats}
+            onToggleSeat={handleToggleSeat}
+          />
+
+          {/* Resumen de Compra en Tiempo Real */}
+          <div className="space-y-3 text-sm bg-slate-900/60 p-5 rounded-2xl border border-slate-800">
+            <div className="flex justify-between py-1.5 border-b border-slate-800/60">
               <span className="text-slate-400">Película:</span>
               <span className="font-semibold text-slate-200">{movieTitle}</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-slate-800/60">
+            <div className="flex justify-between py-1.5 border-b border-slate-800/60">
               <span className="text-slate-400">Sala:</span>
               <span className="font-semibold text-slate-200">{hallName}</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-slate-800/60">
-              <span className="text-slate-400">Butaca seleccionada:</span>
-              <span className="font-bold text-indigo-400">{seatLabel}</span>
+            <div className="flex justify-between py-1.5 border-b border-slate-800/60">
+              <span className="text-slate-400">
+                {selectedSeats.length > 1 ? 'Butacas seleccionadas:' : 'Butaca seleccionada:'}
+              </span>
+              <span data-testid="selected-seats-summary" className="font-bold text-rose-400 font-mono">
+                {currentSeatLabel || 'Ninguna seleccionada'}
+              </span>
             </div>
-            <div className="flex justify-between py-2">
-              <span className="text-slate-400">Total a Pagar:</span>
-              <span className="font-bold text-emerald-400 text-lg">${price.toFixed(2)} USD</span>
+            <div className="flex justify-between py-2 items-center">
+              <div>
+                <span className="text-slate-400 block text-xs">Total a Pagar:</span>
+                <span className="text-[11px] text-slate-500">
+                  ({selectedSeats.length} {selectedSeats.length === 1 ? 'entrada' : 'entradas'})
+                </span>
+              </div>
+              <span className="font-black text-emerald-400 text-xl font-mono">
+                ${totalPrice.toFixed(2)} USD
+              </span>
             </div>
           </div>
 
           <button
             type="button"
+            disabled={selectedSeats.length === 0}
             onClick={handleNextToPreview}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all duration-200"
+            className={`w-full py-3.5 font-bold rounded-xl shadow-lg transition-all duration-200 text-sm ${
+              selectedSeats.length === 0
+                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30 active:scale-[0.99]'
+            }`}
           >
-            Continuar a Previsualización
+            Continuar a Previsualización ({selectedSeats.length} {selectedSeats.length === 1 ? 'boleto' : 'boletos'})
           </button>
         </div>
       )}
@@ -194,22 +289,22 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
           <TicketPreview
             movieTitle={movieTitle}
             hallName={hallName}
-            seatLabel={seatLabel}
-            pricePaid={price}
+            seatLabel={currentRawCodes}
+            pricePaid={totalPrice}
           />
 
           <div className="flex gap-4">
             <button
               type="button"
               onClick={() => setCurrentStep(1)}
-              className="w-1/3 py-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-sm"
+              className="w-1/3 py-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-sm transition"
             >
               Atrás
             </button>
             <button
               type="button"
               onClick={handleNextToPayment}
-              className="w-2/3 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm shadow-lg shadow-indigo-600/30"
+              className="w-2/3 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-sm shadow-lg shadow-rose-600/30 transition"
             >
               Proceder al Pago con Stripe
             </button>
@@ -227,7 +322,7 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
                 className={`w-10 h-10 rounded-xl flex items-center justify-center font-mono font-bold text-lg ${
                   secondsRemaining <= 10
                     ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-ping'
-                    : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                    : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                 }`}
               >
                 ⏱️
@@ -236,7 +331,7 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
                 <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Ventana de Pago SAGA</p>
                 <p className="text-sm font-bold text-slate-200">
                   {secondsRemaining > 0
-                    ? `Tiempo restante: ${secondsRemaining}s`
+                    ? `Tiempo restante: ${secondsRemaining}s (${currentSeatLabel})`
                     : '¡Tiempo agotado! Butaca liberada'}
                 </p>
               </div>
@@ -244,7 +339,7 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
             <div className="text-right">
               <span
                 className={`font-mono text-2xl font-black ${
-                  secondsRemaining <= 10 ? 'text-rose-400 animate-pulse' : 'text-indigo-400'
+                  secondsRemaining <= 10 ? 'text-rose-400 animate-pulse' : 'text-rose-400'
                 }`}
               >
                 00:{secondsRemaining.toString().padStart(2, '0')}
@@ -253,7 +348,7 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
           </div>
 
           <StripePaymentWrapper
-            amount={price}
+            amount={totalPrice}
             disabled={isExpired}
             onPaymentSuccess={handlePaymentSuccess}
             onPaymentError={handlePaymentError}
@@ -269,7 +364,7 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
           </div>
           <h3 className="text-2xl font-black text-slate-100">¡Compra Confirmada Exitosamente!</h3>
           <p className="text-sm text-slate-400">
-            Tu boleto digital ha sido emitido y su código QR criptográfico ha quedado registrado.
+            Tus boletos digitales para <span className="text-rose-400 font-semibold">{currentSeatLabel}</span> han sido emitidos y su código QR criptográfico ha quedado registrado.
           </p>
 
           <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800 max-w-sm mx-auto">
@@ -291,7 +386,10 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
               </div>
             </div>
             <p className="text-xs text-slate-400 mt-4">
-              ID Transacción: <span className="font-mono text-indigo-400">{paymentIntentId || 'pi_confirmed'}</span>
+              ID Transacción: <span className="font-mono text-rose-400">{paymentIntentId || 'pi_confirmed'}</span>
+            </p>
+            <p className="text-xs text-emerald-400 font-semibold mt-1">
+              Importe Pagado: ${totalPrice.toFixed(2)} USD
             </p>
           </div>
 

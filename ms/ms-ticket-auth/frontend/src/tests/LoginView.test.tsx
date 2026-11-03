@@ -31,7 +31,7 @@ describe('LoginView - Portal Unificado con Botones Demo 1-Click', () => {
     expect(localStorage.getItem('user_role')).toBe('ADMIN');
   });
 
-  it('al pulsar el botón demo de Boletero debe autenticar y redirigir al puerto 8000', async () => {
+  it('al pulsar el botón demo de Boletero debe autenticar y redirigir al puerto 5177', async () => {
     const handleLoginSuccess = vi.fn();
     render(<LoginView onLoginSuccess={handleLoginSuccess} />);
 
@@ -42,7 +42,7 @@ describe('LoginView - Portal Unificado con Botones Demo 1-Click', () => {
       expect(handleLoginSuccess).toHaveBeenCalledWith(
         expect.any(String),
         'BOLETERO',
-        'http://localhost:8000'
+        'http://localhost:5177'
       );
     });
 

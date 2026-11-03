@@ -5,15 +5,12 @@ import { ManualEntryModal } from '../Components/ManualEntryModal';
 import { validateClientSignature } from '../Services/client-crypto';
 import { QRPayload } from '../Services/qr-reader';
 import {
-  ShieldCheck,
   History,
   CheckCircle2,
   XCircle,
   Clock,
   Film,
   Ticket,
-  LogOut,
-  UserCheck,
 } from 'lucide-react';
 
 export interface ScanHistoryRecord {
@@ -31,6 +28,8 @@ export interface BoleteoScannerProps {
   apiBaseUrl?: string;
   initialScans?: ScanHistoryRecord[];
   validatorEmail?: string;
+  validatorName?: string;
+  validatorRole?: string;
   onLogout?: () => void;
 }
 
@@ -40,8 +39,20 @@ export const BoleteoScanner: React.FC<BoleteoScannerProps> = ({
   apiBaseUrl = '',
   initialScans = [],
   validatorEmail = 'boletero@cinecampus.edu',
+  validatorName,
+  validatorRole,
   onLogout,
 }) => {
+  const username = validatorEmail.includes('@') ? validatorEmail.split('@')[0] : 'boletero';
+  const displayRole = validatorRole || 'BOLETERO';
+  const displayName = validatorName || 'Validador de Puerta';
+  const handleLogoutAction = onLogout || (() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('user');
+    localStorage.removeItem('name');
+    window.location.href = 'http://localhost:5174';
+  });
   const [isPaused, setIsPaused] = useState(false);
   const [currentOverlayStatus, setCurrentOverlayStatus] = useState<ScanStatus | null>(null);
   const [currentTicketInfo, setCurrentTicketInfo] = useState<ValidatedTicketInfo | null>(null);
@@ -238,37 +249,61 @@ export const BoleteoScanner: React.FC<BoleteoScannerProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Header Superior del Operador */}
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-            <ShieldCheck className="w-6 h-6 text-white" />
+      {/* Header Superior Estandarizado */}
+      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
+        {/* IZQUIERDA: [Logo / Marca] */}
+        <div className="flex items-center gap-3 select-none cursor-pointer" onClick={() => window.location.reload()}>
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-bold text-white shadow-lg shadow-rose-950/60">
+            🎬
           </div>
           <div>
-            <h1 className="font-bold text-base md:text-lg tracking-tight text-white flex items-center gap-2">
-              Panel de Boleteo
-              <span className="text-[10px] uppercase font-mono tracking-widest bg-cyan-950 text-cyan-400 border border-cyan-800 px-2 py-0.5 rounded-full">
-                En Puerta
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-lg md:text-xl tracking-wide bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">
+                Cine Bolivia
               </span>
-            </h1>
-            <p className="text-xs text-slate-400">Verificación Criptográfica Local HMAC-SHA256 (HU-12)</p>
+              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                BOLETEO VALIDATOR
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 hidden lg:block">Verificación HMAC-SHA256 en Puerta (HU-12)</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700 text-xs">
-            <UserCheck className="w-4 h-4 text-emerald-400" />
-            <span className="text-slate-300 font-medium">{validatorEmail}</span>
+        {/* CENTRO: [Módulos] */}
+        <nav className="hidden md:flex items-center gap-2 text-sm font-medium">
+          <span className="px-3.5 py-1.5 rounded-xl bg-slate-800 text-rose-400 font-bold border border-rose-500/30 shadow-sm flex items-center gap-1.5">
+            🔍 Escaneo en Puerta
+          </span>
+          <a
+            href="http://localhost:5174"
+            className="px-3.5 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5"
+          >
+            📽️ Cartelera (:5174)
+          </a>
+          <a
+            href="http://localhost:4200"
+            className="px-3.5 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5"
+          >
+            ⚙️ Admin Core (:4200)
+          </a>
+        </nav>
+
+        {/* DERECHA: @usuario (Nombre/Rol) | Cerrar Sesión */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 px-3 py-1.5 rounded-xl text-xs shadow-inner">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="font-mono font-bold text-amber-400">@{username}</span>
+            <span className="text-slate-400 font-medium">({displayName ? `${displayName} / ` : ''}{displayRole})</span>
           </div>
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition"
-              title="Cerrar Turno"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          )}
+
+          <button
+            onClick={handleLogoutAction}
+            className="text-xs px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/90 hover:bg-rose-950 text-rose-300 hover:text-rose-100 border border-rose-900/40 hover:border-rose-700 transition flex items-center gap-1.5 shadow-sm"
+            title="Cerrar sesión actual"
+          >
+            <span>🚪</span>
+            <span>Cerrar Sesión</span>
+          </button>
         </div>
       </header>
 
