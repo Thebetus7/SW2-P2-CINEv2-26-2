@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
 
+export interface ContextualPurchaseInfo {
+  movieTitle: string;
+  hallName: string;
+  time: string;
+  price: number;
+}
+
 export interface LoginViewProps {
   onLoginSuccess?: (token: string, role: string, redirectUrl?: string) => void;
   onClose?: () => void;
   isModal?: boolean;
+  contextualPurchase?: ContextualPurchaseInfo | null;
 }
 
 interface DemoAccount {
@@ -50,7 +58,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   },
 ];
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, isModal }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, isModal, contextualPurchase }) => {
   const [activeTab, setActiveTab] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
 
   // Estado de Login
@@ -286,11 +294,49 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
           Portal de Autenticación Centralizada
         </h2>
         <p className="text-slate-400 text-xs md:text-sm mt-1">
-          {activeTab === 'LOGIN'
+          {contextualPurchase
+            ? 'Inicia sesión o regístrate para continuar con la reserva de tus entradas'
+            : activeTab === 'LOGIN'
             ? 'Acceso único institucional con federación de roles y redirección'
             : 'Regístrate para comprar entradas, acumular puntos y reservar butacas'}
         </p>
       </div>
+
+      {/* Tarjeta Contextual de Compra en Curso */}
+      {contextualPurchase && (
+        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-rose-950/80 via-slate-900 to-amber-950/30 border border-rose-500/50 shadow-xl flex items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="text-2xl p-2.5 rounded-xl bg-rose-600/20 border border-rose-500/40 text-rose-400 shadow-inner">
+              🎟️
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-rose-400">
+                  Función Seleccionada
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-950 text-amber-300 font-mono font-bold border border-amber-400/30">
+                  Bs {contextualPurchase.price.toFixed(2)} c/u
+                </span>
+              </div>
+              <h4 className="text-sm font-extrabold text-white mt-0.5">
+                {contextualPurchase.movieTitle}
+              </h4>
+              <p className="text-xs text-slate-300">
+                {contextualPurchase.hallName} • <strong className="text-rose-300">{contextualPurchase.time}</strong>
+              </p>
+            </div>
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-xs font-semibold text-rose-300 hover:text-white px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-rose-900/60 border border-rose-800/50 transition shrink-0"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Selector de Pestañas (Login / Registro) */}
       <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 mb-6">

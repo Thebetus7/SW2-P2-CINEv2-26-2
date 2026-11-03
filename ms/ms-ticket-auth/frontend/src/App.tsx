@@ -9,6 +9,12 @@ export const App: React.FC = () => {
   const [role, setRole] = useState<string | null>(() => localStorage.getItem('user_role'));
   const [view, setView] = useState<'billboard' | 'stepper' | 'empty'>('billboard');
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [pendingPurchase, setPendingPurchase] = useState<{
+    movieTitle: string;
+    hallName: string;
+    time: string;
+    price: number;
+  } | null>(null);
 
   // Datos seleccionados para la compra en el Stepper
   const [selectedMovie, setSelectedMovie] = useState<string>('Avatar 2: El Sentido del Agua');
@@ -34,7 +40,8 @@ export const App: React.FC = () => {
       return;
     }
 
-    // Rol CLIENTE permanece en la cartelera o avanza a la compra
+    // Rol CLIENTE: avanza inmediatamente al Stepper con los datos de la función retenida
+    setPendingPurchase(null);
     setView('stepper');
   };
 
@@ -43,17 +50,31 @@ export const App: React.FC = () => {
     setRole(null);
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user_role');
+    setPendingPurchase(null);
     setView('billboard');
   };
 
   const handleSelectShowtime = (showtime: ShowtimeItem, movie: MovieItem) => {
+    const timeFormatted = showtime.startTime
+      ? new Date(showtime.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '18:00';
+    const hall = showtime.hall?.name || 'Sala 1 - IMAX';
+    const price = Number(showtime.basePrice) || 50.0;
+
     setSelectedMovie(movie.title);
-    setSelectedHall(showtime.hall?.name || 'Sala 1 - IMAX');
-    setSelectedPrice(Number(showtime.basePrice) || 50.0);
+    setSelectedHall(hall);
+    setSelectedPrice(price);
 
     if (!token) {
+      setPendingPurchase({
+        movieTitle: movie.title,
+        hallName: hall,
+        time: timeFormatted,
+        price,
+      });
       setShowAuthModal(true);
     } else {
+      setPendingPurchase(null);
       setView('stepper');
     }
   };
@@ -220,7 +241,11 @@ export const App: React.FC = () => {
           <div className="relative w-full max-w-xl">
             <LoginView
               isModal={true}
-              onClose={() => setShowAuthModal(false)}
+              contextualPurchase={pendingPurchase}
+              onClose={() => {
+                setShowAuthModal(false);
+                setPendingPurchase(null);
+              }}
               onLoginSuccess={handleLoginSuccess}
             />
           </div>

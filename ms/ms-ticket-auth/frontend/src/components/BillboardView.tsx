@@ -475,3 +475,4 @@ export const BillboardView: React.FC<BillboardViewProps> = ({
     </div>
   );
 };
+
