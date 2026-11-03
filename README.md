@@ -45,13 +45,13 @@ flowchart TD
 ## 🚪 Punto de Entrada Principal del Sistema (`/login`)
 
 > [!IMPORTANT]
-> **URL PRINCIPAL DE INICIO:** 👉 [**`http://localhost:5174`**](http://localhost:5174)
+> **URL PRINCIPAL DE INICIO:** 👉 [http://localhost:5174](http://localhost:5174)
 >
 > Toda la interacción con el ecosistema está centralizada en el **Portal Único de Autenticación** ([`ms/ms-ticket-auth/frontend`](ms/ms-ticket-auth/frontend) en el puerto `5174`). Desde allí no necesitas recordar los puertos de cada aplicación; el portal provee botones de **Acceso Demo 1-Click** que inician sesión y te redirigen automáticamente a la aplicación correspondiente según tu rol (`INV-BIZ-08`):
 >
-> * 👤 **`[Ingresar como Administrador]`** $\rightarrow$ Redirige a la **Consola FRONTWEB (Angular 17)** en [`http://localhost:4200`](http://localhost:4200) *(Diseñador matricial de salas, cartelera y WebLLM local)*.
-> * 🍿 **`[Ingresar como Cliente]`** $\rightarrow$ Redirige al **Canal Cliente / MOVIL APP (React PWA)** en [`http://localhost:5173`](http://localhost:5173) *(Catálogo, selección interactiva de asientos, pago y boletos offline)*.
-> * 🎟️ **`[Ingresar como Boletero]`** $\rightarrow$ Redirige al **Panel de Boleteo (Laravel 11 + React)** en [`http://localhost:5177`](http://localhost:5177) *(Lector de cámara continuo para validación criptográfica de códigos QR)*.
+> * 👤 **`[Ingresar como Administrador]`** $\rightarrow$ Redirige a la **Consola FRONTWEB (Angular 17)** en [http://localhost:4200](http://localhost:4200) *(Diseñador matricial de salas, cartelera y WebLLM local)*.
+> * 🍿 **`[Ingresar como Cliente]`** $\rightarrow$ Redirige al **Canal Cliente / MOVIL APP (React PWA)** en [http://localhost:5173](http://localhost:5173) *(Catálogo, selección interactiva de asientos, pago y boletos offline)*.
+> * 🎟️ **`[Ingresar como Boletero]`** $\rightarrow$ Redirige al **Panel de Boleteo (Laravel 11 + React)** en [http://localhost:5177](http://localhost:5177) *(Lector de cámara continuo para validación criptográfica de códigos QR)*.
 
 ---
 
