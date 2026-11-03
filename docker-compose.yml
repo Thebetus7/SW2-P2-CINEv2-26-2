@@ -236,15 +236,3 @@ services:
       - cinev2-network
     restart: unless-stopped
 
-  # --- 06-movil-client ---
-  movil-client:
-    build:
-      context: ./ms/movil-client
-      dockerfile: Dockerfile
-    container_name: SW2-P2-CINEv2-movil-client
-    ports:
-      - "5173:80"
-    networks:
-      - cinev2-network
-    restart: unless-stopped
-

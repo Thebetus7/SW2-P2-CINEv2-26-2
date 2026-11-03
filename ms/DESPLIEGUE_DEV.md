@@ -13,14 +13,17 @@ Este documento detalla las instrucciones operativas completas para desplegar y e
 
 Esta modalidad levanta de forma coordinada el 100% de la arquitectura: los 6 backends, los 5 frontends web, la PWA móvil y los 5 servicios de persistencia y automatización (`INV-ARCH-06` e `INV-ARCH-07`).
 
-### 1.1 Levantar Todo el Ecosistema
+### 1.1 Levantar Todo el Ecosistema del Servidor
 
 Desde la raíz del repositorio (`.`):
 
 ```bash
-# Compilar todas las imágenes y levantar los 16 contenedores en segundo plano
+# Compilar y levantar los 15 contenedores del servidor en segundo plano
 docker-compose up --build -d
 ```
+
+> [!NOTE]
+> La aplicación cliente móvil (`ms/movil-client`) **se excluye deliberadamente del orquestador del servidor**, ya que es una aplicación del lado cliente (PWA / móvil) pensada para ejecutarse en el dispositivo del usuario o con `npm run dev` en desarrollo.
 
 ### 1.2 Verificar el Estado de los Contenedores
 
@@ -30,7 +33,7 @@ Todos los contenedores se etiquetan bajo la nomenclatura oficial `SW2-P2-CINEv2-
 docker-compose ps
 ```
 
-Deberás ver los 16 contenedores en estado `Up`:
+Deberás ver los 15 contenedores en estado `Up`:
 * `SW2-P2-CINEv2-postgres-auth` (Puerto 5432)
 * `SW2-P2-CINEv2-postgres-core` (Puerto 5433)
 * `SW2-P2-CINEv2-minio-s3` (Puertos 9000, 9001)
@@ -46,7 +49,6 @@ Deberás ver los 16 contenedores en estado `Up`:
 * `SW2-P2-CINEv2-ms-ia-mcp-frontend` (Puerto 5176)
 * `SW2-P2-CINEv2-ms-boleteo-validator-backend` (Puerto 8000)
 * `SW2-P2-CINEv2-ms-boleteo-validator-frontend` (Puerto 5177)
-* `SW2-P2-CINEv2-movil-client` (Puerto 5173)
 
 ### 1.3 Detener el Ecosistema
 
