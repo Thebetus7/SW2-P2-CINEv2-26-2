@@ -41,9 +41,9 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     label: 'Ingresar como Cliente',
     email: 'cliente@cine.local',
     pass: 'cliente123',
-    badge: 'MOVIL CLIENT (React PWA)',
+    badge: 'PORTAL OFICIAL (React)',
     color: 'from-rose-600 to-pink-700 hover:from-rose-500 hover:to-pink-600 border-rose-500/40',
-    destination: 'http://localhost:5173',
+    destination: 'http://localhost:5174',
     desc: 'Cartelera, selección de butacas y compra de boletos',
   },
   {
@@ -119,7 +119,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       let userRole: 'ADMIN' | 'CLIENTE' | 'BOLETERO' = roleOverride || 'CLIENTE';
       let userName = targetEmail.split('@')[0] || 'usuario';
       let userFullName = 'Usuario CineV2';
-      let redirectUrl = 'http://localhost:5173';
+      let redirectUrl = 'http://localhost:5174';
 
       if (response && response.ok) {
         const json = await response.json();
@@ -155,7 +155,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       } else if (userRole === 'BOLETERO') {
         redirectUrl = 'http://localhost:5177';
       } else {
-        redirectUrl = 'http://localhost:5173';
+        redirectUrl = 'http://localhost:5174';
       }
 
       // Persistir token, rol y datos de identidad
