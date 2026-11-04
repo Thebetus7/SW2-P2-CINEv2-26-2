@@ -18,10 +18,10 @@ El sistema resuelve la interoperabilidad en tiempo real entre la administración
 - **Entorno de Despliegue:** Arquitectura contenerizada sobre Docker y Docker Compose con persistencia políglota local (PostgreSQL, DynamoDB Local y MinIO S3 Object Storage).
 - **Estructura Raíz Unificada (`ms/`):** Todos los microservicios y aplicaciones del ecosistema residen en el directorio raíz `ms/`, garantizando que cada componente de dominio sea autocontenido con sus capas `backend/` y `frontend/`.
 - **Canales de Interacción:** 
-  1. *Panel Administrativo (FRONTWEB):* Aplicación Angular con arquitectura modular (Lazy Loading) e inferencia local de IA (WebLLM / Transformers.js), alojada en `ms/ms-cinema-core/frontend/`.
-  2. *Canal Cliente (MOVIL APP / Web Cliente):* Aplicación híbrida unificada en React PWA + Capacitor, con soporte offline (Service Workers + IndexedDB) y geolocalización GPS interna en terminal, ubicada en `ms/movil-client/`.
-  3. *Portal de Acceso y Pago Centralizado:* Interfaz React con Stepper UI de 4 pasos para checkout y login demo centralizado, alojada en `ms/ms-ticket-auth/frontend/`.
-  4. *Control de Acceso (PANEL DE BOLETEO):* Aplicación desacoplada en Laravel 11 con React e interfaz de cámara continua para escaneo y validación de credenciales QR, alojada en `ms/ms-boleteo-validator/`.
+  1. *Panel Administrativo (FRONTWEB):* Aplicación Angular con arquitectura modular (Lazy Loading) e inferencia local de IA (WebLLM / Transformers.js), alojada en `ms/ms-cinema-core/frontend/` (puerto `:4200`).
+  2. *Portal Web Oficial del Cliente:* Interfaz React con cartelera interactiva, selección de butacas en pantalla curva y Stepper UI de 4 pasos para checkout SAGA y login centralizado, alojada en `ms/ms-ticket-auth/frontend/` (puerto `:5174`).
+  3. *Control de Acceso (PANEL DE BOLETEO):* Aplicación desacoplada en Laravel 11 con React e interfaz de cámara continua para escaneo y validación de credenciales QR en puerta, alojada en `ms/ms-boleteo-validator/` (puerto `:5177`).
+  4. *Canal Cliente Móvil Autónomo (MOVIL APP):* Aplicación híbrida desacoplada en React PWA + Capacitor con soporte offline (Service Workers + IndexedDB) y geolocalización GPS interna, ubicada en `ms/movil-client/` para ejecución local en desarrollo (`npm run dev`) y distribución en dispositivos móviles, excluida de la contenerización de infraestructura central de Docker.
 - **Población Inicial de Datos:** Entorno precargado con *seeders* y *factories* realistas con un volumen de ~300 registros variables (películas, salas, butacas, funciones y compras históricas) y 3 usuarios predefinidos con roles asignados.
 
 ### 1.3 Alcance Global del Sistema (In-Scope Macro)
@@ -147,9 +147,9 @@ Debe existir una única ruta de acceso principal al sistema para todos los usuar
 - **Punto Único de Entrada (`/login`):** Gestionado centralmente desde el canal de autenticación de `ms/ms-ticket-auth/frontend/`.
 - **Pre-requisito Obligatorio:** Todo usuario debe autenticarse (o registrarse si es un nuevo cliente) antes de entrar a cualquier vista operativa.
 - **Redirección Estricta por Rol:**
-  - `admin` $\rightarrow$ Redirecciona automáticamente a la consola de administración **FRONTWEB (Angular)** en `ms/ms-cinema-core/frontend/`.
-  - `cliente` $\rightarrow$ Redirecciona automáticamente al catálogo y cartelera de la **MOVIL APP (React PWA)** en `ms/movil-client/`.
-  - `boletero` $\rightarrow$ Redirecciona automáticamente a la cámara de escaneo del **PANEL DE BOLETEO (Laravel 11 + React)** en `ms/ms-boleteo-validator/`.
+  - `admin` $\rightarrow$ Redirecciona automáticamente a la consola de administración **FRONTWEB (Angular)** en `ms/ms-cinema-core/frontend/` (puerto `:4200`).
+  - `cliente` $\rightarrow$ Permanece en el **Portal Web Oficial de Cartelera y Compra** en `ms/ms-ticket-auth/frontend/` (puerto `:5174`), habilitando el flujo de selección de butacas y checkout (o mediante el cliente móvil autónomo en `ms/movil-client/`).
+  - `boletero` $\rightarrow$ Redirecciona automáticamente a la interfaz de escaneo del **PANEL DE BOLETEO** en `ms/ms-boleteo-validator/` (puerto `:5177`).
 - **Protección de Rutas (Guards / Middleware):** Todo intento de navegación no autenticado o con rol inadecuado hacia cualquier sub-ruta de los frontends debe ser interceptado y devuelto de forma inmediata a la pantalla única de inicio de sesión.
 
 ---
@@ -315,14 +315,14 @@ El sistema debe soportar tres modalidades armónicas de empaquetamiento y despli
    - Estos orquestadores configuran la red compartida unificada `cinev2-network` y levantan de forma autocontenida el backend, frontend y bases de datos dedicadas de ese microservicio con un simple `cd ms/<microservicio> && docker compose up -d`.
    - Permite alojar uno o varios microservicios en instancias independientes (ej. AWS EC2, VPS) sin dependencias rígidas del resto del monorepositorio.
 2. **Modalidad Orquestada Centralizada (Raíz Todo-en-Uno para Evaluación y Desarrollo Local):**
-   - La raíz del proyecto provee el orquestador maestro **`docker-compose.yml`** (y `Dockerfile.all-in-one`) para compilar, sembrar datos de prueba y levantar el 100% de los 16 servicios, bases de datos y frontends con un solo comando en la máquina local (`docker-compose up --build -d`).
+   - La raíz del proyecto provee el orquestador maestro **`docker-compose.yml`** (y `Dockerfile.all-in-one`) para compilar, sembrar datos de prueba y levantar el 100% de los **15 servicios oficiales de infraestructura, bases de datos y frontends** con un solo comando en la máquina local (`docker compose up -d`).
 3. **Modalidad Cloud Desacoplada (Imágenes Multi-Stage para Container Registries):**
    - Cada microservicio backend y frontend (`ms/ms-ticket-auth/backend`, `ms/ms-ticket-auth/frontend`, `ms/ms-cinema-core/backend`, `ms/ms-cinema-core/frontend`, etc.) dispone de su propio **`Dockerfile` multi-stage autónomo** en su directorio respectivo, compilando imágenes ligeras (Alpine/Slim) para despliegue independiente en Kubernetes, ECS o Cloud Run.
 
 ### `INV-ARCH-07` (Nomenclatura Estandarizada de Contenedores Docker)
-Todos los contenedores generados u orquestados en el ecosistema deben llevar obligatoriamente el prefijo institucional **`SW2-P2-CINEv2-`** en su propiedad `container_name`:
+Todos los contenedores generados u orquestados en el ecosistema deben llevar obligatoriamente el prefijo institucional **`SW2-P2-CINEv2-`** en su propiedad `container_name` (exactamente 15 contenedores oficiales de infraestructura y servicios):
 - `SW2-P2-CINEv2-ms-ticket-auth-backend` (Spring Boot 8081)
-- `SW2-P2-CINEv2-ms-ticket-auth-frontend` (React Portal Login/Checkout 5174)
+- `SW2-P2-CINEv2-ms-ticket-auth-frontend` (React Portal Login/Cartelera/Checkout 5174)
 - `SW2-P2-CINEv2-ms-cinema-core-backend` (NestJS 3000)
 - `SW2-P2-CINEv2-ms-cinema-core-frontend` (Angular Admin 4200)
 - `SW2-P2-CINEv2-ms-multimedia-backend` (NestJS + TensorFlow 3001)
@@ -330,13 +330,14 @@ Todos los contenedores generados u orquestados en el ecosistema deben llevar obl
 - `SW2-P2-CINEv2-ms-ia-mcp-backend` (FastAPI + GrokCloud 8001)
 - `SW2-P2-CINEv2-ms-ia-mcp-frontend` (React Consola Auditoría 5176)
 - `SW2-P2-CINEv2-ms-boleteo-validator-backend` (Laravel 11 API 8000)
-- `SW2-P2-CINEv2-ms-boleteo-validator-frontend` (React Escáner 8000/Inertia)
-- `SW2-P2-CINEv2-movil-client` (React PWA 5173)
+- `SW2-P2-CINEv2-ms-boleteo-validator-frontend` (React Escáner 5177)
 - `SW2-P2-CINEv2-postgres-auth` (PostgreSQL 5432)
 - `SW2-P2-CINEv2-postgres-core` (PostgreSQL 5433)
 - `SW2-P2-CINEv2-minio-s3` (MinIO S3 9000 / Consola 9001)
 - `SW2-P2-CINEv2-dynamodb-local` (DynamoDB 8002)
 - `SW2-P2-CINEv2-n8n` (n8n 5678)
+
+> **Exclusión Arquitectónica del Canal Móvil:** El componente `ms/movil-client/` (React 18 PWA + Capacitor) es una aplicación cliente distribuida concebida para ejecución en el dispositivo terminal del usuario y emulación local vía `npm run dev`. Queda formalmente excluida de la lógica de contenedores de Docker de la infraestructura de servidores.
 
 ### `INV-ARCH-08` (Estructura Unificada ms/ con Backend y Frontend Contenidos)
 Todo microservicio del ecosistema debe residir obligatoriamente dentro de la carpeta raíz `ms/`, conteniendo en su interior sus subdirectorios `backend/` y `frontend/` (con excepción del canal móvil `ms/movil-client/` que opera como cliente directo). Queda terminantemente prohibida la existencia de directorios raíz `services/` o `apps/`.
