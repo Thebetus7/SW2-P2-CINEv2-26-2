@@ -18,6 +18,8 @@ export enum ProjectionType {
 export enum HallStatus {
   ACTIVA = 'ACTIVA',
   EN_MANTENIMIENTO = 'EN_MANTENIMIENTO',
+  MANTENIMIENTO = 'MANTENIMIENTO',
+  INACTIVA = 'INACTIVA',
 }
 
 @Entity('cinema_halls')

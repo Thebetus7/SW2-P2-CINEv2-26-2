@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
 import { CreateHallUseCase } from '../src/modules/halls/application/create-hall.use-case';
+import { UpdateHallUseCase } from '../src/modules/halls/application/update-hall.use-case';
 import { UpdateSeatTypeUseCase } from '../src/modules/halls/application/update-seat-type.use-case';
 import { DisableHallUseCase, CannotDeleteHallWithShowtimesException } from '../src/modules/halls/application/disable-hall.use-case';
 import { CinemaHall, ProjectionType, HallStatus } from '../src/modules/halls/domain/cinema-hall.entity';
@@ -9,6 +10,7 @@ import { Showtime } from '../src/modules/showtimes/domain/showtime.entity';
 
 describe('Slice 1: Gestión Paramétrica de Salas y Matrices de Butacas (HU-04, HU-13)', () => {
   let createHallUseCase: CreateHallUseCase;
+  let updateHallUseCase: UpdateHallUseCase;
   let updateSeatTypeUseCase: UpdateSeatTypeUseCase;
   let disableHallUseCase: DisableHallUseCase;
 
@@ -73,14 +75,19 @@ describe('Slice 1: Gestión Paramétrica de Salas y Matrices de Butacas (HU-04, 
       if (entity === CinemaHall) {
         return {
           findOne: jest.fn(async ({ where }) =>
-            mockHalls.find((h) => h.id === where.id) || null,
+            mockHalls.find((h) => (where.id && h.id === where.id) || (where.name && h.name === where.name)) || null,
           ),
           delete: jest.fn(async (id) => {
             const idx = mockHalls.findIndex((h) => h.id === id);
             if (idx >= 0) mockHalls.splice(idx, 1);
             return { affected: 1 };
           }),
-          save: jest.fn(async (hall) => hall),
+          save: jest.fn(async (hall) => {
+            const idx = mockHalls.findIndex((h) => h.id === hall.id);
+            if (idx >= 0) mockHalls[idx] = hall;
+            else mockHalls.push(hall);
+            return hall;
+          }),
         };
       }
       if (entity === Showtime) {
@@ -102,6 +109,7 @@ describe('Slice 1: Gestión Paramétrica de Salas y Matrices de Butacas (HU-04, 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CreateHallUseCase,
+        UpdateHallUseCase,
         UpdateSeatTypeUseCase,
         DisableHallUseCase,
         {
@@ -112,6 +120,7 @@ describe('Slice 1: Gestión Paramétrica de Salas y Matrices de Butacas (HU-04, 
     }).compile();
 
     createHallUseCase = module.get<CreateHallUseCase>(CreateHallUseCase);
+    updateHallUseCase = module.get<UpdateHallUseCase>(UpdateHallUseCase);
     updateSeatTypeUseCase = module.get<UpdateSeatTypeUseCase>(UpdateSeatTypeUseCase);
     disableHallUseCase = module.get<DisableHallUseCase>(DisableHallUseCase);
   });
@@ -203,5 +212,25 @@ describe('Slice 1: Gestión Paramétrica de Salas y Matrices de Butacas (HU-04, 
 
     const updated = await disableHallUseCase.setMaintenanceStatus(hall.id);
     expect(updated.status).toBe(HallStatus.EN_MANTENIMIENTO);
+  });
+
+  it('HU-04 / RF-04: debe actualizar el nombre, proyección y estado de una sala existente', async () => {
+    const hall = await createHallUseCase.execute({
+      name: 'Sala Para Actualizar',
+      totalRows: 2,
+      columnsPerRow: 3,
+      projectionType: ProjectionType.TWO_D,
+    });
+
+    const updated = await updateHallUseCase.execute({
+      id: hall.id,
+      name: 'Sala 1 - IMAX Laser',
+      projectionType: ProjectionType.IMAX,
+      status: HallStatus.ACTIVA,
+    });
+
+    expect(updated.name).toBe('Sala 1 - IMAX Laser');
+    expect(updated.projectionType).toBe(ProjectionType.IMAX);
+    expect(updated.status).toBe(HallStatus.ACTIVA);
   });
 });

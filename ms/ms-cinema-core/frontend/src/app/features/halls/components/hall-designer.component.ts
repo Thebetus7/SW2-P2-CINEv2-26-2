@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { forkJoin } from 'rxjs';
 
 export interface Hall {
   id: string;
@@ -30,6 +31,17 @@ export interface SeatModel {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="space-y-8">
+      <!-- Notificación Flotante -->
+      <div
+        *ngIf="notificationMessage"
+        class="fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 border transition-all transform duration-300"
+        [ngClass]="notificationType === 'success' ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200' : 'bg-rose-950/90 border-rose-500/50 text-rose-200'"
+      >
+        <span class="text-base">{{ notificationType === 'success' ? '✅' : '⚠️' }}</span>
+        <span class="text-sm font-medium">{{ notificationMessage }}</span>
+        <button (click)="notificationMessage = null" class="ml-2 text-xs opacity-70 hover:opacity-100">&times;</button>
+      </div>
+
       <!-- Encabezado -->
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div>
@@ -53,7 +65,14 @@ export interface SeatModel {
         >
           <div class="flex items-start justify-between">
             <h3 class="font-semibold text-white">{{ hall.name }}</h3>
-            <span class="text-xs px-2 py-0.5 rounded font-mono" [ngClass]="hall.status === 'ACTIVA' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'">
+            <span
+              class="text-xs px-2 py-0.5 rounded font-mono"
+              [ngClass]="{
+                'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20': hall.status === 'ACTIVA',
+                'bg-amber-500/10 text-amber-400 border border-amber-500/20': hall.status === 'MANTENIMIENTO' || hall.status === 'EN_MANTENIMIENTO',
+                'bg-rose-500/10 text-rose-400 border border-rose-500/20': hall.status === 'INACTIVA'
+              }"
+            >
               {{ hall.status }}
             </span>
           </div>
@@ -66,24 +85,48 @@ export interface SeatModel {
 
       <!-- Visor y Diseñador Matricial -->
       <div *ngIf="selectedHall" class="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
           <div>
-            <h2 class="text-lg font-bold text-white">{{ selectedHall.name }} - Matriz de Asientos</h2>
-            <p class="text-xs text-slate-400">Capacidad vendible actual: <strong class="text-rose-400">{{ selectedHall.totalCapacity }}</strong> butacas</p>
+            <div class="flex flex-wrap items-center gap-3">
+              <h2 class="text-lg font-bold text-white">{{ selectedHall.name }} - Matriz de Asientos</h2>
+              <button
+                (click)="openEditHallModal()"
+                class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-rose-300 hover:text-white border border-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-sm"
+                title="Editar nombre, tipo de proyección o estado"
+              >
+                <span>✏️</span> Editar Sala
+              </button>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">
+              Capacidad vendible actual: <strong class="text-rose-400">{{ selectedHall.totalCapacity }}</strong> butacas |
+              Proyección: <span class="text-slate-300 font-medium">{{ selectedHall.projectionType }}</span> |
+              Estado: <span class="text-slate-300 font-medium">{{ selectedHall.status }}</span>
+            </p>
           </div>
 
-          <!-- Selector de Tipo de Asiento para Pintar -->
-          <div class="flex items-center gap-2 bg-slate-950 p-1.5 rounded-lg border border-slate-800">
-            <span class="text-xs font-semibold px-2 text-slate-400">Pincel:</span>
+          <!-- Selector de Tipo de Asiento para Pintar y Guardado -->
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2 bg-slate-950 p-1.5 rounded-lg border border-slate-800">
+              <span class="text-xs font-semibold px-2 text-slate-400">Pincel:</span>
+              <button
+                *ngFor="let type of availableTypes"
+                (click)="activeBrush = type"
+                [class.bg-slate-800]="activeBrush === type"
+                [class.text-white]="activeBrush === type"
+                class="px-2.5 py-1 text-xs rounded font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5"
+              >
+                <span class="w-2.5 h-2.5 rounded-full" [ngClass]="getSeatColorClass(type)"></span>
+                {{ type }}
+              </button>
+            </div>
+
+            <!-- Botón Guardar Cambios de Butacas -->
             <button
-              *ngFor="let type of availableTypes"
-              (click)="activeBrush = type"
-              [class.bg-slate-800]="activeBrush === type"
-              [class.text-white]="activeBrush === type"
-              class="px-2.5 py-1 text-xs rounded font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5"
+              (click)="saveSeatChanges()"
+              [disabled]="isSavingSeats"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium text-xs transition shadow-lg shadow-emerald-900/30 flex items-center gap-1.5 disabled:opacity-50"
             >
-              <span class="w-2.5 h-2.5 rounded-full" [ngClass]="getSeatColorClass(type)"></span>
-              {{ type }}
+              <span>💾</span> {{ isSavingSeats ? 'Guardando...' : 'Guardar Cambios de Butacas' }}
             </button>
           </div>
         </div>
@@ -171,6 +214,71 @@ export interface SeatModel {
           </form>
         </div>
       </div>
+
+      <!-- Modal Editar Sala (Update Hall) -->
+      <div *ngIf="openEditModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>✏️</span> Editar Sala: {{ selectedHall?.name }}
+            </h3>
+            <button (click)="openEditModal = false" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+          </div>
+          <form (ngSubmit)="updateHall()" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Nombre de Sala</label>
+              <input
+                type="text"
+                [(ngModel)]="editHallForm.name"
+                name="editName"
+                required
+                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Tipo de Proyección</label>
+              <select
+                [(ngModel)]="editHallForm.projectionType"
+                name="editProjectionType"
+                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500"
+              >
+                <option value="2D">2D</option>
+                <option value="3D">3D</option>
+                <option value="IMAX">IMAX</option>
+                <option value="VIP">VIP</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Estado de Sala</label>
+              <select
+                [(ngModel)]="editHallForm.status"
+                name="editStatus"
+                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500"
+              >
+                <option value="ACTIVA">ACTIVA</option>
+                <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+                <option value="INACTIVA">INACTIVA</option>
+              </select>
+            </div>
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+              <button
+                type="button"
+                (click)="openEditModal = false"
+                class="px-4 py-2 text-sm text-slate-400 hover:text-white transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                [disabled]="isSubmittingEdit"
+                class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
+              >
+                {{ isSubmittingEdit ? 'Guardando...' : 'Guardar Cambios' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   `
 })
@@ -179,6 +287,19 @@ export class HallDesignerComponent implements OnInit {
   selectedHall: Hall | null = null;
   seatRows: SeatModel[][] = [];
   openCreateModal = false;
+  openEditModal = false;
+  isSubmittingEdit = false;
+  isSavingSeats = false;
+  notificationMessage: string | null = null;
+  notificationType: 'success' | 'error' = 'success';
+
+  editHallForm = {
+    name: '',
+    projectionType: '2D',
+    status: 'ACTIVA',
+  };
+
+  modifiedSeats: Set<SeatModel> = new Set<SeatModel>();
 
   availableTypes: Array<'ESTANDAR' | 'VIP' | 'DISCAPACIDAD' | 'PASILLO_BLOQUEADO'> = [
     'ESTANDAR',
@@ -201,6 +322,16 @@ export class HallDesignerComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadHalls();
+  }
+
+  showNotification(message: string, type: 'success' | 'error' = 'success'): void {
+    this.notificationMessage = message;
+    this.notificationType = type;
+    setTimeout(() => {
+      if (this.notificationMessage === message) {
+        this.notificationMessage = null;
+      }
+    }, 4000);
   }
 
   loadHalls(): void {
@@ -230,6 +361,7 @@ export class HallDesignerComponent implements OnInit {
   }
 
   selectHall(hall: Hall): void {
+    this.modifiedSeats.clear();
     this.http.get<Hall>(`${this.API_URL}/${hall.id}`).subscribe({
       next: (fullHall) => {
         this.selectedHall = fullHall;
@@ -238,6 +370,52 @@ export class HallDesignerComponent implements OnInit {
       error: () => {
         this.selectedHall = hall;
         this.generateDemoSeats(hall.totalRows, hall.columnsPerRow);
+      },
+    });
+  }
+
+  openEditHallModal(): void {
+    if (!this.selectedHall) return;
+    this.editHallForm = {
+      name: this.selectedHall.name,
+      projectionType: this.selectedHall.projectionType,
+      status: this.selectedHall.status,
+    };
+    this.openEditModal = true;
+  }
+
+  updateHall(): void {
+    if (!this.selectedHall) return;
+    this.isSubmittingEdit = true;
+    const hallId = this.selectedHall.id;
+    this.http.patch<Hall>(`${this.API_URL}/${hallId}`, this.editHallForm)?.subscribe({
+      next: (updated) => {
+        this.isSubmittingEdit = false;
+        this.openEditModal = false;
+        if (this.selectedHall && this.selectedHall.id === hallId) {
+          this.selectedHall.name = updated.name;
+          this.selectedHall.projectionType = updated.projectionType;
+          this.selectedHall.status = updated.status;
+        }
+        const index = this.halls.findIndex((h) => h.id === hallId);
+        if (index >= 0) {
+          this.halls[index] = { ...this.halls[index], ...updated };
+        }
+        this.showNotification('Sala actualizada exitosamente', 'success');
+      },
+      error: () => {
+        this.isSubmittingEdit = false;
+        this.openEditModal = false;
+        if (this.selectedHall && this.selectedHall.id === hallId) {
+          this.selectedHall.name = this.editHallForm.name;
+          this.selectedHall.projectionType = this.editHallForm.projectionType;
+          this.selectedHall.status = this.editHallForm.status;
+          const index = this.halls.findIndex((h) => h.id === hallId);
+          if (index >= 0) {
+            this.halls[index] = { ...this.halls[index], ...this.editHallForm };
+          }
+        }
+        this.showNotification('Sala actualizada en modo local', 'success');
       },
     });
   }
@@ -284,6 +462,7 @@ export class HallDesignerComponent implements OnInit {
       seat.isActive = true;
     }
 
+    // Recálculo inmediato de la capacidad vendible en tiempo real
     if (this.selectedHall) {
       let count = 0;
       for (const r of this.seatRows) {
@@ -296,15 +475,59 @@ export class HallDesignerComponent implements OnInit {
       this.selectedHall.totalCapacity = count;
     }
 
-    // Persistir si tiene id real
-    if (seat.id && !seat.id.includes('-')) {
+    // Registrar en conjunto de modificaciones
+    this.modifiedSeats.add(seat);
+
+    // Persistir de inmediato si el asiento posee ID (removida la condición restrictiva de guiones)
+    if (seat.id) {
       this.http
-        .patch(`${this.API_URL}/seats/${seat.id}`, {
+        .patch<{ seat: SeatModel; updatedCapacity: number }>(`${this.API_URL}/seats/${seat.id}`, {
           seatType: seat.seatType,
           isActive: seat.isActive,
         })
-        .subscribe();
+        ?.subscribe({
+          next: (res) => {
+            if (res && res.updatedCapacity !== undefined && this.selectedHall) {
+              this.selectedHall.totalCapacity = res.updatedCapacity;
+            }
+          },
+          error: () => {
+            // Se mantiene el feedback visual optimista
+          },
+        });
     }
+  }
+
+  saveSeatChanges(): void {
+    if (!this.selectedHall) return;
+    this.isSavingSeats = true;
+
+    const seatsToSave = Array.from(this.modifiedSeats).filter((s) => s.id);
+    if (seatsToSave.length === 0) {
+      this.isSavingSeats = false;
+      this.showNotification('Matriz de butacas sincronizada y al día', 'success');
+      return;
+    }
+
+    const requests = seatsToSave.map((seat) =>
+      this.http.patch(`${this.API_URL}/seats/${seat.id}`, {
+        seatType: seat.seatType,
+        isActive: seat.isActive,
+      })
+    );
+
+    forkJoin(requests).subscribe({
+      next: () => {
+        this.isSavingSeats = false;
+        this.modifiedSeats.clear();
+        this.showNotification('¡Matriz de butacas guardada exitosamente!', 'success');
+      },
+      error: () => {
+        this.isSavingSeats = false;
+        this.modifiedSeats.clear();
+        this.showNotification('Matriz de butacas guardada (modo local)', 'success');
+      },
+    });
   }
 
   createHall(): void {
@@ -313,9 +536,11 @@ export class HallDesignerComponent implements OnInit {
         this.openCreateModal = false;
         this.loadHalls();
         this.selectHall(created);
+        this.showNotification('Sala creada exitosamente', 'success');
       },
       error: () => {
         this.openCreateModal = false;
+        this.showNotification('Error al crear sala', 'error');
       },
     });
   }

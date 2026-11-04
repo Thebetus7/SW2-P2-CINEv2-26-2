@@ -192,7 +192,7 @@ export const BillboardView: React.FC<BillboardViewProps> = ({
                 }}
                 className="px-6 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-sm shadow-lg shadow-rose-950/60 transition transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
               >
-                🎟️ Comprar Entradas Online
+                🎟️ Ver Horarios y Reservar
               </button>
               {!isAuthenticated && (
                 <button

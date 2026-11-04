@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { TicketPreview } from './TicketPreview';
 import { StripePaymentWrapper } from './StripePaymentWrapper';
 import { SeatMapComponent, SeatItem } from './SeatMapComponent';
+import { RealQrCode } from './RealQrCode';
 
 export interface StepperPaymentProps {
   initialStep?: number;
@@ -12,6 +13,8 @@ export interface StepperPaymentProps {
   price?: number;
   showtimeId?: string;
   onFinished?: (ticketId: string) => void;
+  onBackToBillboard?: () => void;
+  onViewMyTickets?: () => void;
 }
 
 export const StepperPayment: React.FC<StepperPaymentProps> = ({
@@ -23,10 +26,13 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
   price = 45.00,
   showtimeId,
   onFinished,
+  onBackToBillboard,
+  onViewMyTickets,
 }) => {
   const [currentStep, setCurrentStep] = useState<number>(initialStep);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(initialSeconds);
   const [isExpired, setIsExpired] = useState<boolean>(false);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [hasInteracted, setHasInteracted] = useState<boolean>(false);
@@ -55,10 +61,10 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
     return [];
   });
 
-  // Temporizador regresivo estricto de 60 segundos para la etapa de pago
+  // Temporizador regresivo estricto de 60 segundos para la etapa de pago (con soporte de pausa ante error)
   useEffect(() => {
     let timer: any = null;
-    if (currentStep === 3 && secondsRemaining > 0 && !isExpired) {
+    if (currentStep === 3 && secondsRemaining > 0 && !isExpired && !isPaused) {
       timer = setInterval(() => {
         setSecondsRemaining((prev) => {
           if (prev <= 1) {
@@ -74,7 +80,7 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [currentStep, secondsRemaining, isExpired]);
+  }, [currentStep, secondsRemaining, isExpired, isPaused]);
 
   const handleToggleSeat = (seat: SeatItem) => {
     setHasInteracted(true);
@@ -130,6 +136,24 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
     setPaymentIntentId(intentId);
     setErrorMessage(null);
     setCurrentStep(4);
+
+    // Guardar automáticamente en el historial local del cliente
+    try {
+      const newRecord = {
+        ticketId: intentId,
+        movieTitle,
+        hallName,
+        seatCodes: currentSeatLabel,
+        amount: totalPrice,
+        paymentIntentId: intentId,
+        purchasedAt: new Date().toISOString(),
+      };
+      const existing = JSON.parse(localStorage.getItem('user_tickets_list') || '[]');
+      localStorage.setItem('user_tickets_list', JSON.stringify([newRecord, ...existing]));
+    } catch {
+      // Entorno de prueba
+    }
+
     if (onFinished) {
       onFinished(intentId);
     }
@@ -137,12 +161,19 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
 
   const handlePaymentError = (error: string) => {
     setErrorMessage(error);
+    setIsPaused(true); // Pausar temporizador automáticamente para no perjudicar al usuario ante error de servidor/rechazo
+  };
+
+  const handleRetryPayment = () => {
+    setErrorMessage(null);
+    setIsPaused(false); // Reanudar temporizador al reintentar
   };
 
   const handleRestart = () => {
     setCurrentStep(1);
     setSecondsRemaining(60);
     setIsExpired(false);
+    setIsPaused(false);
     setErrorMessage(null);
     setPaymentIntentId(null);
     setHasInteracted(false);
@@ -221,11 +252,23 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
       {/* ETAPA 1: Reserva y Selección Interactiva con Pantalla Curva */}
       {currentStep === 1 && (
         <div className="space-y-6">
-          <div className="border-b border-slate-800 pb-3">
-            <h3 className="text-lg font-bold text-slate-100">Etapa 1: Resumen de Selección</h3>
-            <p className="text-xs text-slate-400">
-              Selecciona tus butacas en la pantalla cinemática curva antes de solicitar la reserva temporal
-            </p>
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h3 className="text-lg font-bold text-slate-100">Etapa 1: Resumen de Selección</h3>
+              <p className="text-xs text-slate-400">
+                Selecciona tus butacas en la pantalla cinemática curva antes de solicitar la reserva temporal
+              </p>
+            </div>
+            {onBackToBillboard && (
+              <button
+                type="button"
+                onClick={onBackToBillboard}
+                className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition"
+              >
+                <span>←</span>
+                <span>Cartelera</span>
+              </button>
+            )}
           </div>
 
           {/* Grilla visual interactiva con pantalla curva */}
@@ -280,6 +323,32 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
           >
             Continuar a Previsualización ({selectedSeats.length} {selectedSeats.length === 1 ? 'boleto' : 'boletos'})
           </button>
+
+          {/* BARRA INFERIOR FIJA FLOTANTE (Sticky Bottom Summary Bar) */}
+          {selectedSeats.length > 0 && (
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-2xl w-[94%] z-40 bg-slate-900/95 backdrop-blur-md border border-rose-500/30 rounded-2xl p-4 shadow-2xl shadow-black/80 flex items-center justify-between gap-4 animate-fadeIn">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-bold text-white font-mono">
+                    {selectedSeats.length} {selectedSeats.length === 1 ? 'Butaca seleccionada' : 'Butacas seleccionadas'}
+                  </span>
+                </div>
+                <div className="text-sm font-black text-emerald-400 font-mono mt-0.5">
+                  Total: ${totalPrice.toFixed(2)} USD
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNextToPreview}
+                className="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-950/60 transition active:scale-95 flex items-center gap-2"
+              >
+                <span>Continuar</span>
+                <span>→</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -350,56 +419,159 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
           <StripePaymentWrapper
             amount={totalPrice}
             disabled={isExpired}
+            isPaused={isPaused}
+            errorMessage={errorMessage}
             onPaymentSuccess={handlePaymentSuccess}
             onPaymentError={handlePaymentError}
+            onRetry={handleRetryPayment}
           />
+
+          {/* Botón para regresar a la etapa previa o a la selección de butacas */}
+          <div className="flex items-center justify-between pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsPaused(false);
+                setErrorMessage(null);
+                setCurrentStep(2);
+              }}
+              className="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+            >
+              <span>←</span>
+              <span>Atrás: Revisar Previsualización</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsPaused(false);
+                setErrorMessage(null);
+                setCurrentStep(1);
+              }}
+              className="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-rose-400 rounded-xl text-xs font-medium flex items-center gap-1.5 transition"
+            >
+              <span>💺</span>
+              <span>Cambiar Butacas</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* ETAPA 4: Confirmación y Emisión de QR */}
+      {/* ETAPA 4: Confirmación y Emisión de QR (Recibo Digital Completo) */}
       {currentStep === 4 && (
-        <div className="space-y-6 bg-slate-900/80 p-6 rounded-2xl border border-slate-800 text-center">
-          <div className="w-16 h-16 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-3xl">
+        <div className="space-y-6 bg-slate-900/90 p-6 sm:p-8 rounded-3xl border border-slate-800 text-center animate-fadeIn">
+          <div className="w-16 h-16 bg-emerald-500/20 border-2 border-emerald-500/50 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-3xl shadow-lg shadow-emerald-500/20 animate-bounce">
             ✓
           </div>
-          <h3 className="text-2xl font-black text-slate-100">¡Compra Confirmada Exitosamente!</h3>
-          <p className="text-sm text-slate-400">
-            Tus boletos digitales para <span className="text-rose-400 font-semibold">{currentSeatLabel}</span> han sido emitidos y su código QR criptográfico ha quedado registrado.
-          </p>
-
-          <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800 max-w-sm mx-auto">
-            <div className="w-40 h-40 bg-white p-3 rounded-xl mx-auto flex items-center justify-center shadow-lg">
-              {/* Representación visual del QR firmado */}
-              <div className="text-slate-950 text-center font-mono text-xs">
-                <p className="font-bold mb-1">CINEV2 QR</p>
-                <div className="grid grid-cols-4 gap-1 p-2 bg-slate-100 rounded">
-                  <div className="w-4 h-4 bg-black" />
-                  <div className="w-4 h-4 bg-black" />
-                  <div className="w-4 h-4 bg-white" />
-                  <div className="w-4 h-4 bg-black" />
-                  <div className="w-4 h-4 bg-black" />
-                  <div className="w-4 h-4 bg-white" />
-                  <div className="w-4 h-4 bg-black" />
-                  <div className="w-4 h-4 bg-black" />
-                </div>
-                <p className="text-[9px] mt-1 text-slate-600 font-bold">HMAC VERIFIED</p>
-              </div>
-            </div>
-            <p className="text-xs text-slate-400 mt-4">
-              ID Transacción: <span className="font-mono text-rose-400">{paymentIntentId || 'pi_confirmed'}</span>
-            </p>
-            <p className="text-xs text-emerald-400 font-semibold mt-1">
-              Importe Pagado: ${totalPrice.toFixed(2)} USD
+          <div>
+            <h3 className="text-2xl font-black text-white tracking-tight">¡Compra Confirmada Exitosamente!</h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Tu reserva ha sido procesada y registrada en el sistema de boletería.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleRestart}
-            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-sm transition-all"
-          >
-            Comprar Otro Boleto
-          </button>
+          {/* BANNER DE NOTIFICACIÓN DE GUARDADO */}
+          <div className="p-4 bg-emerald-950/60 border border-emerald-500/40 rounded-2xl text-center max-w-md mx-auto shadow-lg animate-fadeIn">
+            <div className="flex items-center justify-center gap-2 text-emerald-400 font-bold text-sm">
+              <span className="text-lg">🎉</span>
+              <span>¡Boleto guardado en "Mis Boletos"!</span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1">
+              Tu entrada digital ya está disponible en tu cuenta para cuando llegues al cine.
+            </p>
+          </div>
+
+          {/* RECIBO DIGITAL COMPLETO */}
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 max-w-md mx-auto text-left shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-rose-500 to-amber-500" />
+            
+            <div className="flex justify-between items-start pb-4 border-b border-slate-800">
+              <div>
+                <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                  Pago Aprobado con Stripe
+                </span>
+                <h4 className="text-lg font-black text-white mt-1.5">{movieTitle}</h4>
+                <p className="text-xs text-slate-400">{hallName}</p>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-500 block">Total Pagado</span>
+                <span className="text-base font-black text-emerald-400 font-mono">
+                  ${totalPrice.toFixed(2)} USD
+                </span>
+              </div>
+            </div>
+
+            <div className="py-3 border-b border-slate-800/80 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Butacas Asignadas:</span>
+                <span className="font-bold text-rose-400 font-mono">{currentSeatLabel}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Cantidad de Entradas:</span>
+                <span className="font-semibold text-slate-200">
+                  {selectedSeats.length > 0 ? selectedSeats.length : 1} {selectedSeats.length === 1 ? 'boleto' : 'boletos'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">ID Transacción:</span>
+                <span className="font-mono text-slate-300 text-[11px] truncate max-w-[180px]">
+                  {paymentIntentId || 'pi_test_confirmed'}
+                </span>
+              </div>
+            </div>
+
+            {/* CÓDIGO QR FIRMADO HMAC REAL */}
+            <div className="pt-4 flex flex-col items-center">
+              <RealQrCode
+                size={130}
+                payload={{
+                  ticketId: paymentIntentId || 'pi_test_confirmed',
+                  movieTitle,
+                  hallName,
+                  seats: currentSeatLabel,
+                  amount: totalPrice,
+                  showtimeId: showtimeId || 'ST-2026-IMAX',
+                  seatId: selectedSeats.map((s) => s.id).join(',') || 'seat-default',
+                  issuedAt: new Date().toISOString(),
+                }}
+              />
+              <span className="text-[11px] text-slate-400 mt-2 font-medium">
+                Presenta este código QR en la entrada de la sala
+              </span>
+            </div>
+          </div>
+
+          {/* BOTONES DE ACCIÓN POST-COMPRA */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-2 max-w-md mx-auto">
+            {onViewMyTickets && (
+              <button
+                type="button"
+                data-testid="view-my-tickets-btn"
+                onClick={onViewMyTickets}
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-rose-950/60 transition flex items-center justify-center gap-2"
+              >
+                <span>🎟️ Ver en Mis Boletos</span>
+              </button>
+            )}
+
+            {onBackToBillboard && (
+              <button
+                type="button"
+                onClick={onBackToBillboard}
+                className="flex-1 py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs border border-slate-700 transition flex items-center justify-center gap-2"
+              >
+                <span>📽️ Volver a Cartelera</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleRestart}
+              className="py-3 px-4 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white font-medium rounded-xl text-xs border border-slate-800 transition"
+            >
+              Comprar Otro Boleto
+            </button>
+          </div>
         </div>
       )}
     </div>

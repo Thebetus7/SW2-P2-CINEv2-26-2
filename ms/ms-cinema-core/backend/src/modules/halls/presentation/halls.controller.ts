@@ -11,9 +11,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateHallUseCase } from '../application/create-hall.use-case';
+import { UpdateHallUseCase } from '../application/update-hall.use-case';
 import { UpdateSeatTypeUseCase } from '../application/update-seat-type.use-case';
 import { DisableHallUseCase } from '../application/disable-hall.use-case';
 import { CreateHallDto } from './dto/create-hall.dto';
+import { UpdateHallDto } from './dto/update-hall.dto';
 import { UpdateSeatTypeDto } from './dto/update-seat-type.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -24,6 +26,7 @@ import { Seat } from '../domain/seat.entity';
 export class HallsController {
   constructor(
     private readonly createHallUseCase: CreateHallUseCase,
+    private readonly updateHallUseCase: UpdateHallUseCase,
     private readonly updateSeatTypeUseCase: UpdateSeatTypeUseCase,
     private readonly disableHallUseCase: DisableHallUseCase,
     @InjectRepository(CinemaHall)
@@ -85,5 +88,16 @@ export class HallsController {
   @Patch(':id/maintenance')
   async setMaintenance(@Param('id') id: string) {
     return await this.disableHallUseCase.setMaintenanceStatus(id);
+  }
+
+  @Patch(':id')
+  async updateHall(
+    @Param('id') id: string,
+    @Body() dto: UpdateHallDto,
+  ) {
+    return await this.updateHallUseCase.execute({
+      id,
+      ...dto,
+    });
   }
 }

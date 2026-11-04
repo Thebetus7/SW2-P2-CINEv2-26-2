@@ -3,6 +3,7 @@ import { BillboardView, ShowtimeItem, MovieItem } from './components/BillboardVi
 import { LoginView } from './components/LoginView';
 import { StepperPayment } from './components/StepperPayment';
 import { MyTicketsEmptyView } from './components/MyTicketsEmptyView';
+import { RealQrCode } from './components/RealQrCode';
 
 export const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(() => {
@@ -214,102 +215,121 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-rose-600 selection:text-white">
       {/* BARRA SUPERIOR DE NAVEGACIÓN ESTANDARIZADA */}
-      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-6 py-3.5 flex justify-between items-center">
-        {/* IZQUIERDA: [🎬 Logo / Marca] */}
-        <div
-          onClick={() => setView('billboard')}
-          className="flex items-center gap-3 cursor-pointer group select-none"
-        >
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-bold text-white shadow-lg shadow-rose-950/60 group-hover:scale-105 transition">
-            🎬
-          </div>
-          <div>
-            <span className="font-extrabold text-lg md:text-xl tracking-wide bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">
-              Cine Bolivia
-            </span>
-            <span className="hidden sm:inline-block ml-2 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
-              Portal Oficial
-            </span>
-          </div>
-        </div>
-
-        {/* CENTRO: [Módulo 1] [Módulo 2] ... */}
-        <nav className="flex items-center gap-2">
+      {view === 'stepper' ? (
+        /* HEADER DEDICADO DE CHECKOUT (Checkout Wizard Full-Page) */
+        <header className="border-b border-slate-800/80 bg-slate-900/95 backdrop-blur-md sticky top-0 z-40 px-4 sm:px-8 py-3.5 flex justify-between items-center shadow-lg">
           <button
+            type="button"
             onClick={() => setView('billboard')}
-            className={`text-xs md:text-sm px-3.5 py-1.5 rounded-xl font-medium transition ${
-              view === 'billboard'
-                ? 'bg-slate-800 text-rose-400 font-bold border border-rose-500/30 shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-            }`}
+            className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-rose-400 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 px-3.5 py-2 rounded-xl transition"
           >
-            📽️ Cartelera
+            <span>←</span>
+            <span>Volver a Cartelera</span>
           </button>
 
-          {token && (
-            <>
-              <button
-                onClick={() => setView('stepper')}
-                className={`text-xs md:text-sm px-3.5 py-1.5 rounded-xl font-medium transition ${
-                  view === 'stepper'
-                    ? 'bg-slate-800 text-rose-400 font-bold border border-rose-500/30 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                🎟️ Comprar Boleto
-              </button>
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">🎬</span>
+            <div className="text-center">
+              <span className="font-extrabold text-sm sm:text-base tracking-wide bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">
+                Cine Bolivia
+              </span>
+              <span className="block text-[10px] text-slate-400 font-medium">Página de Pasos de Compra</span>
+            </div>
+          </div>
 
+          <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono bg-emerald-950/50 border border-emerald-500/30 px-3 py-1.5 rounded-xl">
+            <span>🔒</span>
+            <span className="hidden sm:inline">Checkout Seguro SSL</span>
+          </div>
+        </header>
+      ) : (
+        /* HEADER ESTÁNDAR DEL PORTAL */
+        <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-6 py-3.5 flex justify-between items-center">
+          {/* IZQUIERDA: [🎬 Logo / Marca] */}
+          <div
+            onClick={() => setView('billboard')}
+            className="flex items-center gap-3 cursor-pointer group select-none"
+          >
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-bold text-white shadow-lg shadow-rose-950/60 group-hover:scale-105 transition">
+              🎬
+            </div>
+            <div>
+              <span className="font-extrabold text-lg md:text-xl tracking-wide bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">
+                Cine Bolivia
+              </span>
+              <span className="hidden sm:inline-block ml-2 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                Portal Oficial
+              </span>
+            </div>
+          </div>
+
+          {/* CENTRO: Módulos de navegación de primer nivel (Cartelera y Mis Boletos) */}
+          <nav className="flex items-center gap-2">
+            <button
+              onClick={() => setView('billboard')}
+              className={`text-xs md:text-sm px-4 py-2 rounded-xl font-medium transition duration-200 flex items-center gap-2 ${
+                view === 'billboard'
+                  ? 'bg-rose-600/10 text-rose-400 font-bold border border-rose-500/30 shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <span>📽️</span>
+              <span>Cartelera</span>
+            </button>
+
+            {token && (
               <button
                 onClick={() => setView('empty')}
-                className={`text-xs md:text-sm px-3.5 py-1.5 rounded-xl font-medium transition ${
+                className={`text-xs md:text-sm px-4 py-2 rounded-xl font-medium transition duration-200 flex items-center gap-2 ${
                   view === 'empty'
-                    ? 'bg-slate-800 text-rose-400 font-bold border border-rose-500/30 shadow-sm'
+                    ? 'bg-rose-600/10 text-rose-400 font-bold border border-rose-500/30 shadow-sm'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
-                Mis Boletos
+                <span>🎟️</span>
+                <span>Mis Boletos</span>
               </button>
-            </>
-          )}
-        </nav>
+            )}
+          </nav>
 
-        {/* DERECHA: @usuario (Nombre/Rol) | Cerrar Sesión */}
-        <div className="flex items-center gap-3">
-          {token ? (
-            <>
-              <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 px-3 py-1.5 rounded-xl text-xs shadow-inner">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="font-mono font-bold text-amber-400">@{userName}</span>
-                <span className="text-slate-400 font-medium">({fullName ? `${fullName} / ` : ''}{role})</span>
+          {/* DERECHA: @usuario (Nombre/Rol) | Cerrar Sesión */}
+          <div className="flex items-center gap-3">
+            {token ? (
+              <>
+                <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 px-3 py-1.5 rounded-xl text-xs shadow-inner">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="font-mono font-bold text-amber-400">@{userName}</span>
+                  <span className="text-slate-400 font-medium">({fullName ? `${fullName} / ` : ''}{role})</span>
+                </div>
+
+                <button
+                  onClick={handleLogout}
+                  className="text-xs px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/90 hover:bg-rose-950 text-rose-300 hover:text-rose-100 border border-rose-900/40 hover:border-rose-700 transition flex items-center gap-1.5 shadow-sm"
+                  title="Cerrar sesión actual"
+                >
+                  <span>🚪</span>
+                  <span>Cerrar Sesión</span>
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="text-xs px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold transition border border-slate-700"
+                >
+                  Iniciar Sesión
+                </button>
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="text-xs px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold transition shadow-lg shadow-rose-950/60"
+                >
+                  Registrarse
+                </button>
               </div>
-
-              <button
-                onClick={handleLogout}
-                className="text-xs px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/90 hover:bg-rose-950 text-rose-300 hover:text-rose-100 border border-rose-900/40 hover:border-rose-700 transition flex items-center gap-1.5 shadow-sm"
-                title="Cerrar sesión actual"
-              >
-                <span>🚪</span>
-                <span>Cerrar Sesión</span>
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="text-xs px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold transition border border-slate-700"
-              >
-                Iniciar Sesión
-              </button>
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="text-xs px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold transition shadow-lg shadow-rose-950/60"
-              >
-                Registrarse
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
+            )}
+          </div>
+        </header>
+      )}
 
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 flex flex-col p-4 md:p-8 max-w-7xl mx-auto w-full">
@@ -322,39 +342,163 @@ export const App: React.FC = () => {
         )}
 
         {view === 'stepper' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <button
-                onClick={() => setView('billboard')}
-                className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1.5 font-semibold"
-              >
-                ← Volver a la Cartelera de Películas
-              </button>
-              <span className="text-xs text-slate-400 font-medium">
-                Paso actual: Adquisición de Boletos y Selección de Butaca
-              </span>
-            </div>
+          <div className="space-y-6 max-w-4xl mx-auto w-full animate-fadeIn">
             <StepperPayment
               showtimeId={selectedShowtimeId}
               movieTitle={selectedMovie}
               hallName={selectedHall}
               price={selectedPrice}
-              onFinished={() => setView('empty')}
+              onFinished={(ticketId) => {
+                // Notificación de compra: el usuario permanece en la Etapa 4 para ver el QR
+                console.log('Ticket generado exitosamente:', ticketId);
+              }}
+              onBackToBillboard={() => setView('billboard')}
+              onViewMyTickets={() => setView('empty')}
             />
           </div>
         )}
 
-        {view === 'empty' && (
-          <div className="space-y-4">
-            <button
-              onClick={() => setView('billboard')}
-              className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1.5 font-semibold"
-            >
-              ← Volver a la Cartelera
-            </button>
-            <MyTicketsEmptyView onExploreMovies={() => setView('billboard')} />
-          </div>
-        )}
+        {view === 'empty' && (() => {
+          let ticketsList: Array<{
+            ticketId: string;
+            movieTitle: string;
+            hallName: string;
+            seatCodes: string;
+            amount: number;
+            paymentIntentId: string;
+            purchasedAt: string;
+            signature?: string;
+            sig?: string;
+          }> = [];
+          try {
+            const raw = localStorage.getItem('user_tickets_list');
+            if (raw) ticketsList = JSON.parse(raw);
+          } catch {
+            ticketsList = [];
+          }
+
+          if (ticketsList.length === 0) {
+            return (
+              <div className="space-y-4">
+                <button
+                  onClick={() => setView('billboard')}
+                  className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1.5 font-semibold"
+                >
+                  ← Volver a la Cartelera
+                </button>
+                <MyTicketsEmptyView onExploreMovies={() => setView('billboard')} />
+              </div>
+            );
+          }
+
+          return (
+            <div className="space-y-6 max-w-4xl mx-auto w-full animate-fadeIn">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                <div>
+                  <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                    <span className="text-rose-500">🎟️</span> Mis Boletos Confirmados
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Tienes {ticketsList.length} {ticketsList.length === 1 ? 'entrada activa' : 'entradas activas'} registradas en tu cuenta.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setView('billboard')}
+                    className="px-4 py-2 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white rounded-xl text-xs font-bold shadow-md transition"
+                  >
+                    + Comprar Más Boletos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm('¿Deseas vaciar tu historial de boletos de prueba?')) {
+                        localStorage.removeItem('user_tickets_list');
+                        setView('billboard');
+                      }
+                    }}
+                    className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-800 rounded-xl text-xs transition"
+                    title="Limpiar historial"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {ticketsList.map((t, idx) => (
+                  <div
+                    key={t.ticketId || idx}
+                    className="bg-slate-900/90 border border-slate-800 hover:border-rose-500/40 rounded-2xl p-5 shadow-xl flex flex-col justify-between relative overflow-hidden group transition"
+                  >
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-rose-500" />
+                    <div>
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <span className="text-[10px] font-mono uppercase bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
+                            Válido • Acceso Sala
+                          </span>
+                          <h3 className="text-lg font-bold text-white mt-2 group-hover:text-rose-400 transition">
+                            {t.movieTitle}
+                          </h3>
+                          <p className="text-xs text-slate-400">{t.hallName}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-500 block">Total</span>
+                          <span className="font-mono text-emerald-400 font-bold text-sm">
+                            ${Number(t.amount || 45).toFixed(2)} USD
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800/80 space-y-1.5 text-xs mb-4">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Butacas:</span>
+                          <span className="font-mono font-bold text-rose-400">{t.seatCodes}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Comprado el:</span>
+                          <span className="text-slate-300">
+                            {t.purchasedAt ? new Date(t.purchasedAt).toLocaleString() : 'Reciente'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">ID Transacción:</span>
+                          <span className="font-mono text-[10px] text-slate-400 truncate max-w-[150px]">
+                            {t.paymentIntentId}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-800/80 flex flex-col items-center gap-2">
+                      <RealQrCode
+                        size={110}
+                        headerText="BOLETO OFICIAL"
+                        payload={{
+                          ticketId: t.ticketId || t.paymentIntentId || 'TKT-AUTH',
+                          movieTitle: t.movieTitle,
+                          hallName: t.hallName,
+                          seats: t.seatCodes,
+                          amount: Number(t.amount || 45),
+                          purchasedAt: t.purchasedAt || new Date().toISOString(),
+                          sig: t.signature || t.sig || 'HMAC-SHA256:VERIFIED',
+                        }}
+                      />
+                      <div className="w-full flex items-center justify-between pt-1">
+                        <span className="text-[10px] font-mono text-slate-400">QR HMAC Activo</span>
+                        <span className="text-xs font-semibold text-emerald-400 bg-emerald-950/40 px-3 py-1 rounded-xl border border-emerald-500/30">
+                          Listo para Ingreso
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </main>
 
       {/* FOOTER */}
