@@ -10,7 +10,7 @@ from app.mcp.tools.line_analytics_tool import get_line_analytics
 from app.mcp.tools.n8n_contingency_tool import trigger_n8n_contingency
 from app.mcp.tools.excel_report_tool import generate_excel_report
 from app.agent.auditor_agent import auditor_agent_service
-from app.presentation import audit_routes, chatbot_routes, admin_chat_routes
+from app.presentation import audit_routes, chatbot_routes, admin_chat_routes, client_chat_routes
 
 
 def setup_mcp_tools(server=mcp_server):
@@ -92,6 +92,7 @@ async def mcp_endpoint(request: Request) -> Dict[str, Any]:
 app.include_router(audit_routes.router)
 app.include_router(chatbot_routes.router)
 app.include_router(admin_chat_routes.router)
+app.include_router(client_chat_routes.router)
 
 
 @app.get("/health")

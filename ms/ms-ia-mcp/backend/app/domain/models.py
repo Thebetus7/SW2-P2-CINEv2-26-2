@@ -121,3 +121,40 @@ class AuditTriggerResponse(BaseModel):
     n8n_response: Optional[Dict[str, Any]] = None
     timestamp: str
     execution_time_ms: float
+
+
+# Modelos para Chatbot del Cliente (Módulo 07)
+class ShowtimeCard(BaseModel):
+    showtimeId: str
+    movieTitle: str
+    posterUrl: Optional[str] = None
+    hallName: str
+    hallType: str = "2D"  # '2D' | '3D' | 'IMAX'
+    startTime: str
+    price: float = 35.0
+
+
+class RecommendedSeat(BaseModel):
+    seatCode: str  # Ej: 'C-8'
+    row: str
+    number: int
+    isOptimal: bool = True
+    badge: str = "Mejor Visibilidad"
+
+
+class ClientChatRequest(BaseModel):
+    userId: Optional[str] = "cliente-anonimo"
+    message: str
+    currentState: str = "EXPLORING"  # EXPLORING | SHOWTIME_SELECTED | SEAT_ASSIGNED | PAYMENT_PENDING
+    selectedShowtimeId: Optional[str] = None
+    selectedSeatCode: Optional[str] = None
+
+
+class ClientChatResponse(BaseModel):
+    reply: str
+    nextState: str
+    suggestedChips: List[str] = Field(default_factory=list)
+    showtimeCards: List[ShowtimeCard] = Field(default_factory=list)
+    recommendedSeats: List[RecommendedSeat] = Field(default_factory=list)
+    summary: Optional[Dict[str, Any]] = None
+

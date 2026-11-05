@@ -4,6 +4,235 @@ import { LoginView } from './components/LoginView';
 import { StepperPayment } from './components/StepperPayment';
 import { MyTicketsEmptyView } from './components/MyTicketsEmptyView';
 import { RealQrCode } from './components/RealQrCode';
+import { ClientChatBubble } from './components/ClientChat/ClientChatBubble';
+
+export const DEFAULT_USER_TICKETS_SEED = [
+  {
+    ticketId: 'b1110001-2026-4000-8000-000000000001',
+    paymentIntentId: 'pi_demo_2026_01',
+    movieTitle: 'Avatar 2: El Sentido del Agua',
+    hallName: 'Sala 1 - IMAX Laser',
+    seatCodes: 'C-8',
+    seatId: 'C-8',
+    showtimeId: 'st-avatar2-hoy-tarde',
+    amount: 55.00,
+    status: 'CONFIRMED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: 'a3ac0feb04eae538849c07fa647684126ecf89e62629e28a6d7e4bbe77c97c4e',
+    signature: 'a3ac0feb04eae538849c07fa647684126ecf89e62629e28a6d7e4bbe77c97c4e',
+  },
+  {
+    ticketId: 'b1110002-2026-4000-8000-000000000002',
+    paymentIntentId: 'pi_demo_2026_02',
+    movieTitle: 'Avatar 2: El Sentido del Agua',
+    hallName: 'Sala 1 - IMAX Laser',
+    seatCodes: 'C-9',
+    seatId: 'C-9',
+    showtimeId: 'st-avatar2-hoy-tarde',
+    amount: 55.00,
+    status: 'CONFIRMED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: 'a7fd82620ca449f9a534a6b395d949089b50cb27df3af0605d8787b233597091',
+    signature: 'a7fd82620ca449f9a534a6b395d949089b50cb27df3af0605d8787b233597091',
+  },
+  {
+    ticketId: 'b1110003-2026-4000-8000-000000000003',
+    paymentIntentId: 'pi_demo_2026_03',
+    movieTitle: 'Dune: Parte Dos',
+    hallName: 'Sala 1 - IMAX Laser',
+    seatCodes: 'D-5',
+    seatId: 'D-5',
+    showtimeId: 'st-dune2-hoy-tarde',
+    amount: 55.00,
+    status: 'USED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: '9704d67d358fced1dc7ddb3d6ab39d847103fc52b6f24b605469d4e8299e3d20',
+    signature: '9704d67d358fced1dc7ddb3d6ab39d847103fc52b6f24b605469d4e8299e3d20',
+  },
+  {
+    ticketId: 'b1110004-2026-4000-8000-000000000004',
+    paymentIntentId: 'pi_demo_2026_04',
+    movieTitle: 'Dune: Parte Dos',
+    hallName: 'Sala 1 - IMAX Laser',
+    seatCodes: 'D-6',
+    seatId: 'D-6',
+    showtimeId: 'st-dune2-hoy-tarde',
+    amount: 55.00,
+    status: 'USED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: '2baabca15bd47dc8962059ff271d83fa672c6a7549c312a152c3ed28662a4568',
+    signature: '2baabca15bd47dc8962059ff271d83fa672c6a7549c312a152c3ed28662a4568',
+  },
+  {
+    ticketId: 'b1110005-2026-4000-8000-000000000005',
+    paymentIntentId: 'pi_demo_2026_05',
+    movieTitle: 'Oppenheimer',
+    hallName: 'Sala 3 - Dolby Atmos 2D',
+    seatCodes: 'B-4',
+    seatId: 'B-4',
+    showtimeId: 'st-oppenheimer-hoy-noche',
+    amount: 35.00,
+    status: 'USED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: '10f38dfc1ed4e3a75a7e2eb574681c7d5e56e343e439109a0dd8efb7cd55b667',
+    signature: '10f38dfc1ed4e3a75a7e2eb574681c7d5e56e343e439109a0dd8efb7cd55b667',
+  },
+  {
+    ticketId: 'b1110006-2026-4000-8000-000000000006',
+    paymentIntentId: 'pi_demo_2026_06',
+    movieTitle: 'Intensamente 2',
+    hallName: 'Sala 3 - Dolby Atmos 2D',
+    seatCodes: 'C-4',
+    seatId: 'C-4',
+    showtimeId: 'st-insideout2-hoy-tarde',
+    amount: 35.00,
+    status: 'CONFIRMED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: '0288720135260fe37ce3732f77df2c861ae6d4a4856daf2b26815df1f0704dcc',
+    signature: '0288720135260fe37ce3732f77df2c861ae6d4a4856daf2b26815df1f0704dcc',
+  },
+  {
+    ticketId: 'b1110007-2026-4000-8000-000000000007',
+    paymentIntentId: 'pi_demo_2026_07',
+    movieTitle: 'Intensamente 2',
+    hallName: 'Sala 3 - Dolby Atmos 2D',
+    seatCodes: 'C-5',
+    seatId: 'C-5',
+    showtimeId: 'st-insideout2-hoy-tarde',
+    amount: 35.00,
+    status: 'CONFIRMED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: 'aeb75764bdfae435d70ebef1226ec76feb07324da4dd606ea0113b7837fa70c4',
+    signature: 'aeb75764bdfae435d70ebef1226ec76feb07324da4dd606ea0113b7837fa70c4',
+  },
+  {
+    ticketId: 'b1110008-2026-4000-8000-000000000008',
+    paymentIntentId: 'pi_demo_2026_08',
+    movieTitle: 'Gladiador II',
+    hallName: 'Sala 4 - VIP Lounge Experience',
+    seatCodes: 'A-3',
+    seatId: 'A-3',
+    showtimeId: 'st-gladiator2-hoy-noche',
+    amount: 65.00,
+    status: 'CONFIRMED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: '9ab2f97177dd358c68778e14c4ddf68761f467b1d4b0d1ad86f3f6ff1792b5c7',
+    signature: '9ab2f97177dd358c68778e14c4ddf68761f467b1d4b0d1ad86f3f6ff1792b5c7',
+  },
+  {
+    ticketId: 'b1110009-2026-4000-8000-000000000009',
+    paymentIntentId: 'pi_demo_2026_09',
+    movieTitle: 'Gladiador II',
+    hallName: 'Sala 4 - VIP Lounge Experience',
+    seatCodes: 'A-4',
+    seatId: 'A-4',
+    showtimeId: 'st-gladiator2-hoy-noche',
+    amount: 65.00,
+    status: 'USED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: 'dd37ac0dfcef1c9f9d58d35f735f9f554a8c6b8b1348031d976f04c55694b34a',
+    signature: 'dd37ac0dfcef1c9f9d58d35f735f9f554a8c6b8b1348031d976f04c55694b34a',
+  },
+  {
+    ticketId: 'b1110010-2026-4000-8000-000000000010',
+    paymentIntentId: 'pi_demo_2026_10',
+    movieTitle: 'Deadpool & Wolverine',
+    hallName: 'Sala 2 - MacroXE RealD 3D',
+    seatCodes: 'D-6',
+    seatId: 'D-6',
+    showtimeId: 'st-deadpool-hoy-noche',
+    amount: 45.00,
+    status: 'CONFIRMED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: '7f6523a8590d55f1ec2803303acd445f2cac97a1eb27cc82fb48627ea5775d4b',
+    signature: '7f6523a8590d55f1ec2803303acd445f2cac97a1eb27cc82fb48627ea5775d4b',
+  },
+  {
+    ticketId: 'b1110011-2026-4000-8000-000000000011',
+    paymentIntentId: 'pi_demo_2026_11',
+    movieTitle: 'Deadpool & Wolverine',
+    hallName: 'Sala 2 - MacroXE RealD 3D',
+    seatCodes: 'D-7',
+    seatId: 'D-7',
+    showtimeId: 'st-deadpool-hoy-noche',
+    amount: 45.00,
+    status: 'PENDING_PAYMENT',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: 'f0b59e07f470c2c85ac62ddc1e18c8ea12ff41cb60bbc0ec80c7e49be2ec2eb8',
+    signature: 'f0b59e07f470c2c85ac62ddc1e18c8ea12ff41cb60bbc0ec80c7e49be2ec2eb8',
+  },
+  {
+    ticketId: 'b1110012-2026-4000-8000-000000000012',
+    paymentIntentId: 'pi_demo_2026_12',
+    movieTitle: 'Spider-Man: A Través del Spider-Verso',
+    hallName: 'Sala 2 - MacroXE RealD 3D',
+    seatCodes: 'E-5',
+    seatId: 'E-5',
+    showtimeId: 'st-spider-hoy-tarde',
+    amount: 40.00,
+    status: 'CONFIRMED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: '2393b9c9725203e7b7636a690b6c92025fab70009ea33b922e82a044791e752b',
+    signature: '2393b9c9725203e7b7636a690b6c92025fab70009ea33b922e82a044791e752b',
+  },
+  {
+    ticketId: 'b1110013-2026-4000-8000-000000000013',
+    paymentIntentId: 'pi_demo_2026_13',
+    movieTitle: 'Interestelar',
+    hallName: 'Sala 2 - MacroXE RealD 3D',
+    seatCodes: 'F-5',
+    seatId: 'F-5',
+    showtimeId: 'st-interstellar-hoy-noche',
+    amount: 45.00,
+    status: 'CONFIRMED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: 'b740a898705c1f42a4edfb187b2f4dd06d4b7bf2c7345b24b1e2aa807ece1d8f',
+    signature: 'b740a898705c1f42a4edfb187b2f4dd06d4b7bf2c7345b24b1e2aa807ece1d8f',
+  },
+  {
+    ticketId: 'b1110014-2026-4000-8000-000000000014',
+    paymentIntentId: 'pi_demo_2026_14',
+    movieTitle: 'Oppenheimer',
+    hallName: 'Sala 4 - VIP Lounge Experience',
+    seatCodes: 'B-1',
+    seatId: 'B-1',
+    showtimeId: 'st-oppenheimer-hoy-noche',
+    amount: 65.00,
+    status: 'PENDING_PAYMENT',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: 'd5f401ad66646af2180942d791d8ce4862d795d23e287e98282d739acdccf8eb',
+    signature: 'd5f401ad66646af2180942d791d8ce4862d795d23e287e98282d739acdccf8eb',
+  },
+  {
+    ticketId: 'b1110015-2026-4000-8000-000000000015',
+    paymentIntentId: 'pi_demo_2026_15',
+    movieTitle: 'Dune: Parte Dos',
+    hallName: 'Sala 1 - IMAX Laser',
+    seatCodes: 'E-8',
+    seatId: 'E-8',
+    showtimeId: 'st-dune2-manana-noche',
+    amount: 55.00,
+    status: 'CONFIRMED',
+    purchasedAt: '2026-11-04T18:00:00Z',
+    issuedAt: '2026-11-04T18:00:00Z',
+    sig: '4acb018df34eb3ef467a02d77faff11c9bea94b30fc4c677fdd0dbfc75210ef5',
+    signature: '4acb018df34eb3ef467a02d77faff11c9bea94b30fc4c677fdd0dbfc75210ef5',
+  },
+];
 
 export const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(() => {
@@ -365,17 +594,26 @@ export const App: React.FC = () => {
             movieTitle: string;
             hallName: string;
             seatCodes: string;
+            seatId?: string;
+            showtimeId?: string;
             amount: number;
             paymentIntentId: string;
             purchasedAt: string;
+            issuedAt?: string;
             signature?: string;
             sig?: string;
+            status?: string;
           }> = [];
           try {
             const raw = localStorage.getItem('user_tickets_list');
-            if (raw) ticketsList = JSON.parse(raw);
+            if (raw) {
+              ticketsList = JSON.parse(raw);
+            } else {
+              ticketsList = DEFAULT_USER_TICKETS_SEED;
+              localStorage.setItem('user_tickets_list', JSON.stringify(DEFAULT_USER_TICKETS_SEED));
+            }
           } catch {
-            ticketsList = [];
+            ticketsList = DEFAULT_USER_TICKETS_SEED;
           }
 
           if (ticketsList.length === 0) {
@@ -414,8 +652,21 @@ export const App: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
+                      if (confirm('¿Deseas restaurar el historial predeterminado de 15 boletos?')) {
+                        localStorage.setItem('user_tickets_list', JSON.stringify(DEFAULT_USER_TICKETS_SEED));
+                        setView('empty');
+                      }
+                    }}
+                    className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-800 rounded-xl text-xs transition"
+                    title="Restaurar catálogo inicial"
+                  >
+                    🔄
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       if (confirm('¿Deseas vaciar tu historial de boletos de prueba?')) {
-                        localStorage.removeItem('user_tickets_list');
+                        localStorage.setItem('user_tickets_list', '[]');
                         setView('billboard');
                       }
                     }}
@@ -437,8 +688,20 @@ export const App: React.FC = () => {
                     <div>
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <span className="text-[10px] font-mono uppercase bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
-                            Válido • Acceso Sala
+                          <span
+                            className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
+                              t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
+                                ? 'bg-purple-950/80 text-purple-400 border border-purple-500/30'
+                                : t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE'
+                                ? 'bg-amber-950/80 text-amber-400 border border-amber-500/30'
+                                : 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30'
+                            }`}
+                          >
+                            {t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
+                              ? 'Ingreso Validado • Utilizado'
+                              : t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE'
+                              ? 'Reserva Pendiente'
+                              : 'Válido • Acceso Sala'}
                           </span>
                           <h3 className="text-lg font-bold text-white mt-2 group-hover:text-rose-400 transition">
                             {t.movieTitle}
@@ -465,9 +728,9 @@ export const App: React.FC = () => {
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">ID Transacción:</span>
+                          <span className="text-slate-400">ID Ticket:</span>
                           <span className="font-mono text-[10px] text-slate-400 truncate max-w-[150px]">
-                            {t.paymentIntentId}
+                            {t.ticketId || t.paymentIntentId}
                           </span>
                         </div>
                       </div>
@@ -479,6 +742,9 @@ export const App: React.FC = () => {
                         headerText="BOLETO OFICIAL"
                         payload={{
                           ticketId: t.ticketId || t.paymentIntentId || 'TKT-AUTH',
+                          seatId: t.seatId || t.seatCodes || 'C-8',
+                          showtimeId: t.showtimeId || 'ST-01',
+                          issuedAt: t.issuedAt || t.purchasedAt || new Date().toISOString(),
                           movieTitle: t.movieTitle,
                           hallName: t.hallName,
                           seats: t.seatCodes,
@@ -489,8 +755,20 @@ export const App: React.FC = () => {
                       />
                       <div className="w-full flex items-center justify-between pt-1">
                         <span className="text-[10px] font-mono text-slate-400">QR HMAC Activo</span>
-                        <span className="text-xs font-semibold text-emerald-400 bg-emerald-950/40 px-3 py-1 rounded-xl border border-emerald-500/30">
-                          Listo para Ingreso
+                        <span
+                          className={`text-xs font-semibold px-3 py-1 rounded-xl border ${
+                            t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
+                              ? 'text-purple-400 bg-purple-950/40 border-purple-500/30'
+                              : t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE'
+                              ? 'text-amber-400 bg-amber-950/40 border-amber-500/30'
+                              : 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30'
+                          }`}
+                        >
+                          {t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
+                            ? 'Boleto Escaneado'
+                            : t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE'
+                            ? 'Pendiente Pago'
+                            : 'Listo para Ingreso'}
                         </span>
                       </div>
                     </div>
@@ -506,6 +784,9 @@ export const App: React.FC = () => {
       <footer className="border-t border-slate-900 bg-slate-950/80 px-6 py-6 text-center text-xs text-slate-500">
         <p>Cine Bolivia © 2026 • Plataforma Cinematográfica Distribuida Multi-Microservicio</p>
       </footer>
+
+      {/* ASISTENTE VIRTUAL DE COMPRA CLIENT CHAT */}
+      <ClientChatBubble onNavigateToTickets={() => setView('empty')} />
 
       {/* MODAL DE AUTENTICACIÓN / REGISTRO */}
       {showAuthModal && (
