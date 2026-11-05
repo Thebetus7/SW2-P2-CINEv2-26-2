@@ -33,7 +33,7 @@ Estas tres garantías tienen precedencia absoluta sobre cualquier otro comportam
 El sistema SDD protege el repositorio mediante un **Candado de Disco de Doble Nivel**. Ningún comando previo a `/sdd-execution` (o `/sdd-hotfix`) puede alterar jamás el código fuente ni el entorno del proyecto.
 
 ### Nivel 1 — Bloqueo Total del Árbol de Código en Fases de Diseño y Gobernanza
-Durante la ejecución de `/sdd-init`, `/sdd-constitution-trial`, `/sdd-spec-strict`, `/sdd-spec-assisted`, `/sdd-spec-high`, `/sdd-spec-low`, `/sdd-spec-clarify`, `/sdd-planning`, `/sdd-task`, `/sdd-spec-anchored`, `/sdd-reverse`, `/sdd-audit` y `/sdd-adr`, el asistente tiene **TERMINANTEMENTE PROHIBIDO**:
+Durante la ejecución de `/sdd-init`, `/sdd-constitution-trial`, `/sdd-spec-strict`, `/sdd-spec-assisted`, `/sdd-spec-high`, `/sdd-spec-clarify`, `/sdd-planning`, `/sdd-task`, `/sdd-spec-anchored`, `/sdd-reverse`, `/sdd-audit` y `/sdd-adr`, el asistente tiene **TERMINANTEMENTE PROHIBIDO**:
 
 ```text
 - Crear, editar, sobrescribir, mover o eliminar archivos de código fuente de producción.
@@ -302,16 +302,15 @@ Ejemplos:
 
 ---
 
-## 2.2 Los 4 Modos de Especificación Funcional (`/sdd-spec-*`)
+## 2.2 Los 3 Modos de Especificación Funcional (`/sdd-spec-*`)
 
-Para adaptarse a cada necesidad y tipo de enunciado, el sistema ofrece cuatro flujos de especificación (todos sujetos al Candado de Disco Pre-Execution):
+Para adaptarse a cada necesidad y tipo de enunciado, el sistema ofrece tres flujos de especificación (todos sujetos al Candado de Disco Pre-Execution):
 
 | Comando | Propósito y Comportamiento de la IA | Cuándo Utilizarlo |
 | --- | --- | --- |
 | **`/sdd-spec-strict`** | **Fidelidad Estricta 1:1 (Zero-Deviation)**. La IA traduce y formaliza **exactamente** lo que el usuario escribió en su enunciado hacia la estructura formal de `spec.md` (HU, RB, EARS, Gherkin, Datos) sin agregar funcionalidades extra, sin recortar ni resumir ni una sola regla, y deteniéndose únicamente si hay una contradicción lógica directa o un vacío que impida escribir el requisito. | Cuando ya tienes muy claro lo que quieres, redactaste un enunciado detallado o normativo y quieres que la IA lo convierta en un `spec.md` riguroso al pie de la letra sin desviarse. |
 | **`/sdd-spec-assisted`** | **Co-Diseño Profundo e Inteligencia Contextual Expansiva**. La IA toma tu idea o enunciado (sea breve o extenso) y actúa como **Product Architect Senior**: analiza el dominio, deduce flujos implícitos, descubre casos borde ocultos, sugiere reglas de negocio complementarias, modela máquinas de estados completas y te propone mejoras y lógicas de implementación en una entrevista consultiva antes de redactar un `spec.md` exhaustivo. | Cuando quieres construir o expandir la especificación conversando con la IA para que use toda su inteligencia en proponer lógicas, prever problemas y enriquecer la feature. |
 | **`/sdd-spec-high`** | **Especificación Funcional Estándar de Alto Nivel**. Flujo clásico en 2 tiempos: audita la entrada frente a `constitution.md`, formula preguntas priorizadas (`P0`–`P9`) para eliminar toda ambigüedad funcional y genera el `spec.md` completo en estado `IN_REVIEW`. | Para features de negocio estándar donde buscas el ciclo formal de auditoría de ambigüedades y generación estructurada. |
-| **`/sdd-spec-low`** | **Especificación Ágil y Ligera**. Genera un `spec.md` directo pero completo en sus contratos de entrada/salida y criterios BDD de caja negra en una sola pasada tras validar que no existan bloqueos. | Para features pequeñas, ajustes acotados o CRUDs simples que no requieren una entrevista extensa pero sí trazabilidad SDD. |
 
 ---
 
@@ -495,7 +494,7 @@ Para garantizar que ningún diseño técnico se construya sobre supuestos no ver
 
 ```mermaid
 flowchart LR
-    SH["/sdd-spec-high<br/>/sdd-spec-strict<br/>/sdd-spec-assisted<br/>/sdd-spec-low"] -->|"Genera spec.md"| IR["Status: IN_REVIEW"]
+    SH["/sdd-spec-high<br/>/sdd-spec-strict<br/>/sdd-spec-assisted"] -->|"Genera spec.md"| IR["Status: IN_REVIEW"]
     IR -->|"Pasa a QA Gate"| SC["/sdd-spec-clarify"]
     SC -->|"Si hay dudas"| NC["Status: NEEDS_CLARIFICATION"]
     NC -->|"Usuario responde"| SC
@@ -595,14 +594,12 @@ A continuación se define la matriz completa de los **16 workflows oficiales** d
 | **2A. Spec Estricta** | `/sdd-spec-strict` | Enunciado detallado + `constitution.md` | `docs/specs/XX/spec.md` (`IN_REVIEW`) | Solo `spec.md` (en Tiempo 2) | Formalizar 1:1 el enunciado del usuario con fidelidad absoluta y cero recorte. |
 | **2B. Spec Asistida** | `/sdd-spec-assisted` | Idea / Enunciado + `constitution.md` | `docs/specs/XX/spec.md` (`IN_REVIEW`) | Solo `spec.md` (en Tiempo 2) | Co-diseñar con inteligencia contextual: la IA deduce casos borde, reglas y flujos. |
 | **2C. Spec Estándar** | `/sdd-spec-high` | Necesidad funcional + `constitution.md` | `docs/specs/XX/spec.md` (`IN_REVIEW`) | Solo `spec.md` (en Tiempo 2) | Especificación funcional completa mediante entrevista priorizada (`P0`–`P9`). |
-| **2D. Spec Ágil** | `/sdd-spec-low` | Cambio acotado / menor | `docs/specs/XX/spec.md` (`IN_REVIEW`) | Solo `spec.md` | Especificación rápida conservando contratos de E/S y criterios de caja negra. |
 | **3. QA Funcional** | `/sdd-spec-clarify` | `spec.md` (`IN_REVIEW`) | `spec.md` (`APPROVED`) | Solo `spec.md` (en Tiempo 2) | Gate de auditoría funcional (Test de Doble Implementación y Cero Ambigüedad). |
 | **4A. Decisión Arq.** | `/sdd-adr` | Duda arquitectónica crítica | `docs/adr/ADR-XX.md` | Solo `docs/adr/ADR-XX.md` | Evaluar pros, contras y benchmarks de decisiones técnicas de alto impacto. |
 | **4B. Planning** | `/sdd-planning` | `spec.md` (`APPROVED`) + `constitution.md` | `docs/specs/XX/plan.md` (`APPROVED`) | Solo `plan.md` (en Tiempo 2) | Diseñar arquitectura, árbol físico de archivos, contratos tipados y secuencias. |
 | **5. Tareas** | `/sdd-task` | `spec.md` + `plan.md` (`APPROVED`) | `docs/specs/XX/tasks.md` (`READY`) | Solo `tasks.md` | Descomponer en Vertical Slices atómicas con dependencias, Done y Task Progress. |
 | **6. Ejecución** | `/sdd-execution` | `tasks.md` (`READY`) | Código + Tests + `tasks.md` (`COMPLETED`) | **Código + Tests + `tasks.md`** | **Única fase principal autorizada a escribir código**, ejecutar pruebas y registrar evidencia. |
-| **7A. Evolución** | `/sdd-spec-anchored` | Ajuste / Cambio post-impl | Tríada `spec` + `plan` + `tasks` | Solo `docs/specs/XX/*.md` (en Tiempo 2) | Evolución en cascada: Estado Puro en Spec/Plan + nuevas tareas en cola en Tasks. |
-| **7B. Sub-comandos Anchored** | `/sdd-spec-anchored-spec`<br><br>`/sdd-spec-anchored-plan`<br><br>`/sdd-spec-anchored-task` | Cambio puntual en un artefacto de la tríada | Archivo `.md` respectivo actualizado | Solo el archivo `.md` respectivo en `docs/specs/XX/` | Actualización atómica individual de Spec, Plan o Tasks dentro de una iteración. |
+| **7. Evolución** | `/sdd-spec-anchored` | Ajuste / Cambio post-impl | Tríada `spec` + `plan` + `tasks` | Solo `docs/specs/XX/*.md` (en Tiempo 2) | Evolución en cascada: Estado Puro en Spec/Plan + nuevas tareas en cola en Tasks. |
 | **8A. Hotfix** | `/sdd-hotfix` | Bug puro de implementación | Código corregido + tarea `[FIX]` en `tasks.md` | **Código + Tests + `tasks.md`** | Corregir bug de código que no altera ni `spec.md` ni `plan.md`, con test de regresión. |
 | **8B. Refactor** | `/sdd-refactor` | Mejora técnica / Deuda técnica | `plan.md` + tareas `[REFACTOR]` en `tasks.md` | Solo `plan.md` y `tasks.md` (luego usa `/sdd-execution`) | Reestructurar diseño interno manteniendo `spec.md` y sus escenarios BDD como invariante intocable. |
 | **9A. Ing. Inversa** | `/sdd-reverse` | Código existente sin SDD | `constitution.md` o `spec.md` + `plan.md` | Solo `docs/` (100% Read-Only sobre el código) | Extraer por ingeniería inversa la documentación SDD fiel de un proyecto o módulo ya codificado. |
@@ -732,7 +729,7 @@ OBLIGATORIO usar siempre rutas relativas a la raíz del repositorio:
 
 ### 17.4 Catálogo y Flujo de Comandos SDD
 
-* Diagrama del flujo completo y tabla de los 16 comandos (`/sdd-init`, `/sdd-constitution-trial`, `/sdd-spec-strict`, `/sdd-spec-assisted`, `/sdd-spec-high`, `/sdd-spec-low`, `/sdd-spec-clarify`, `/sdd-adr`, `/sdd-planning`, `/sdd-task`, `/sdd-execution`, `/sdd-spec-anchored`, `/sdd-hotfix`, `/sdd-refactor`, `/sdd-reverse`, `/sdd-audit`, `/doc-deploy`).
+* Diagrama del flujo completo y tabla de los 16 comandos (`/sdd-init`, `/sdd-constitution-trial`, `/sdd-spec-strict`, `/sdd-spec-assisted`, `/sdd-spec-high`, `/sdd-spec-clarify`, `/sdd-adr`, `/sdd-planning`, `/sdd-task`, `/sdd-execution`, `/sdd-spec-anchored`, `/sdd-hotfix`, `/sdd-refactor`, `/sdd-reverse`, `/sdd-audit`, `/doc-deploy`).
 
 ### 17.5 Reglas de Autonomía y Calidad de Ingeniería
 

@@ -3,13 +3,13 @@ name: sdd-spec-assisted
 description: Workflow SDD para sdd-spec-assisted
 ---
 
-# SDD-Spec-Assisted: Especificación Funcional con Inteligencia Contextual y Co-Diseño
+# SDD-Spec-Assisted: Especificación Funcional con Inferencia Proactiva y Selección Asistida (Multi-Select)
 
-Este workflow es el **motor de expansión analítica del sistema SDD**. Su propósito es tomar una idea, necesidad o enunciado funcional inicial del usuario y someterlo a un proceso de **co-diseño profundo** donde la IA actúa como Arquitecto de Producto Senior.
+Este workflow es el **motor de expansión analítica del sistema SDD**. Su propósito es tomar una idea, necesidad o enunciado funcional inicial del usuario y someterlo a un proceso de **inferencia proactiva y selección asistida** donde la IA actúa como Arquitecto de Producto Senior.
 
-`/sdd-spec-assisted` **exige que la IA deduzca proactivamente los flujos ocultos, casos borde, estados vacíos, condiciones de carrera y excepciones funcionales**, proponiéndolos al usuario para blindar la feature antes de que llegue a diseño técnico.
+`/sdd-spec-assisted` **exige que la IA deduzca proactivamente los flujos ocultos, casos borde, estados vacíos, condiciones de carrera y excepciones funcionales**, presentándolos como **propuestas pre-seleccionadas en formato multi-select** para que el usuario acepte, descarte o modifique antes de generar la especificación.
 
-> **Objetivo:** Convertir una intención funcional ("Quiero que los clientes puedan devolver productos") en un **`docs/specs/XX-feature/spec.md` exhaustivo y a prueba de balas**, eliminando las lagunas de negocio mediante inferencia lógica guiada.
+> **Objetivo:** Convertir una intención funcional ("Quiero que los clientes puedan devolver productos") en un **`docs/specs/XX-feature/spec.md` exhaustivo y a prueba de balas**, eliminando las lagunas de negocio mediante inferencia masiva y selección controlada por el usuario.
 
 ---
 
@@ -17,7 +17,7 @@ Este workflow es el **motor de expansión analítica del sistema SDD**. Su prop�
 
 ## 0.1 Candado de Inmutabilidad en Disco (Pre-Execution Lock)
 * **Nivel 1 (Prohibición Total de Código):** La IA tiene terminantemente prohibido modificar, crear o eliminar archivos fuera de `docs/`. No se toca código fuente, ni tests, ni configuraciones.
-* **Nivel 2 (Tiempo 1 Read-Only):** Durante la fase de entrevista y co-diseño (Tiempo 1), la IA **no escribe en disco**. Todo el desglose de inferencias y preguntas se hace en la conversación. Solo se genera el `spec.md` cuando el usuario aprueba el alcance.
+* **Nivel 2 (Tiempo 1 Read-Only):** Durante la fase de inferencia y selección asistida (Tiempo 1), la IA **no escribe en disco**. Todas las propuestas e inferencias se presentan en la conversación mediante controles multi-select. Solo se genera el `spec.md` cuando el usuario confirma su selección final.
 
 ## 0.2 Zero-Loss Structuring (Cero Pérdida de Información Original)
 Aunque la IA agregue valor y expansiones, **no puede omitir, resumir destructivamente ni alterar las reglas originales** que el usuario haya establecido en su prompt. La inteligencia contextual de la IA suma y estructura, pero no borra la intención del humano.
@@ -46,50 +46,81 @@ flowchart TD
     In["Invocación /sdd-spec-assisted<br/>+ Idea/Enunciado"] --> Lock["Activar Candado de Disco<br/>(Modo 100% Read-Only)"]
     Lock --> Read["Leer docs/constitution.md"]
     Read --> Infer["Analizar enunciado + Aplicar las<br/>6 Dimensiones de Inferencia Funcional"]
-    Infer --> Propose["Tiempo 1: Presentar Mapa de Casos Ocultos<br/>+ Preguntas con Recomendaciones IA"]
-    Propose --> Stop["STOP (Esperar decisión del usuario)"]
-    Stop --> User["Usuario aprueba o ajusta propuestas"]
-    User --> Gen["Tiempo 2: Escribir spec.md con<br/>Densidad Total y Patrones EARS/Gherkin"]
+    Infer --> Present["Tiempo 1: Presentar 1 multi-select<br/>POR DIMENSIÓN con inferencias<br/>pre-marcadas como recomendadas"]
+    Present --> User["Usuario marca/desmarca y confirma"]
+    User --> Derive{"¿La IA detecta<br/>inferencias derivadas<br/>de las selecciones?"}
+    Derive -->|"Sí"| Round["Ronda adicional de multi-selects<br/>con nuevas inferencias derivadas"]
+    Round --> User
+    Derive -->|"No / Usuario dice 'listo'"| Gen["Tiempo 2: Escribir spec.md con<br/>TODAS las inferencias aceptadas<br/>+ Patrones EARS/Gherkin"]
     Gen --> Out["Status: IN_REVIEW → Sugerir /sdd-spec-clarify"]
 ```
 
 ---
 
-## 2.1 TIEMPO 1: Análisis, Inferencia y Propuestas Consultivas (Modo Read-Only)
+## 2.1 TIEMPO 1: Inferencia Proactiva y Selección Asistida Multi-Select (Modo Read-Only)
 
 **Paso 1: Leer el Marco Legal**
 La IA lee `docs/constitution.md` para entender los actores existentes, el lenguaje ubicuo y las reglas inquebrantables del dominio.
 
-**Paso 2: Generar la Matriz de Inferencia**
-La IA analiza la idea del usuario y mapea todo lo que falta funcionalmente utilizando las 6 Dimensiones.
+**Paso 2: Generar la Matriz de Inferencia Exhaustiva**
+La IA analiza la idea del usuario y mapea **todo lo que falta funcionalmente** utilizando las 6 Dimensiones. No existe límite en la cantidad de inferencias: la IA debe ser ambiciosa y deducir todo lo que pueda (10, 15, 20 inferencias si es necesario). Es más fácil para el usuario descartar lo que no aplica que inventar lo que falta.
 
-**Paso 3: Presentar el Interrogatorio Consultivo (El "Grill-Me" Inteligente)**
-La IA presenta al usuario un análisis estructurado. No hace preguntas vagas como *"¿Qué pasa si hay error?"*, sino preguntas de **arquitectura de producto**:
+**Paso 3: Presentar Propuestas Multi-Select por Dimensión**
+
+La IA **no pregunta, propone**. En lugar de formular preguntas abiertas, presenta directamente las inferencias como propuestas de comportamiento ya redactadas. El usuario selecciona cuáles incluir en la especificación.
+
+### Reglas del Formato Multi-Select
+
+1. **Una pregunta multi-select por cada Dimensión** (hasta 6 multi-selects): La IA agrupa sus inferencias por dimensión para que el usuario entienda el contexto de cada grupo.
+2. **Pre-selección de recomendadas**: Todas las inferencias que la IA considere esenciales deben venir **pre-marcadas como seleccionadas** (`(Recommended)`). El usuario solo desmarca lo que no quiere.
+3. **Opciones cortas y directas**: Cada opción del multi-select debe ser concisa y autoexplicativa. Sin justificaciones extensas. El usuario confía en la recomendación de la IA.
+4. **Sin límite de cantidad por dimensión**: Si una dimensión genera 5 inferencias, se presentan 5. Si genera 1, se presenta 1. Si una dimensión no aplica, se omite.
 
 ```text
-INCORRECTO (Pasivo):
-- ¿Qué estados tendrá la reserva?
-- ¿Qué pasa si falla el pago?
+INCORRECTO (Grill-Me Pasivo — Modelo Obsoleto):
+  - ¿Qué estados tendrá la reserva?
+  - ¿Qué pasa si falla el pago?
+  - A) Opción A (Recomendada - porque...)
+  - B) Opción B
 
-CORRECTO (Activo / Co-diseño):
-- Detección de Inferencia (Concurrencia): ¿Qué ocurre si dos clientes intentan
-  reservar el mismo asiento al mismo tiempo?
-  - A) Bloquear el asiento temporalmente al iniciar el checkout (Recomendado).
-  - B) Permitir avanzar a ambos y rechazar al segundo en la confirmación final.
+CORRECTO (Multi-Select Proactivo — Modelo Actual):
+  La IA presenta directamente una pregunta multi-select:
 
-- Detección de Inferencia (Transición de Estado): Si una reserva es cancelada,
-  ¿el cliente puede restaurarla o debe iniciar un flujo nuevo?
-  - A) Requiere flujo nuevo para recalcular tarifas (Recomendado).
-  - B) Se puede restaurar si hay disponibilidad.
+  Dimensión: Transiciones de Estado
+  Seleccione las inferencias que aplican:
+  ☑ (Recommended) La reserva inicia en estado "Pendiente" y transiciona a "Confirmada" tras el pago
+  ☑ (Recommended) Una reserva cancelada no puede restaurarse; requiere flujo nuevo
+  ☑ (Recommended) Prohibido confirmar una reserva ya cancelada o expirada
+  ☐ Una reserva pendiente expira automáticamente tras 15 minutos sin pago
 ```
 
-La IA formula un máximo de **3 a 5 preguntas agrupadas de alto impacto** y se detiene (`STOP`).
+### Rondas Iterativas de Refinamiento
+
+Tras la primera ronda de multi-selects, la IA evalúa si las selecciones del usuario generan **inferencias derivadas** (consecuencias lógicas de lo aceptado). Si las detecta:
+
+1. Presenta una **ronda adicional de multi-selects** con las nuevas inferencias derivadas.
+2. El ciclo se repite hasta que:
+   * La IA declara que no tiene más inferencias derivadas, o
+   * El usuario indica explícitamente "listo, genera el spec.md".
+
+```text
+Ejemplo de Ronda Derivada:
+  El usuario aceptó "reserva cancelada no puede restaurarse" →
+  La IA infiere y presenta:
+  ☑ (Recommended) Al cancelar, los asientos reservados se liberan inmediatamente al inventario
+  ☑ (Recommended) Se envía notificación al usuario confirmando la cancelación
+  ☐ Se guarda historial de cancelaciones para análisis de métricas
+```
+
+### Dimensiones Omitidas
+
+Si alguna de las 6 dimensiones no genera inferencias relevantes para la feature analizada, la IA la omite sin presentar un multi-select vacío. Solo se muestran las dimensiones con inferencias detectadas.
 
 ---
 
 ## 2.2 TIEMPO 2: Generación del Artefacto (`spec.md`)
 
-Tras la confirmación del usuario, la IA consolida toda la información (la inicial + las deducciones aprobadas) y genera el archivo `docs/specs/XX-feature/spec.md`.
+Tras la confirmación del usuario (todas las rondas de multi-select cerradas), la IA consolida toda la información (la intención original del usuario + todas las inferencias aceptadas en las rondas de selección) y genera el archivo `docs/specs/XX-feature/spec.md`.
 
 ---
 
@@ -206,11 +237,11 @@ Then [El sistema impide la acción y comunica X]
 
 # 5. Plantillas de Salida en Consola
 
-## 5.1 Salida en Tiempo 1 (Interrogatorio de Co-Diseño)
+## 5.1 Salida en Tiempo 1 (Inferencia Proactiva Multi-Select)
 
 ```text
 ===================================================================
-🧠 SDD-SPEC-ASSISTED — ANÁLISIS E INFERENCIA ACTIVA (READ-ONLY)
+🧠 SDD-SPEC-ASSISTED — INFERENCIA PROACTIVA Y SELECCIÓN ASISTIDA (READ-ONLY)
 ===================================================================
 Estado:
   NEEDS_CLARIFICATION (Modo Diseño - Cero modificaciones en disco)
@@ -219,21 +250,32 @@ Estado:
    - Intención detectada: [Resumen conciso del objetivo]
    - Actores identificados: [Actores]
 
-2. Análisis de Inteligencia Contextual (Vacíos Detectados):
-   He proyectado tu idea contra los flujos lógicos del sistema y he detectado
-   casos borde que necesitamos definir antes de construir el spec.md:
+2. Inferencias Detectadas por Dimensión:
+   A continuación presento mis inferencias agrupadas por dimensión.
+   Todas las recomendadas vienen pre-seleccionadas.
+   Desmarca las que no aplican a tu caso.
 
-   [Inferencia 1 - Ej. Manejo de Estado Vacío o Concurrencia]
-   - A) [Solución propuesta A] (Recomendada - [Por qué])
-   - B) [Solución alternativa B]
+   [Se presentan multi-selects interactivos por cada dimensión aplicable]
 
-   [Inferencia 2 - Ej. Fallo de Dependencia o Limite de Negocio]
-   - A) [Solución propuesta A] (Recomendada - [Por qué])
-   - B) [Solución alternativa B]
-
-Indícame tus elecciones o si deseas modificar alguna regla para generar el spec.md.
+   Ronda: [1 | N] (Si hay inferencias derivadas, se presentará una ronda adicional)
 ===================================================================
 ```
+
+> **Nota operativa para la IA:** Los multi-selects deben presentarse utilizando la herramienta `ask_question` con `is_multi_select: true`, generando una pregunta por cada dimensión que tenga inferencias. Las opciones recomendadas deben llevar el prefijo `(Recommended)` para que aparezcan pre-seleccionadas. Ejemplo de invocación:
+>
+> ```text
+> Pregunta 1 de N — Dimensión: Estados Vacíos (Zero-State)
+> Opciones (multi-select):
+>   ☑ (Recommended) Si la lista no tiene registros, mostrar mensaje con botón de creación rápida
+>   ☑ (Recommended) Si el catálogo padre está vacío, permitir crear el primer registro al vuelo
+>   ☐ Mostrar ilustración SVG personalizada en el estado vacío
+>
+> Pregunta 2 de N — Dimensión: Casos Borde y Límites
+> Opciones (multi-select):
+>   ☑ (Recommended) Bloquear envío del formulario si cantidad = 0
+>   ☑ (Recommended) Truncar texto a 255 caracteres con contador visible
+>   ☑ (Recommended) Protección anti-doble submit con debounce funcional
+> ```
 
 ## 5.2 Salida en Tiempo 2 (Generación Final)
 
@@ -264,4 +306,4 @@ Siguiente paso requerido:
 
 # 6. Regla Maestra de `/sdd-spec-assisted`
 
-> **Tu trabajo principal no es redactar Markdown rápido, sino pensar profundamente sobre el dominio del software. Encuentra las fallas lógicas en la idea del usuario, propón arquitecturas de producto robustas en el Tiempo 1, y formalízalas con rigor implacable (EARS + Gherkin) en el Tiempo 2.**
+> **Tu trabajo principal no es redactar Markdown rápido, sino pensar profundamente sobre el dominio del software. Infiere de forma ambiciosa y exhaustiva todo lo que el usuario no mencionó, presenta tus inferencias como propuestas pre-seleccionadas agrupadas por dimensión, y tras la confirmación del usuario, formalízalas con rigor implacable (EARS + Gherkin) en el Tiempo 2. Es más fácil para el usuario descartar lo que no aplica que inventar lo que falta.**

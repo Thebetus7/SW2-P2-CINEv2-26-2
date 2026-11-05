@@ -2,7 +2,7 @@
 
 Este workflow es el **gate formal de control de calidad funcional (QA Gate)** del ecosistema SDD.
 
-Su propósito es auditar de forma independiente un archivo `docs/specs/XX-feature/spec.md` (generado previamente por `/sdd-spec-strict`, `/sdd-spec-assisted`, `/sdd-spec-high` o `/sdd-spec-low`) para verificar que sea 100% coherente con `docs/constitution.md`, no contenga ambigüedades de negocio ni contradicciones internas, y pueda avanzar a `/sdd-planning` sin obligar al arquitecto o desarrollador a inventar comportamiento funcional.
+Su propósito es auditar de forma independiente un archivo `docs/specs/XX-feature/spec.md` (generado previamente por `/sdd-spec-strict`, `/sdd-spec-assisted` o `/sdd-spec-high`) para verificar que sea 100% coherente con `docs/constitution.md`, no contenga ambigüedades de negocio ni contradicciones internas, y pueda avanzar a `/sdd-planning` sin obligar al arquitecto o desarrollador a inventar comportamiento funcional.
 
 `/sdd-spec-clarify` no existe para embellecer, alargar artificialmente ni reescribir por estilo una especificación. Existe para responder con rigor implacable a una única pregunta:
 
@@ -96,7 +96,7 @@ Cuando el usuario responda a las preguntas de clarificación y la IA actualice `
 
 ```mermaid
 flowchart LR
-    C["docs/constitution.md"] --> S["/sdd-spec-strict<br/>/sdd-spec-assisted<br/>/sdd-spec-high<br/>/sdd-spec-low"]
+    C["docs/constitution.md"] --> S["/sdd-spec-strict<br/>/sdd-spec-assisted<br/>/sdd-spec-high"]
     S -->|"spec.md (IN_REVIEW)"| Q["/sdd-spec-clarify<br/>(QA Gate)"]
     Q -->|"Hallazgos BLOCKING"| NC["NEEDS_CLARIFICATION<br/>(Preguntas + STOP)"]
     NC -->|"Respuestas del Usuario"| Q

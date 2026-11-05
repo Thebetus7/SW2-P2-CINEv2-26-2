@@ -77,12 +77,26 @@ La IA tiene **prohibido resumir o simplificar artificialmente el diseño técnic
 
 ## 0.4 Inteligencia Arquitectónica Activa (Copiloto Técnico Senior)
 
-La IA debe aplicar razonamiento profundo de ingeniería para prever y resolver problemas técnicos que el usuario no necesita especificar en el negocio:
+La IA debe aplicar razonamiento profundo de ingeniería para prever y resolver problemas técnicos que el usuario no necesita especificar en el negocio, formulándose preguntas contextuales en dos grandes bloques:
 
+### A. Ejes de Backend, Datos y Concurrencia
 1. **Concurrencia y Atomicidad**: Determinar qué operaciones requieren transacciones de base de datos (`BEGIN / COMMIT / ROLLBACK`), bloqueos pesimistas/optimistas o idempotencia (ej. evitar doble cobro o descuento duplicado de stock).
 2. **Integridad del Grafo de Datos**: Definir índices para consultas frecuentes, claves únicas compuestas, políticas de borrado foráneo (`RESTRICT`, `CASCADE`, `SET NULL`) y prevención de estados huérfanos.
 3. **Resiliencia de I/O y Ciclo de Vida**: Diseñar liberación limpia de recursos (streams, cámaras, sockets, timers, listeners), manejo de memoria, timeouts explícitos y degradación elegante cuando falla una red o API externa.
 4. **Mapeo Exacto de Errores**: Traducir cada error observable del `spec.md` en una clase/tipo de fallo técnico específico dentro del dominio, prohibiendo excepciones genéricas sin control.
+
+### B. Ejes de Presentación, Navegación y Experiencia de Usuario (Inferencia Contextual)
+5. **Grafo de Navegación, Router e Historial**:
+   - *¿Cómo se conectan las vistas y cómo opera el historial?* Tras una acción exitosa (crear, editar, eliminar), ¿a qué ruta exacta redirige? ¿Cómo responde el botón "Atrás" del navegador o la barra superior (volver sin dejar pantallas desiertas ni perder estado previo)?
+   - *¿Qué ocurre ante Deep Linking y cambios sin guardar?* Si el usuario ingresa por URL directa, ¿la ruta se resuelve o redirige limpiamente? Si hay un formulario sucio (*dirty state*), ¿se previene la salida accidental con una advertencia interactiva?
+6. **Composición de Vistas, Layouts y Responsividad**:
+   - *¿Qué contenedor estructural envuelve cada vista?* ¿Hereda de `AppLayout` (privado) o `GuestLayout` (público)? ¿Se divide en subcomponentes atómicos (filtros, tabla, modales, barras) en lugar de una vista monolítica?
+   - *¿Cómo responde al viewport?* Si la pantalla es móvil (`< 768px`), ¿la tabla colapsa a tarjetas verticales (*card view*), o el menú se adapta a la barra inferior táctil (*Bottom Navigation Bar*)?
+7. **Feedback Visual, Micro-Interacciones y Estados de Carga**:
+   - *¿Qué percibe el usuario en cada micro-interacción?* ¿Existen esqueletos de carga (*skeleton loaders*) durante las peticiones iniciales? ¿Los botones de envío activan estado de procesamiento (`isSubmitting`) con bloqueo anti-doble submit?
+   - *¿Cómo se resuelven los estados vacíos (*Zero-State*)?* Si la consulta devuelve 0 registros, ¿se ofrece un estado vacío claro con botón directo de creación en lugar de una tabla desierta?
+8. **Visibilidad Condicional y Control de Acceso en UI**:
+   - *¿Qué elementos de interacción se exponen según el rol?* Si el actor no tiene permisos para editar o eliminar, ¿los botones de acción se ocultan o deshabilitan visualmente en la interfaz, complementando la protección de los endpoints del backend?
 
 ---
 
@@ -199,7 +213,17 @@ En la sección de contratos de `plan.md`, la IA debe escribir las definiciones d
 
 * *(Si la feature no involucra selección de relaciones, se documenta únicamente la garantía de estado vacío o inicial correspondiente).*
 
-## 3.4 Diseño de Vertical Slices para Alimentar `/sdd-task`
+## 3.4 Diseño del Grafo de Navegación y Rutas (Frontend / UI — Cuando aplique)
+
+Si el módulo involucra pantallas, vistas web o móviles, el plan técnico **debe formalizar el grafo de navegación** para evitar flujos huérfanos o callejones sin salida:
+
+* **Rutas Canónicas**: Lista exacta de URLs o rutas nombradas (ej. `/ventas`, `/ventas/nueva`, `/ventas/:id/editar`).
+* **Transiciones de Pantalla**: Definir explícitamente el destino tras cada acción:
+  * *Éxito al guardar/crear*: ¿A qué ruta redirige? (ej. redirección al listado o al detalle recién creado).
+  * *Acción de Cancelar o Botón "Atrás"*: ¿A qué vista previa retorna? Garantizar que el historial del navegador (`push` vs `replace` vs `back`) no deje formularios vacíos ni ciclos infinitos.
+  * *Deep Linking y Estado no Guardado*: Comportamiento al cargar la URL directa y guarda preventiva ante cambios sin guardar (*Dirty State Warning*).
+
+## 3.5 Diseño de Vertical Slices para Alimentar `/sdd-task`
 
 Para que `/sdd-task` no tenga que inventar cómo partir el trabajo, `plan.md` debe incluir una sección que agrupe los componentes técnicos (`PLAN-XX`) en **Vertical Slices funcionales de punta a punta**:
 
@@ -357,6 +381,18 @@ sequenceDiagram
     end
 ```
 
+### 5.2 Grafo de Navegación y Transiciones de Pantalla (Frontend / UI — Si aplica)
+
+```mermaid
+flowchart LR
+    Listado["Vista: Listado (/modulo)"] -->|"Acción: 'Nuevo'"| FormCrear["Vista/Modal: Crear (/modulo/nuevo)"]
+    FormCrear -->|"Guardado exitoso"| Listado
+    FormCrear -->|"Cancelar / Botón Atrás"| Listado
+    Listado -->|"Acción: 'Editar'"| FormEditar["Vista/Modal: Editar (/modulo/:id)"]
+    FormEditar -->|"Actualización exitosa"| Listado
+    FormEditar -->|"Cancelar / Volver"| Listado
+```
+
 ---
 
 ## 6. Garantías de Runtime, Relaciones y Ciclo de Vida Operativo
@@ -372,6 +408,11 @@ sequenceDiagram
 
 3. **Seguridad y Autorización Técnica**:
 * *Guards / Middlewares / Policies*: [Dónde y cómo se valida técnicamente que solo el actor autorizado en `spec.md` pueda invocar la operación].
+
+4. **Comportamiento de Navegación, Router e Historial del Navegador (Si aplica a UI)**:
+* *Redirecciones post-acción*: [Rutas canónicas de destino tras completar exitosamente creación, edición o eliminación].
+* *Comportamiento del botón Atrás y cancelación*: [Estrategia de navegación de retorno sin dejar formularios desiertos, preservación de filtros en listados y advertencia preventiva ante cambios sin guardar (*Dirty State Warning*)].
+* *Deep Linking y Guards de Ruta*: [Resolución de acceso directo por URL, precarga asíncrona y redirección elegante si la entidad no existe o el rol no tiene permisos].
 
 ---
 
@@ -431,6 +472,7 @@ Antes de finalizar `/sdd-planning`, la IA debe verificar cada uno de estos punto
 [ ] 6. INTEGRIDAD Y CONCURRENCIA: ¿Están definidas las políticas de claves foráneas, transacciones y manejo de estados vacíos?
 [ ] 7. VERTICAL SLICES DEFINIDAS: ¿La Sección 7 deja listos los cortes verticales para que /sdd-task pueda descomponer sin fricción?
 [ ] 8. TRAZABILIDAD 100%: ¿Todos los RF, RB y SC del spec.md aparecen cubiertos en la Matriz de Trazabilidad (Sección 9)?
+[ ] 9. NAVEGACIÓN Y EXPERIENCIA UI: Si el módulo incluye interfaz/vistas, ¿están formalizadas las rutas, transiciones de pantalla, comportamiento del botón atrás, estados vacíos y feedback visual sin cabos sueltos?
 ```
 
 ---
