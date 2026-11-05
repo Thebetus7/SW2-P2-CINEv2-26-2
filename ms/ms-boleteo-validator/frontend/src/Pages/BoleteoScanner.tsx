@@ -269,23 +269,19 @@ export const BoleteoScanner: React.FC<BoleteoScannerProps> = ({
           </div>
         </div>
 
-        {/* CENTRO: [Módulos] */}
+        {/* CENTRO: [Módulos exclusivos según rol] */}
         <nav className="hidden md:flex items-center gap-2 text-sm font-medium">
           <span className="px-3.5 py-1.5 rounded-xl bg-slate-800 text-rose-400 font-bold border border-rose-500/30 shadow-sm flex items-center gap-1.5">
             🔍 Escaneo en Puerta
           </span>
-          <a
-            href="http://localhost:5174"
-            className="px-3.5 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5"
-          >
-            📽️ Cartelera (:5174)
-          </a>
-          <a
-            href="http://localhost:4200"
-            className="px-3.5 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5"
-          >
-            ⚙️ Admin Core (:4200)
-          </a>
+          {displayRole === 'ADMIN' && (
+            <a
+              href="http://localhost:4200"
+              className="px-3.5 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5"
+            >
+              ⚙️ Admin Core (:4200)
+            </a>
+          )}
         </nav>
 
         {/* DERECHA: @usuario (Nombre/Rol) | Cerrar Sesión */}

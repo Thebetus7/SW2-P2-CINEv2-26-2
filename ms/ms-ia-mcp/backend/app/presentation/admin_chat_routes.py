@@ -202,10 +202,17 @@ async def process_admin_chat(request: AdminChatRequest) -> AdminChatResponse:
                 f"Recomendación: {pred_data.get('prescriptiveRecommendation')}"
             )
 
+    # Si la consulta es un saludo o conversación casual, no enviamos componentes visuales de telemetría/ML
+    is_casual_conversation = any(
+        w in user_query.lower() for w in ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches", "saludos", "que tal", "quien eres"]
+    ) and not any(
+        k in user_query.lower() for k in ["aforo", "sala", "fila", "taquilla", "cola", "excel", "reporte", "metric", "kpi", "predic"]
+    )
+
     return AdminChatResponse(
         reply=reply_text,
         excelReport=excel_meta,
-        metricsSummary=metrics_summary,
-        predictiveMetrics=pred_data,
+        metricsSummary=None if is_casual_conversation else metrics_summary,
+        predictiveMetrics=None if is_casual_conversation else pred_data,
         circuitBreakerState=grok_res.get("circuit_breaker", "CLOSED"),
     )

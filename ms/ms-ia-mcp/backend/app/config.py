@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = Field(
         default_factory=lambda: os.getenv("GROQ_API_KEY", "mock_groq_api_key_cinev2")
     )
-    GROK_MODEL: str = "grok-beta"
+    GROK_MODEL: str = "qwen/qwen3.8-27b"
     GROK_BASE_URL: str = "https://api.groq.com/openai/v1"
 
     # Microservicios Integrados
