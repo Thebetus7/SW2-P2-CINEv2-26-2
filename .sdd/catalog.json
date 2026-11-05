@@ -1,0 +1,13 @@
+[
+  {"name":"sdd-init","description":"Inicializar gobernanza SDD y mapa del proyecto en AGENTS.md"},
+  {"name":"sdd-adopt","description":"Adoptar SDD en código existente con baseline de contratos y riesgos"},
+  {"name":"sdd-constitution-trial","description":"Definir o enmendar visión e invariantes globales del proyecto"},
+  {"name":"sdd-spec-assisted","description":"Especificar una feature con inferencia proactiva y selección asistida"},
+  {"name":"sdd-spec-clarify","description":"Auditar ambigüedades funcionales y aprobar la especificación"},
+  {"name":"sdd-plan-tecnico","description":"Diseñar arquitectura contratos e interfaz de una feature aprobada"},
+  {"name":"sdd-task","description":"Descomponer un plan aprobado en tareas verificables por flujo"},
+  {"name":"sdd-execution","description":"Implementar tareas SDD y registrar evidencia funcional y visual"},
+  {"name":"sdd-spec-anchored","description":"Evolucionar un módulo con análisis de impacto y revisión en cascada"},
+  {"name":"extended","description":"Definir dirección visual y revisar experiencia de usuario e integración"},
+  {"name":"doc-deploy","description":"Documentar despliegue y operaciones para la infraestructura real"}
+]

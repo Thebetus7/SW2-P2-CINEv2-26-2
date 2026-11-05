@@ -157,3 +157,11 @@ flowchart TD
 8. **Invariante 8 — Corrección en el Nivel de Origen:** Cualquier desviación o ambigüedad se enmienda en el artefacto donde se tomó la decisión original.
 9. **Invariante 9 — Desacoplamiento QUÉ vs. CÓMO:** `spec.md` especifica comportamiento funcional de caja negra; `plan.md` diseña la arquitectura técnica y la estructura física de archivos.
 
+<!-- sdd:instructions:start -->
+## SDD
+
+Al ejecutar SDD, leer `.sdd/core.md` y solo el workflow activo en
+`.sdd/workflows/`. Aplicar la matriz de autonomía y verificar tareas con
+`python3 .sdd/tools/sdd_validate.py`. El núcleo rige los comandos SDD,
+sin reemplazar las políticas particulares del proyecto.
+<!-- sdd:instructions:end -->
