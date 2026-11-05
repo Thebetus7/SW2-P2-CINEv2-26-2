@@ -58,6 +58,29 @@ MCP_TOOLS_MANIFEST: List[Dict[str, Any]] = [
             "required": ["anomaly_type", "severity_level", "raw_mcp_data"],
         },
     },
+    {
+        "name": "generate_excel_report",
+        "description": (
+            "Genera un informe integral descargable en formato Excel (.xlsx) con estilos profesionales, "
+            "incluyendo Resumen Ejecutivo de aforo, desglose de Ocupación por Función y telemetría de Flujo de Filas."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "report_title": {
+                    "type": "string",
+                    "description": "Título descriptivo del reporte ejecutivo",
+                    "default": "Reporte Ejecutivo de Ocupación y Taquilla",
+                },
+                "zone": {
+                    "type": "string",
+                    "description": "Zona monitoreada del complejo cinematográfico",
+                    "default": "TAQUILLA_PRINCIPAL",
+                },
+            },
+            "required": [],
+        },
+    },
 ]
 
 

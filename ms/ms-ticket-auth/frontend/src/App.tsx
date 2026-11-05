@@ -304,6 +304,7 @@ export const App: React.FC = () => {
 
                 <button
                   onClick={handleLogout}
+                  data-testid="logout-button"
                   className="text-xs px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/90 hover:bg-rose-950 text-rose-300 hover:text-rose-100 border border-rose-900/40 hover:border-rose-700 transition flex items-center gap-1.5 shadow-sm"
                   title="Cerrar sesión actual"
                 >

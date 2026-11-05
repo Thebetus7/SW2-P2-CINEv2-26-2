@@ -62,11 +62,12 @@ def test_manifest():
     from app.mcp.manifest import get_manifest_tools, get_tool_schema
 
     tools = get_manifest_tools()
-    assert len(tools) == 3
+    assert len(tools) == 4
     names = [t["name"] for t in tools]
     assert "get_occupancy_metrics" in names
     assert "get_line_analytics" in names
     assert "trigger_n8n_contingency" in names
+    assert "generate_excel_report" in names
 
     # Schema validaciones
     occ_schema = get_tool_schema("get_occupancy_metrics")

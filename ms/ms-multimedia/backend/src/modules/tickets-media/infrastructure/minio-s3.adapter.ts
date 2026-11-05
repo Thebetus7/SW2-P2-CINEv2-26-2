@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { s3Client, getAwsLocalConfig } from '../../../config/aws-local.config';
 
@@ -8,7 +8,7 @@ export class MinioS3Adapter {
   private readonly client: S3Client;
   private readonly s3Endpoint: string;
 
-  constructor(customClient?: S3Client) {
+  constructor(@Optional() customClient?: S3Client) {
     this.client = customClient || s3Client;
     const config = getAwsLocalConfig();
     this.s3Endpoint = config.s3Endpoint;

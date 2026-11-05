@@ -5,8 +5,9 @@ import { CinemaHall } from '../domain/cinema-hall.entity';
 
 export interface UpdateSeatTypeInput {
   seatId: string;
-  seatType: SeatType | string;
+  seatType?: SeatType | string;
   isActive?: boolean;
+  visibleCode?: string;
 }
 
 @Injectable()
@@ -23,11 +24,16 @@ export class UpdateSeatTypeUseCase {
         throw new NotFoundException(`Asiento con ID ${input.seatId} no encontrado`);
       }
 
-      seat.seatType = input.seatType;
+      if (input.seatType !== undefined) {
+        seat.seatType = input.seatType;
+      }
       if (input.isActive !== undefined) {
         seat.isActive = input.isActive;
       }
-      if (input.seatType === SeatType.PASILLO_BLOQUEADO) {
+      if (input.visibleCode !== undefined && input.visibleCode.trim() !== '') {
+        seat.visibleCode = input.visibleCode.trim();
+      }
+      if (seat.seatType === SeatType.PASILLO_BLOQUEADO) {
         seat.isActive = false;
       }
 

@@ -4,8 +4,8 @@
 
 | Métrica | Cantidad |
 | :--- | ---: |
-| Total de tareas | 23 |
-| Tareas realizadas | 23 |
+| Total de tareas | 28 |
+| Tareas realizadas | 28 |
 | Tareas por realizar | 0 |
 | Tareas bloqueadas | 0 |
 | Tareas en progreso | 0 |
@@ -47,6 +47,13 @@
 - [x] `T4.2` `[IMPL]` Frontend React: Consola de auditoría `AuditMonitorConsole.tsx` con botón demo y visualizador de logs.
 - [x] `T4.3` `[TEST]` Pruebas BDD de interacción con el Chatbot de compra (`SC-04.3.1`).
 - [x] `T4.4` `[VERIFY]` Verificación consolidada: pytest en backend, npm test en frontend, linters y validación Docker.
+
+### Fase 5: Reporte Excel Dinámico MCP, Chat Admin GrokCloud y Componentes Visuales (HU-12)
+- [x] `T5.1` `[IMPL]` Herramienta semántica MCP `generate_excel_report` con openpyxl (`app/mcp/tools/excel_report_tool.py`).
+- [x] `T5.2` `[IMPL]` Endpoint de descarga directa de planillas Excel `GET /api/v1/reports/download/{filename}`.
+- [x] `T5.3` `[IMPL]` Endpoint administrativo `POST /api/v1/admin/chat` integrando GrokCloud y telemetría de BD.
+- [x] `T5.4` `[TEST]` Pruebas unitarias de reporte Excel y descarga (`tests/test_excel_report.py`).
+- [x] `T5.5` `[UI]` Rediseño visual en Angular con Dashboard de KPIs interactivo y tarjeta de descarga Excel.
 
 ---
 
@@ -461,3 +468,49 @@ flowchart TD
 * **Evidence:**
   * Backend: `pytest` -> `34 passed in 40.95s`
   * Frontend: `npm test` -> `3 passed (3) in 8.08s` | `npm run build` -> `✓ built in 13.02s`
+
+---
+
+### Fase 5: Reporte Excel Dinámico MCP, Chat Admin GrokCloud y Componentes Visuales (HU-12)
+
+#### [x] T5.1 [IMPL] Herramienta Semántica MCP `generate_excel_report`
+* **Status:** COMPLETED
+* **Traceability:** `HU-12`, `MCP-TOOL-04`
+* **Files:**
+  * `[CREATE]` `ms/ms-ia-mcp/backend/app/mcp/tools/excel_report_tool.py`
+  * `[UPDATE]` `ms/ms-ia-mcp/backend/app/mcp/manifest.py`
+  * `[UPDATE]` `ms/ms-ia-mcp/backend/main.py`
+* **Work:** Creación de herramienta con `openpyxl` que compila libros con estilos corporativos y 3 pestañas: *Resumen Ejecutivo*, *Ocupación por Función* y *Flujo de Filas*.
+* **Evidence:** Registrada en manifiesto MCP y probada con `pytest tests/test_excel_report.py`.
+
+#### [x] T5.2 [IMPL] Endpoint de Descarga Directa de Reportes Excel
+* **Status:** COMPLETED
+* **Traceability:** `HU-12`, `REST-API-03`
+* **Files:**
+  * `[CREATE]` `ms/ms-ia-mcp/backend/app/presentation/admin_chat_routes.py`
+* **Work:** Endpoint `GET /api/v1/reports/download/{filename}` retornando `FileResponse` con `Content-Disposition: attachment` y protección anti Path-Traversal.
+* **Evidence:** `HTTP 200 OK` verificado con `tests/test_excel_report.py`.
+
+#### [x] T5.3 [IMPL] Endpoint de Chat Administrativo con GrokCloud y Telemetría Viva
+* **Status:** COMPLETED
+* **Traceability:** `HU-12`
+* **Files:**
+  * `[UPDATE]` `ms/ms-ia-mcp/backend/app/presentation/admin_chat_routes.py`
+* **Work:** Endpoint `POST /api/v1/admin/chat` integrando `GrokClient`, herramientas MCP y retorno de métricas operativas (`metricsSummary`).
+* **Evidence:** `tests/test_excel_report.py` pasando con 5/5 pruebas.
+
+#### [x] T5.4 [TEST] Pruebas Unitarias de Generación Excel y Chat Admin
+* **Status:** COMPLETED
+* **Files:**
+  * `[CREATE]` `ms/ms-ia-mcp/backend/tests/test_excel_report.py`
+* **Work:** Pruebas automatizadas de openpyxl, registro de herramienta MCP, descarga HTTP y respuesta de chat con y sin solicitud de Excel.
+* **Evidence:** `pytest ms/ms-ia-mcp/backend/tests` -> `39 passed in 68.15s`.
+
+#### [x] T5.5 [UI] Rediseño Visual en Angular con Dashboard de KPIs y Tarjeta Excel
+* **Status:** COMPLETED
+* **Files:**
+  * `[CREATE]` `ms/ms-cinema-core/frontend/src/app/features/local-ai/services/admin-ai-chat.service.ts`
+  * `[UPDATE]` `ms/ms-cinema-core/frontend/src/app/features/local-ai/components/local-ai-chat.component.ts`
+  * `[CREATE]` `ms/ms-cinema-core/frontend/src/tests/AdminAiChat.spec.ts`
+* **Work:** Eliminación de asteriscos mediante parser seguro, matriz visual de 4 tarjetas de KPIs con barra de progreso de aforo y tarjeta estilizada de descarga de archivo `.xlsx`.
+* **Evidence:** `npm test -- src/tests/AdminAiChat.spec.ts` -> `4 passed (4)` | `ng build` -> `Compilación exitosa (0 errores)`.

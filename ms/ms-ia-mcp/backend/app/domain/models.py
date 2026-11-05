@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class SeverityLevel(str, Enum):
@@ -15,20 +15,26 @@ class AnomalyType(str, Enum):
 
 
 class UnderOccupiedShowtime(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     showtimeId: str
     movieTitle: str
-    roomName: str
-    startTime: str
-    capacity: int
-    occupiedSeats: int
+    roomName: str = Field(default="Sala 1", alias="hallName")
+    startTime: str = Field(default="18:00")
+    capacity: int = Field(default=80)
+    occupiedSeats: int = Field(default=10)
     occupancyPercentage: float
-    minutesToStart: int
+    minutesToStart: int = Field(default=15, alias="minutesUntilStart")
 
 
 class OccupancyMetricsResponse(BaseModel):
-    averageOccupancy: float
-    totalRooms: int
-    underOccupiedShowtimes: List[UnderOccupiedShowtime] = Field(default_factory=list)
+    model_config = ConfigDict(populate_by_name=True)
+
+    averageOccupancy: float = Field(..., alias="averageOccupancyPercentage")
+    totalRooms: int = Field(..., alias="totalHalls")
+    underOccupiedShowtimes: List[UnderOccupiedShowtime] = Field(
+        default_factory=list, alias="criticalShows"
+    )
 
 
 class LineAnalyticsResponse(BaseModel):
@@ -60,6 +66,30 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     suggestedShowtimes: List[ShowtimeRecommendation] = Field(default_factory=list)
+
+
+# Modelos para Chat Administrativo y Reportes Excel
+class AdminChatRequest(BaseModel):
+    message: str
+    userId: str = "admin"
+    requestExcel: bool = False
+
+
+class ExcelReportMeta(BaseModel):
+    filename: str
+    downloadUrl: str
+    title: str
+    generatedAt: str
+    sizeBytes: Optional[int] = None
+    sheets: List[str] = Field(default_factory=list)
+
+
+class AdminChatResponse(BaseModel):
+    reply: str
+    excelReport: Optional[ExcelReportMeta] = None
+    metricsSummary: Optional[Dict[str, Any]] = None
+    predictiveMetrics: Optional[Dict[str, Any]] = None
+    circuitBreakerState: Optional[str] = None
 
 
 # Contratos MCP JSON-RPC 2.0

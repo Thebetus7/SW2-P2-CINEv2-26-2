@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     # Parámetros Operativos
     AUDIT_INTERVAL_SECONDS: int = 60
-    HTTP_TIMEOUT_SECONDS: float = 5.0
+    HTTP_TIMEOUT_SECONDS: float = 2.0
     CIRCUIT_BREAKER_FAIL_THRESHOLD: int = 3
     CIRCUIT_BREAKER_RESET_TIMEOUT_SECONDS: float = 30.0
 

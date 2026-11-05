@@ -250,9 +250,9 @@ export const BoleteoScanner: React.FC<BoleteoScannerProps> = ({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Header Superior Estandarizado */}
-      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
+      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-4 sm:px-6 py-3 sm:py-3.5 flex flex-wrap md:flex-nowrap items-center justify-between gap-2.5 sticky top-0 z-40">
         {/* IZQUIERDA: [Logo / Marca] */}
-        <div className="flex items-center gap-3 select-none cursor-pointer" onClick={() => window.location.reload()}>
+        <div className="flex items-center gap-3 select-none cursor-pointer flex-shrink-0" onClick={() => window.location.reload()}>
           <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-bold text-white shadow-lg shadow-rose-950/60">
             🎬
           </div>
@@ -289,16 +289,22 @@ export const BoleteoScanner: React.FC<BoleteoScannerProps> = ({
         </nav>
 
         {/* DERECHA: @usuario (Nombre/Rol) | Cerrar Sesión */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 px-3 py-1.5 rounded-xl text-xs shadow-inner">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-800/90 border border-slate-700/80 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs shadow-inner">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-mono font-bold text-amber-400">@{username}</span>
-            <span className="text-slate-400 font-medium">({displayName ? `${displayName} / ` : ''}{displayRole})</span>
+            <span className="text-slate-400 font-medium hidden sm:inline">
+              ({displayName ? `${displayName} / ` : ''}{displayRole})
+            </span>
+            <span className="text-slate-400 font-medium sm:hidden text-[10px]">
+              ({displayRole})
+            </span>
           </div>
 
           <button
             onClick={handleLogoutAction}
-            className="text-xs px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/90 hover:bg-rose-950 text-rose-300 hover:text-rose-100 border border-rose-900/40 hover:border-rose-700 transition flex items-center gap-1.5 shadow-sm"
+            data-testid="logout-button"
+            className="text-xs px-3 sm:px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/90 hover:bg-rose-950 text-rose-300 hover:text-rose-100 border border-rose-900/40 hover:border-rose-700 transition flex items-center gap-1.5 shadow-sm flex-shrink-0 active:scale-95 cursor-pointer"
             title="Cerrar sesión actual"
           >
             <span>🚪</span>
@@ -309,6 +315,23 @@ export const BoleteoScanner: React.FC<BoleteoScannerProps> = ({
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 space-y-6">
+        {/* Barra de Acciones del Boletero / Fin de Turno */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/40 border border-slate-800/80 px-4 py-2.5 rounded-2xl">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span>Operador en Puerta: <strong className="text-slate-200">@{username}</strong> ({displayName})</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogoutAction}
+            data-testid="logout-button-footer"
+            className="text-xs px-3.5 py-1.5 rounded-xl font-semibold bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-rose-100 border border-rose-800/50 hover:border-rose-600 transition flex items-center gap-1.5 shadow-sm cursor-pointer ml-auto active:scale-95"
+            title="Finalizar turno y cerrar sesión"
+          >
+            <span>🚪</span>
+            <span>Finalizar Turno / Cerrar Sesión</span>
+          </button>
+        </div>
         {/* Contadores Resumen de Turno */}
         <div className="grid grid-cols-3 gap-3 md:gap-4">
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center justify-between shadow">

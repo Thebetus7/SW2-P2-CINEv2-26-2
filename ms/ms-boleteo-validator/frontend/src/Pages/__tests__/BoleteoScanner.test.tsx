@@ -182,4 +182,64 @@ describe('BoleteoScanner', () => {
       expect(rows.length).toBe(20);
     });
   });
+
+  describe('Cierre de Sesión del Usuario Boletero', () => {
+    it('renderiza visiblemente el boton de cerrar sesion en la cabecera y en el panel de turno', async () => {
+      await act(async () => {
+        render(
+          <BoleteoScanner
+            validatorEmail="boletero@cinecampus.edu"
+            validatorName="Validador de Puerta"
+            validatorRole="BOLETERO"
+          />
+        );
+      });
+
+      const headerLogoutBtn = screen.getByTestId('logout-button');
+      const footerLogoutBtn = screen.getByTestId('logout-button-footer');
+
+      expect(headerLogoutBtn).toBeTruthy();
+      expect(headerLogoutBtn.textContent).toContain('Cerrar Sesión');
+      expect(footerLogoutBtn).toBeTruthy();
+      expect(footerLogoutBtn.textContent).toContain('Finalizar Turno / Cerrar Sesión');
+    });
+
+    it('ejecuta el callback onLogout al pulsar el boton de Cerrar Sesion del header', async () => {
+      const handleLogoutSpy = vi.fn();
+      await act(async () => {
+        render(
+          <BoleteoScanner
+            validatorEmail="boletero@cinecampus.edu"
+            onLogout={handleLogoutSpy}
+          />
+        );
+      });
+
+      const logoutBtn = screen.getByTestId('logout-button');
+      await act(async () => {
+        fireEvent.click(logoutBtn);
+      });
+
+      expect(handleLogoutSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('ejecuta el callback onLogout al pulsar el boton de Finalizar Turno', async () => {
+      const handleLogoutSpy = vi.fn();
+      await act(async () => {
+        render(
+          <BoleteoScanner
+            validatorEmail="boletero@cinecampus.edu"
+            onLogout={handleLogoutSpy}
+          />
+        );
+      });
+
+      const footerLogoutBtn = screen.getByTestId('logout-button-footer');
+      await act(async () => {
+        fireEvent.click(footerLogoutBtn);
+      });
+
+      expect(handleLogoutSpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });

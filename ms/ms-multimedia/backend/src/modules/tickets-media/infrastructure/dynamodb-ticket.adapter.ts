@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   DynamoDBClient,
   PutItemCommand,
@@ -21,7 +21,7 @@ export class DynamoDbTicketAdapter {
   private readonly client: DynamoDBClient;
   private readonly tableName = 'TicketMetadata';
 
-  constructor(customClient?: DynamoDBClient) {
+  constructor(@Optional() customClient?: DynamoDBClient) {
     this.client = customClient || dynamoDbClient;
   }
 

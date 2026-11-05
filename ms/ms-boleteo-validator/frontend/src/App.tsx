@@ -2,7 +2,21 @@ import React, { useState, useEffect } from 'react';
 import BoleteoScanner from './Pages/BoleteoScanner';
 
 export default function App(): React.ReactElement {
-  const [user] = useState<string>(() => {
+  const [isLoggedOut, setIsLoggedOut] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('action') === 'logout' || p.get('logout') === 'true') {
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+        } catch {}
+        return true;
+      }
+    }
+    return false;
+  });
+
+  const [user, setUser] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
       const u = p.get('user');
@@ -14,7 +28,7 @@ export default function App(): React.ReactElement {
     return localStorage.getItem('user') || 'boletero';
   });
 
-  const [name] = useState<string>(() => {
+  const [name, setName] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
       const n = p.get('name');
@@ -26,7 +40,7 @@ export default function App(): React.ReactElement {
     return localStorage.getItem('name') || 'Validador de Puerta';
   });
 
-  const [role] = useState<string>(() => {
+  const [role, setRole] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
       const r = p.get('role');
@@ -54,8 +68,78 @@ export default function App(): React.ReactElement {
       localStorage.clear();
       sessionStorage.clear();
     } catch {}
-    window.location.href = 'http://localhost:5174/?action=logout';
+    setIsLoggedOut(true);
+    if (typeof window !== 'undefined') {
+      try {
+        if (window.location && typeof window.location.assign === 'function') {
+          window.location.assign('http://localhost:5174/?action=logout');
+        } else {
+          window.location.href = 'http://localhost:5174/?action=logout';
+        }
+      } catch {
+        // En entorno de tests o navegación restringida
+      }
+    }
   };
+
+  // Vista de confirmación cuando el usuario ha cerrado sesión
+  if (isLoggedOut) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+        <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-3 select-none">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-bold text-white shadow-lg shadow-rose-950/60">
+              🎬
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-lg md:text-xl tracking-wide bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">
+                Cine Bolivia
+              </span>
+              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                BOLETEO VALIDATOR
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl space-y-6">
+            <div className="w-16 h-16 bg-slate-800/80 border border-slate-700 rounded-2xl flex items-center justify-center mx-auto text-3xl shadow-inner">
+              🚪
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-100 mb-2">Sesión Finalizada</h2>
+              <p className="text-sm text-slate-400">
+                Has cerrado la sesión del validador de puerta exitosamente. Para volver a operar el escáner de boletos, inicia sesión en el portal central.
+              </p>
+            </div>
+            <div className="space-y-3 pt-2">
+              <a
+                href="http://localhost:5174"
+                data-testid="return-login-button"
+                className="block w-full py-3 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-rose-950/50"
+              >
+                Iniciar Sesión en el Portal (:5174)
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLoggedOut(false);
+                  setUser('boletero');
+                  setName('Validador de Puerta');
+                  setRole('BOLETERO');
+                }}
+                data-testid="reopen-scanner-button"
+                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-xs font-medium transition"
+              >
+                Reabrir Escáner en Modo Local Demo
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   // Guard de rol: El módulo de escaneo en puerta es exclusivo para personal BOLETERO
   if (role === 'ADMIN') {

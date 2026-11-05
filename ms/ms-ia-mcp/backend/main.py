@@ -8,31 +8,51 @@ from app.mcp.manifest import get_tool_schema
 from app.mcp.tools.occupancy_tool import get_occupancy_metrics
 from app.mcp.tools.line_analytics_tool import get_line_analytics
 from app.mcp.tools.n8n_contingency_tool import trigger_n8n_contingency
+from app.mcp.tools.excel_report_tool import generate_excel_report
 from app.agent.auditor_agent import auditor_agent_service
-from app.presentation import audit_routes, chatbot_routes
+from app.presentation import audit_routes, chatbot_routes, admin_chat_routes
+
+
+def setup_mcp_tools(server=mcp_server):
+    """Registra las herramientas estándar en el catálogo MCP."""
+    if "get_occupancy_metrics" not in server._tools:
+        server.register_tool(
+            name="get_occupancy_metrics",
+            handler=get_occupancy_metrics,
+            description=get_tool_schema("get_occupancy_metrics")["description"],
+            input_schema=get_tool_schema("get_occupancy_metrics")["inputSchema"],
+        )
+    if "get_line_analytics" not in server._tools:
+        server.register_tool(
+            name="get_line_analytics",
+            handler=get_line_analytics,
+            description=get_tool_schema("get_line_analytics")["description"],
+            input_schema=get_tool_schema("get_line_analytics")["inputSchema"],
+        )
+    if "trigger_n8n_contingency" not in server._tools:
+        server.register_tool(
+            name="trigger_n8n_contingency",
+            handler=trigger_n8n_contingency,
+            description=get_tool_schema("trigger_n8n_contingency")["description"],
+            input_schema=get_tool_schema("trigger_n8n_contingency")["inputSchema"],
+        )
+    if "generate_excel_report" not in server._tools:
+        server.register_tool(
+            name="generate_excel_report",
+            handler=generate_excel_report,
+            description=get_tool_schema("generate_excel_report")["description"],
+            input_schema=get_tool_schema("generate_excel_report")["inputSchema"],
+        )
+
+
+# Inicialización inmediata de herramientas MCP
+setup_mcp_tools(mcp_server)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Registrar herramientas en el servidor MCP JSON-RPC
-    mcp_server.register_tool(
-        name="get_occupancy_metrics",
-        handler=get_occupancy_metrics,
-        description=get_tool_schema("get_occupancy_metrics")["description"],
-        input_schema=get_tool_schema("get_occupancy_metrics")["inputSchema"],
-    )
-    mcp_server.register_tool(
-        name="get_line_analytics",
-        handler=get_line_analytics,
-        description=get_tool_schema("get_line_analytics")["description"],
-        input_schema=get_tool_schema("get_line_analytics")["inputSchema"],
-    )
-    mcp_server.register_tool(
-        name="trigger_n8n_contingency",
-        handler=trigger_n8n_contingency,
-        description=get_tool_schema("trigger_n8n_contingency")["description"],
-        input_schema=get_tool_schema("trigger_n8n_contingency")["inputSchema"],
-    )
+    # Asegurar registro de herramientas en el servidor MCP JSON-RPC
+    setup_mcp_tools(mcp_server)
 
     # Iniciar ciclo de auditoría continua en segundo plano cada 60s
     auditor_agent_service.start_scheduler()
@@ -71,6 +91,7 @@ async def mcp_endpoint(request: Request) -> Dict[str, Any]:
 # Montar routers REST
 app.include_router(audit_routes.router)
 app.include_router(chatbot_routes.router)
+app.include_router(admin_chat_routes.router)
 
 
 @app.get("/health")

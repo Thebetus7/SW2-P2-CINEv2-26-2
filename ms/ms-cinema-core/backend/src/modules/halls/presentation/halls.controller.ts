@@ -76,6 +76,7 @@ export class HallsController {
       seatId,
       seatType: dto.seatType,
       isActive: dto.isActive,
+      visibleCode: dto.visibleCode,
     });
   }
 

@@ -182,6 +182,27 @@ describe('Slice 1: Gestión Paramétrica de Salas y Matrices de Butacas (HU-04, 
     expect(result.updatedCapacity).toBe(9);
   });
 
+  it('debe permitir actualizar visibleCode e isActive individualmente en el Inspector de Butacas', async () => {
+    const hall = await createHallUseCase.execute({
+      name: 'Sala Inspector Test',
+      totalRows: 2,
+      columnsPerRow: 2,
+    });
+
+    const targetSeat = hall.seats[0];
+    const result = await updateSeatTypeUseCase.execute({
+      seatId: targetSeat.id,
+      visibleCode: 'A-PREMIUM',
+      seatType: SeatType.VIP,
+      isActive: true,
+    });
+
+    expect(result.seat.visibleCode).toBe('A-PREMIUM');
+    expect(result.seat.seatType).toBe(SeatType.VIP);
+    expect(result.seat.isActive).toBe(true);
+    expect(result.updatedCapacity).toBe(4);
+  });
+
   /**
    * RB-CORE-03: Rechazo de DELETE físico si la sala tiene funciones asociadas
    */
