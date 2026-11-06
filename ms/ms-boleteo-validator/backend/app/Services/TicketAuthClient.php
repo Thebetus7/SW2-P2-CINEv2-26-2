@@ -79,7 +79,8 @@ class TicketAuthClient
             return [
                 'success' => true,
                 'status' => $body['status'] ?? 'USED',
-                'movieTitle' => $body['movieTitle'] ?? 'Película Desconocida',
+                'movieTitle' => $body['movieTitle'] ?? null,
+                'showtimeId' => $body['showtimeId'] ?? null,
                 'hallName' => $body['hallName'] ?? 'Sala General',
                 'seatLabel' => $body['seatLabel'] ?? 'S/A',
                 'message' => 'Acceso autorizado correctamente.',

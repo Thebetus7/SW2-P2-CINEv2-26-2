@@ -148,21 +148,28 @@ export const SeatMapComponent: React.FC<SeatMapComponentProps> = ({
                   const isOccupied = seat.status === 'OCUPADA';
                   const isLocked = seat.status === 'RESERVADA_TEMPORAL';
 
-                  let baseStyle = 'w-7 sm:w-8 h-7 sm:h-8 rounded-lg text-[10px] font-mono font-bold flex items-center justify-center transition-all duration-150 border';
+                  let baseStyle =
+                    'group relative w-8 sm:w-9 h-9 sm:h-10 rounded-t-xl rounded-b-md text-[10px] font-mono font-bold flex flex-col items-center justify-center transition-all duration-200 border shadow-sm';
 
                   if (isSelected) {
-                    baseStyle += ' bg-rose-600 border-rose-400 text-white shadow-lg shadow-rose-950 scale-110 ring-2 ring-rose-400/50 z-10';
+                    baseStyle +=
+                      ' bg-rose-600 border-rose-400 text-white shadow-lg shadow-rose-950/60 scale-110 ring-2 ring-rose-400/60 z-20 -translate-y-1';
                   } else if (isOccupied) {
-                    baseStyle += ' bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed opacity-60';
+                    baseStyle +=
+                      ' bg-slate-800 border-slate-700/60 text-slate-600 cursor-not-allowed opacity-50 shadow-inner';
                   } else if (isLocked) {
-                    baseStyle += ' bg-amber-950/60 border-amber-500/50 text-amber-400 cursor-not-allowed animate-pulse';
+                    baseStyle +=
+                      ' bg-amber-950/60 border-amber-500/50 text-amber-400 cursor-not-allowed animate-pulse';
                   } else {
                     if (seat.seatType === 'VIP') {
-                      baseStyle += ' bg-amber-950/40 border-amber-500/60 text-amber-300 hover:bg-amber-600 hover:text-white hover:scale-105';
+                      baseStyle +=
+                        ' bg-gradient-to-b from-amber-900/60 to-slate-900 border-amber-500/60 text-amber-300 hover:from-amber-600 hover:to-amber-700 hover:text-white hover:scale-105 hover:shadow-md hover:shadow-amber-900/30';
                     } else if (seat.seatType === 'DISCAPACIDAD') {
-                      baseStyle += ' bg-purple-950/40 border-purple-500/60 text-purple-300 hover:bg-purple-600 hover:text-white hover:scale-105';
+                      baseStyle +=
+                        ' bg-gradient-to-b from-indigo-950/70 to-slate-900 border-indigo-500/60 text-indigo-300 hover:from-indigo-600 hover:to-indigo-700 hover:text-white hover:scale-105 hover:shadow-md hover:shadow-indigo-900/30';
                     } else {
-                      baseStyle += ' bg-slate-900 border-slate-700/80 text-slate-300 hover:bg-rose-600 hover:border-rose-400 hover:text-white hover:scale-105';
+                      baseStyle +=
+                        ' bg-gradient-to-b from-slate-850 to-slate-900 border-slate-700/80 text-slate-300 hover:from-rose-600 hover:to-rose-700 hover:border-rose-400 hover:text-white hover:scale-105 hover:shadow-md hover:shadow-rose-950/30';
                     }
                   }
 
@@ -180,7 +187,64 @@ export const SeatMapComponent: React.FC<SeatMapComponentProps> = ({
                       title={`${seat.visibleCode} • ${seat.seatType} • Bs ${seat.price.toFixed(2)}`}
                       className={baseStyle}
                     >
-                      {isSelected ? '✓' : isOccupied ? '✕' : isLocked ? '🔒' : seat.seatType === 'DISCAPACIDAD' ? '♿' : seat.seatType === 'VIP' ? '⭐' : seat.seatNumber}
+                      {/* Respaldo anatómico superior con arco */}
+                      <span
+                        className={`absolute top-0.5 inset-x-1.5 h-1.5 rounded-t-md transition-colors ${
+                          isSelected
+                            ? 'bg-rose-400/80'
+                            : isOccupied
+                            ? 'bg-slate-700/40'
+                            : seat.seatType === 'VIP'
+                            ? 'bg-amber-400/50 group-hover:bg-white/40'
+                            : 'bg-slate-700/50 group-hover:bg-white/40'
+                        }`}
+                      />
+
+                      {/* Reposabrazos izquierdo y derecho vectorizados */}
+                      <span
+                        className={`absolute -left-[2px] top-3 bottom-1.5 w-[3px] rounded-full transition-colors ${
+                          isSelected
+                            ? 'bg-rose-400/80'
+                            : isOccupied
+                            ? 'bg-slate-700/50'
+                            : 'bg-slate-700 group-hover:bg-rose-400/70'
+                        }`}
+                      />
+                      <span
+                        className={`absolute -right-[2px] top-3 bottom-1.5 w-[3px] rounded-full transition-colors ${
+                          isSelected
+                            ? 'bg-rose-400/80'
+                            : isOccupied
+                            ? 'bg-slate-700/50'
+                            : 'bg-slate-700 group-hover:bg-rose-400/70'
+                        }`}
+                      />
+
+                      {/* Etiqueta / Número de Butaca */}
+                      <span className="relative z-10 text-[10px] leading-tight">
+                        {isSelected
+                          ? '✓'
+                          : isOccupied
+                          ? '✕'
+                          : isLocked
+                          ? '🔒'
+                          : seat.seatType === 'DISCAPACIDAD'
+                          ? '♿'
+                          : seat.seatType === 'VIP'
+                          ? '⭐'
+                          : seat.seatNumber}
+                      </span>
+
+                      {/* Cojín inferior con micro-sombra y pliegue */}
+                      <span
+                        className={`absolute bottom-0.5 inset-x-1.5 h-1 rounded-sm transition-colors ${
+                          isSelected
+                            ? 'bg-rose-800/80'
+                            : isOccupied
+                            ? 'bg-slate-900/60'
+                            : 'bg-slate-950/70'
+                        }`}
+                      />
                     </button>
                   );
                 })}
@@ -194,26 +258,36 @@ export const SeatMapComponent: React.FC<SeatMapComponentProps> = ({
         </div>
       </div>
 
-      {/* LEYENDA */}
-      <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-5 pt-3 border-t border-slate-800 text-xs text-slate-400">
-        <div className="flex items-center gap-1.5">
-          <span className="w-3.5 h-3.5 rounded bg-slate-900 border border-slate-700 flex items-center justify-center text-[8px] text-slate-300">1</span>
+      {/* LEYENDA ESTILIZADA DE BUTACAS MORFOLÓGICAS */}
+      <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 pt-3 border-t border-slate-800 text-xs text-slate-400">
+        <div className="flex items-center gap-2">
+          <span className="w-4 h-4 rounded-t-md rounded-b-sm bg-slate-900 border-t-2 border-slate-500 border-x border-b border-slate-750 flex items-center justify-center text-[8px] text-slate-300 font-bold shadow-sm">
+            1
+          </span>
           <span>Estándar (Bs {Number(basePrice || 50).toFixed(2)})</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3.5 h-3.5 rounded bg-amber-950/60 border border-amber-500/60 text-amber-300 flex items-center justify-center text-[8px]">⭐</span>
+        <div className="flex items-center gap-2">
+          <span className="w-4 h-4 rounded-t-md rounded-b-sm bg-amber-950/80 border-t-2 border-amber-400 border-x border-b border-amber-600/50 text-amber-300 flex items-center justify-center text-[8px] shadow-sm">
+            ⭐
+          </span>
           <span>VIP (Bs {(basePrice * 1.5).toFixed(2)})</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3.5 h-3.5 rounded bg-purple-950/60 border border-purple-500/60 text-purple-300 flex items-center justify-center text-[8px]">♿</span>
+        <div className="flex items-center gap-2">
+          <span className="w-4 h-4 rounded-t-md rounded-b-sm bg-indigo-950/80 border-t-2 border-indigo-400 border-x border-b border-indigo-600/50 text-indigo-300 flex items-center justify-center text-[8px] shadow-sm">
+            ♿
+          </span>
           <span>Accesible (Bs {(basePrice * 0.8).toFixed(2)})</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3.5 h-3.5 rounded bg-rose-600 border border-rose-400 text-white flex items-center justify-center text-[8px] font-bold">✓</span>
-          <span className="text-rose-400 font-medium">Seleccionada</span>
+        <div className="flex items-center gap-2">
+          <span className="w-4 h-4 rounded-t-md rounded-b-sm bg-rose-600 border-t-2 border-rose-300 border-x border-b border-rose-500 text-white flex items-center justify-center text-[8px] font-bold shadow-md shadow-rose-950">
+            ✓
+          </span>
+          <span className="text-rose-400 font-semibold">Seleccionada</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-3.5 h-3.5 rounded bg-slate-800 border border-slate-700 text-slate-600 flex items-center justify-center text-[8px]">✕</span>
+        <div className="flex items-center gap-2">
+          <span className="w-4 h-4 rounded-t-md rounded-b-sm bg-slate-800 border-t-2 border-slate-700 border-x border-b border-slate-700/60 text-slate-600 flex items-center justify-center text-[8px] shadow-inner">
+            ✕
+          </span>
           <span>Ocupada</span>
         </div>
       </div>

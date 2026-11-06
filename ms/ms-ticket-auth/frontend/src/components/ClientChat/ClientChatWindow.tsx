@@ -13,6 +13,7 @@ import { SeatSelectorPills } from './SeatSelectorPills';
 import { PurchaseSummaryCard } from './PurchaseSummaryCard';
 import { StripeMicroModal } from './StripeMicroModal';
 import { IssuedTicketCard } from './IssuedTicketCard';
+import { savePurchasedTicket } from '../../services/ticket-storage.service';
 import { X, Send, Bot, Sparkles, User, RefreshCw } from 'lucide-react';
 
 interface ClientChatWindowProps {
@@ -20,27 +21,105 @@ interface ClientChatWindowProps {
   onNavigateToTickets?: () => void;
 }
 
+const CHAT_CACHE_KEY = 'cinema_client_chat_history_v1';
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas (RB-10)
+const SEAT_LOCK_TTL_MS = 60 * 1000; // 60 segundos para neutralizar reservas huérfanas (RB-11)
+
+const DEFAULT_INIT_MESSAGE: ClientChatMessage = {
+  id: 'm-init',
+  sender: 'assistant',
+  text: '¡Hola! Soy tu asistente de cine con IA. Puedo recomendarte las mejores películas y funciones para hoy, sugerirte asientos centrales con visión óptima y emitir tu entrada al instante.',
+  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  quickChips: [
+    'Películas para hoy en la tarde',
+    'Estrenos de la semana',
+    'Solo salas IMAX',
+  ],
+};
+
+interface CachedChatPayload {
+  messages: ClientChatMessage[];
+  flowState?: ChatFlowState;
+  activeSummary?: PurchaseSummary | null;
+  savedAt: number;
+}
+
 export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onNavigateToTickets }) => {
-  const [messages, setMessages] = useState<ClientChatMessage[]>([
-    {
-      id: 'm-init',
-      sender: 'assistant',
-      text: '¡Hola! Soy tu asistente de cine con IA. Puedo recomendarte las mejores películas y funciones para hoy, sugerirte asientos centrales con visión óptima y emitir tu entrada al instante.',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      quickChips: [
-        'Películas para hoy en la tarde',
-        'Estrenos de la semana',
-        'Solo salas IMAX',
-      ],
-    },
-  ]);
+  // Hidratación segura inicial desde caché local (RF-08.9, RF-08.10, RB-10, RB-11)
+  const [messages, setMessages] = useState<ClientChatMessage[]>(() => {
+    try {
+      const raw = localStorage.getItem(CHAT_CACHE_KEY);
+      if (raw) {
+        const parsed: CachedChatPayload = JSON.parse(raw);
+        if (Date.now() - parsed.savedAt < CACHE_TTL_MS && Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+          return parsed.messages.slice(-30);
+        }
+      }
+    } catch {
+      // Ignorar fallas de parsing y usar mensaje por defecto
+    }
+    return [DEFAULT_INIT_MESSAGE];
+  });
 
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [flowState, setFlowState] = useState<ChatFlowState>('EXPLORING');
-  const [activeSummary, setActiveSummary] = useState<PurchaseSummary | null>(null);
+  
+  // Hidratar o neutralizar estado de flujo y resumen según el tiempo transcurrido
+  const [flowState, setFlowState] = useState<ChatFlowState>(() => {
+    try {
+      const raw = localStorage.getItem(CHAT_CACHE_KEY);
+      if (raw) {
+        const parsed: CachedChatPayload = JSON.parse(raw);
+        if (Date.now() - parsed.savedAt < SEAT_LOCK_TTL_MS && parsed.flowState) {
+          return parsed.flowState;
+        }
+      }
+    } catch {}
+    return 'EXPLORING';
+  });
+
+  const [activeSummary, setActiveSummary] = useState<PurchaseSummary | null>(() => {
+    try {
+      const raw = localStorage.getItem(CHAT_CACHE_KEY);
+      if (raw) {
+        const parsed: CachedChatPayload = JSON.parse(raw);
+        // Neutralización de butaca expirada tras más de 60 segundos (RB-11)
+        if (Date.now() - parsed.savedAt < SEAT_LOCK_TTL_MS && parsed.activeSummary) {
+          return parsed.activeSummary;
+        }
+      }
+    } catch {}
+    return null;
+  });
+
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Sincronización continua en localStorage (límite de 30 mensajes)
+  useEffect(() => {
+    try {
+      const payload: CachedChatPayload = {
+        messages: messages.slice(-30),
+        flowState,
+        activeSummary,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(CHAT_CACHE_KEY, JSON.stringify(payload));
+    } catch (e) {
+      console.warn('Error guardando caché de chat en localStorage:', e);
+    }
+  }, [messages, flowState, activeSummary]);
+
+  // Limpieza explícita del chat y reinicio de conversación (RF-08.11)
+  const handleClearChat = () => {
+    try {
+      localStorage.removeItem(CHAT_CACHE_KEY);
+    } catch {}
+    setMessages([DEFAULT_INIT_MESSAGE]);
+    setFlowState('EXPLORING');
+    setActiveSummary(null);
+    setInputMessage('');
+  };
 
   const scrollToBottom = () => {
     if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
@@ -70,12 +149,19 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
     const targetShowtimeId = options?.showtimeId || activeSummary?.showtimeId;
     const targetSeatCode = options?.seatCode || activeSummary?.seatCode;
 
+    // Extraer últimos 6 turnos para memoria multi-turno contextual (RF-08.12, RB-13)
+    const historyPayload = [...messages, userMsg].slice(-6).map((m) => ({
+      role: m.sender === 'user' ? 'user' : 'assistant',
+      content: m.text,
+    }));
+
     try {
       const response = await sendClientChatMessage({
         message: text,
         currentState: flowState,
         selectedShowtimeId: targetShowtimeId,
         selectedSeatCode: targetSeatCode,
+        history: historyPayload,
       });
 
       const botMsg: ClientChatMessage = {
@@ -127,11 +213,9 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
     setIsPaymentModalOpen(false);
     setFlowState('TICKET_ISSUED');
 
-    // Sincronizar el boleto con el almacenamiento central 'user_tickets_list' de Mis Boletos
+    // Sincronizar el boleto con el almacenamiento central persistente de Mis Boletos
     try {
-      const raw = localStorage.getItem('user_tickets_list');
-      const existing = raw ? JSON.parse(raw) : [];
-      const newTicketRecord = {
+      savePurchasedTicket({
         ticketId: ticket.ticketId,
         movieTitle: ticket.movieTitle,
         hallName: ticket.hallName,
@@ -140,13 +224,10 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
         paymentIntentId: ticket.ticketId,
         purchasedAt: new Date().toISOString(),
         signature: 'HMAC-SHA256:VERIFIED',
-      };
-      existing.unshift(newTicketRecord);
-      localStorage.setItem('user_tickets_list', JSON.stringify(existing));
-      // Notificar a otras vistas de la app
-      window.dispatchEvent(new Event('storage'));
+        status: 'CONFIRMED',
+      });
     } catch (e) {
-      console.error('Error guardando en user_tickets_list:', e);
+      console.error('Error guardando boleto comprado:', e);
     }
 
     const successMsg: ClientChatMessage = {
@@ -185,14 +266,24 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          data-testid="close-chat-button"
-          className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
-          title="Cerrar ventana"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleClearChat}
+            data-testid="clear-chat-button"
+            className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+            title="Nueva Conversación (Limpiar historial)"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onClose}
+            data-testid="close-chat-button"
+            className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+            title="Cerrar ventana"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       {/* Cuerpo del Chat */}

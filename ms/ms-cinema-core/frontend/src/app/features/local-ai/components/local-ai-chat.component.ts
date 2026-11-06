@@ -724,7 +724,11 @@ export class LocalAiChatComponent implements OnInit {
     const startTime = performance.now();
 
     if (this.useOnlineGrok) {
-      this.adminAiService.sendMessage({ message: text, userId: 'admin' }).subscribe({
+      const history = this.messages.slice(0, -1).slice(-12).map((message) => ({
+        role: (message.sender === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+        content: message.text,
+      }));
+      this.adminAiService.sendMessage({ message: text, userId: 'admin', history }).subscribe({
         next: (res: AdminChatResponse) => {
           this.isLoading = false;
           const elapsed = Math.round(performance.now() - startTime);

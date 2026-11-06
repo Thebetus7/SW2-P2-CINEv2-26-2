@@ -15,6 +15,7 @@ export interface AdminChatRequest {
   message: string;
   userId?: string;
   requestExcel?: boolean;
+  history?: { role: 'user' | 'assistant'; content: string }[];
 }
 
 export interface PredictiveMetrics {
@@ -59,6 +60,7 @@ export class AdminAiChatService {
       message: req.message,
       userId: req.userId || 'admin',
       requestExcel: !!req.requestExcel,
+      history: req.history || [],
     });
   }
 

@@ -13,6 +13,7 @@ import { offlineStorageService, OfflineTicketRecord } from './services/offline-s
 import { initiatePurchase, confirmPurchase } from './graphql/mutations';
 import { Movie, Showtime, Seat } from './types';
 import { Film, Ticket, Navigation, ArrowLeft } from 'lucide-react';
+import { NotificationPermissionBanner } from './components/Notifications/NotificationPermissionBanner';
 
 export const App: React.FC = () => {
   const [tab, setTab] = useState<'billboard' | 'tickets' | 'gps'>('billboard');
@@ -143,6 +144,9 @@ export const App: React.FC = () => {
           Portal Web (:5174)
         </a>
       </header>
+
+      {/* Banner de Permiso y Suscripción Push Web VAPID (T4.1) */}
+      <NotificationPermissionBanner />
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-lg w-full mx-auto p-4 space-y-6">

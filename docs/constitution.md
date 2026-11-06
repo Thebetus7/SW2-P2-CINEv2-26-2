@@ -1,4 +1,6 @@
 # Constitution: Ecosistema CineV2 - Plataforma Distribuida de Gestión y Experiencia Cinematográfica
+Status: APPROVED
+Version: 1
 
 > **Estado:** APPROVED  
 > **Versión:** 1.3.0  

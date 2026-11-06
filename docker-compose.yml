@@ -219,6 +219,7 @@ services:
     container_name: SW2-P2-CINEv2-ms-boleteo-validator-backend
     environment:
       TICKET_AUTH_URL: http://ms-ticket-auth-backend:8081
+      CINEMA_CORE_URL: http://ms-cinema-core-backend:3000
     ports:
       - "8000:8000"
     networks:

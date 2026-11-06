@@ -1,5 +1,5 @@
 import { IsString, IsNotEmpty, IsInt, Min, IsOptional, IsEnum } from 'class-validator';
-import { MovieRating } from '../../domain/movie.entity';
+import { MovieRating, MovieStatus } from '../../domain/movie.entity';
 
 export class CreateMovieDto {
   @IsString()
@@ -25,4 +25,8 @@ export class CreateMovieDto {
   @IsOptional()
   @IsString()
   posterUrl?: string;
+
+  @IsOptional()
+  @IsEnum(MovieStatus)
+  status?: MovieStatus;
 }

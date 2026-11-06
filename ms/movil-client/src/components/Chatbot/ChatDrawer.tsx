@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Bot, X, Send, Sparkles, Film, CheckCircle2, Armchair } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bot, X, Send, Sparkles, Film, CheckCircle2, Armchair, RotateCcw } from 'lucide-react';
 import { initiatePurchase, confirmPurchase } from '../../graphql/mutations';
 import { offlineStorageService } from '../../services/offline-storage.service';
 import { StripeCheckoutWrapper } from '../Purchase/StripeCheckoutWrapper';
@@ -21,19 +21,58 @@ export interface ChatMessage {
   };
 }
 
-const CHAT_API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CHAT_API_URL) || 'http://localhost:8001/api/v1/chat';
+const CHAT_API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CHAT_API_URL) || 'http://localhost:8001/api/v1/client-chat';
+const CHAT_CACHE_KEY = 'cinema_client_chat_history_v1';
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+const DEFAULT_WELCOME_MESSAGE: ChatMessage = {
+  id: 'm-0',
+  sender: 'assistant',
+  text: '¡Hola! Soy tu asistente de cine con IA. ¿Qué tipo de película te gustaría ver hoy?',
+};
 
 export const ChatDrawer: React.FC = () => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'm-0',
-      sender: 'assistant',
-      text: '¡Hola! Soy tu asistente de cine con IA. ¿Qué tipo de película te gustaría ver hoy?',
-    },
-  ]);
+
+  // Hidratación reactiva desde caché persistente (RF-08.9, RB-10)
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const raw = localStorage.getItem(CHAT_CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Date.now() - (parsed.savedAt || 0) < CACHE_TTL_MS && Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+          return parsed.messages.slice(-30);
+        }
+      }
+    } catch {}
+    return [DEFAULT_WELCOME_MESSAGE];
+  });
+
+  // Guardado reactivo en caché
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        CHAT_CACHE_KEY,
+        JSON.stringify({
+          messages: messages.slice(-30),
+          savedAt: Date.now(),
+        })
+      );
+    } catch (e) {
+      console.warn('Error al persistir historial del chatbot móvil:', e);
+    }
+  }, [messages]);
+
+  const handleClearChatHistory = () => {
+    try {
+      localStorage.removeItem(CHAT_CACHE_KEY);
+    } catch {}
+    setMessages([DEFAULT_WELCOME_MESSAGE]);
+    setPurchaseStep('NONE');
+    setPendingInitiate(null);
+  };
 
   // Estados de Compra Asistida dentro del Chat (RB-MOB-03)
   const [purchaseStep, setPurchaseStep] = useState<'NONE' | 'PREVIEW' | 'CHECKOUT' | 'SUCCESS'>('NONE');
@@ -59,11 +98,19 @@ export const ChatDrawer: React.FC = () => {
     setInputMessage('');
     setIsTyping(true);
 
+    const historyPayload = [...messages, userMsg].slice(-6).map((m) => ({
+      role: m.sender === 'user' ? 'user' : 'assistant',
+      content: m.text,
+    }));
+
     try {
       const response = await fetch(CHAT_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userText }),
+        body: JSON.stringify({
+          message: userText,
+          history: historyPayload,
+        }),
       });
 
       if (response.ok) {
@@ -216,14 +263,25 @@ export const ChatDrawer: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            data-testid="close-chat-drawer-btn"
-            onClick={toggleDrawer}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              data-testid="chat-clear-btn"
+              onClick={handleClearChatHistory}
+              title="Limpiar historial"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              data-testid="close-chat-drawer-btn"
+              onClick={toggleDrawer}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Historial de Mensajes del Chat */}

@@ -31,6 +31,10 @@ return [
         ],
     ],
 
+    'cinema_core' => [
+        'url' => env('CINEMA_CORE_URL', 'http://localhost:3000'),
+    ],
+
     'ticket_auth' => [
         'url' => env('TICKET_AUTH_URL', 'http://localhost:8081'),
         'mcp_secret' => env('CLAVE_SECRETA_MCP', 'clave_secreta_universitaria_mcp'),

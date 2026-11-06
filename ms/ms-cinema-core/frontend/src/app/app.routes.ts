@@ -20,6 +20,12 @@ export const routes: Routes = [
       import('./features/showtimes/showtimes.routes').then((m) => m.SHOWTIMES_ROUTES),
   },
   {
+    path: 'movies',
+    canActivate: [adminAuthGuard],
+    loadChildren: () =>
+      import('./features/movies/movies.routes').then((m) => m.MOVIES_ROUTES),
+  },
+  {
     path: 'local-ai',
     canActivate: [adminAuthGuard],
     loadComponent: () =>

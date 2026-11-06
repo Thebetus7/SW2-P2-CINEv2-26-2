@@ -136,8 +136,17 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
 
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_msg},
     ]
+
+    # Incorporar historial multi-turno previo si fue enviado por el cliente (máximo 6 turnos)
+    if request.history:
+        for item in request.history[-6:]:
+            role = item.get("role", "user") if isinstance(item, dict) else getattr(item, "role", "user")
+            content = item.get("content", "") if isinstance(item, dict) else getattr(item, "content", "")
+            if role in ["user", "assistant"] and content:
+                messages.append({"role": role, "content": str(content)})
+
+    messages.append({"role": "user", "content": user_msg})
 
     llm_reply = None
     try:

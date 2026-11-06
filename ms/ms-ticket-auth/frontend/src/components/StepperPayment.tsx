@@ -3,6 +3,7 @@ import { TicketPreview } from './TicketPreview';
 import { StripePaymentWrapper } from './StripePaymentWrapper';
 import { SeatMapComponent, SeatItem } from './SeatMapComponent';
 import { RealQrCode } from './RealQrCode';
+import { savePurchasedTicket } from '../services/ticket-storage.service';
 
 export interface StepperPaymentProps {
   initialStep?: number;
@@ -137,9 +138,9 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
     setErrorMessage(null);
     setCurrentStep(4);
 
-    // Guardar automáticamente en el historial local del cliente
+    // Guardar automáticamente en el historial local del cliente con garantía de persistencia
     try {
-      const newRecord = {
+      savePurchasedTicket({
         ticketId: intentId,
         movieTitle,
         hallName,
@@ -147,9 +148,8 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
         amount: totalPrice,
         paymentIntentId: intentId,
         purchasedAt: new Date().toISOString(),
-      };
-      const existing = JSON.parse(localStorage.getItem('user_tickets_list') || '[]');
-      localStorage.setItem('user_tickets_list', JSON.stringify([newRecord, ...existing]));
+        status: 'CONFIRMED',
+      });
     } catch {
       // Entorno de prueba
     }
@@ -180,13 +180,13 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4 sm:p-6 bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl text-white">
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 bg-slate-950 border border-slate-800 rounded-3xl shadow-2xl text-white">
       {/* Stepper Header Indicator */}
       <div className="mb-8">
         <h2 className="text-2xl font-black text-center mb-6 tracking-tight bg-gradient-to-r from-rose-400 via-purple-300 to-amber-300 bg-clip-text text-transparent">
           Flujo de Compra de Boletos
         </h2>
-        <div className="flex items-center justify-between relative max-w-lg mx-auto">
+        <div className="flex items-center justify-between relative max-w-xl mx-auto">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-slate-800 w-full z-0" />
           <div
             className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-rose-600 transition-all duration-300 z-0"
@@ -249,103 +249,178 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
         </div>
       )}
 
-      {/* ETAPA 1: Reserva y Selección Interactiva con Pantalla Curva */}
+      {/* ETAPA 1: Reserva y Selección Interactiva con Pantalla Curva en Split-View (65% / 35%) */}
       {currentStep === 1 && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div>
-              <h3 className="text-lg font-bold text-slate-100">Etapa 1: Resumen de Selección</h3>
-              <p className="text-xs text-slate-400">
-                Selecciona tus butacas en la pantalla cinemática curva antes de solicitar la reserva temporal
-              </p>
-            </div>
-            {onBackToBillboard && (
-              <button
-                type="button"
-                onClick={onBackToBillboard}
-                className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition"
-              >
-                <span>←</span>
-                <span>Cartelera</span>
-              </button>
-            )}
-          </div>
-
-          {/* Grilla visual interactiva con pantalla curva */}
-          <SeatMapComponent
-            showtimeId={showtimeId}
-            hallName={hallName}
-            basePrice={price}
-            selectedSeats={selectedSeats}
-            onToggleSeat={handleToggleSeat}
-          />
-
-          {/* Resumen de Compra en Tiempo Real */}
-          <div className="space-y-3 text-sm bg-slate-900/60 p-5 rounded-2xl border border-slate-800">
-            <div className="flex justify-between py-1.5 border-b border-slate-800/60">
-              <span className="text-slate-400">Película:</span>
-              <span className="font-semibold text-slate-200">{movieTitle}</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-slate-800/60">
-              <span className="text-slate-400">Sala:</span>
-              <span className="font-semibold text-slate-200">{hallName}</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-slate-800/60">
-              <span className="text-slate-400">
-                {selectedSeats.length > 1 ? 'Butacas seleccionadas:' : 'Butaca seleccionada:'}
-              </span>
-              <span data-testid="selected-seats-summary" className="font-bold text-rose-400 font-mono">
-                {currentSeatLabel || 'Ninguna seleccionada'}
-              </span>
-            </div>
-            <div className="flex justify-between py-2 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+          {/* COLUMNA IZQUIERDA: MAPA DE SALA CINEMÁTICO (8 columnas en Desktop) */}
+          <div className="lg:col-span-8 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <span className="text-slate-400 block text-xs">Total a Pagar:</span>
-                <span className="text-[11px] text-slate-500">
-                  ({selectedSeats.length} {selectedSeats.length === 1 ? 'entrada' : 'entradas'})
-                </span>
+                <h3 className="text-lg font-bold text-slate-100">Etapa 1: Resumen de Selección</h3>
+                <p className="text-xs text-slate-400">
+                  Selecciona tus butacas en la pantalla cinemática curva antes de solicitar la reserva temporal
+                </p>
               </div>
-              <span className="font-black text-emerald-400 text-xl font-mono">
-                ${totalPrice.toFixed(2)} USD
-              </span>
+              {onBackToBillboard && (
+                <button
+                  type="button"
+                  onClick={onBackToBillboard}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition"
+                >
+                  <span>←</span>
+                  <span>Cartelera</span>
+                </button>
+              )}
             </div>
+
+            {/* Grilla visual interactiva con pantalla curva */}
+            <SeatMapComponent
+              showtimeId={showtimeId}
+              hallName={hallName}
+              basePrice={price}
+              selectedSeats={selectedSeats}
+              onToggleSeat={handleToggleSeat}
+            />
           </div>
 
-          <button
-            type="button"
-            disabled={selectedSeats.length === 0}
-            onClick={handleNextToPreview}
-            className={`w-full py-3.5 font-bold rounded-xl shadow-lg transition-all duration-200 text-sm ${
-              selectedSeats.length === 0
-                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30 active:scale-[0.99]'
-            }`}
-          >
-            Continuar a Previsualización ({selectedSeats.length} {selectedSeats.length === 1 ? 'boleto' : 'boletos'})
-          </button>
-
-          {/* BARRA INFERIOR FIJA FLOTANTE (Sticky Bottom Summary Bar) */}
-          {selectedSeats.length > 0 && (
-            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-2xl w-[94%] z-40 bg-slate-900/95 backdrop-blur-md border border-rose-500/30 rounded-2xl p-4 shadow-2xl shadow-black/80 flex items-center justify-between gap-4 animate-fadeIn">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs font-bold text-white font-mono">
-                    {selectedSeats.length} {selectedSeats.length === 1 ? 'Butaca seleccionada' : 'Butacas seleccionadas'}
+          {/* COLUMNA DERECHA: FICHA CINEMÁTICA Y CHECKOUT STICKY (4 columnas en Desktop) */}
+          <div className="lg:col-span-4 lg:sticky lg:top-6 space-y-4">
+            <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-4">
+              {/* Header de la Ficha Cinemática */}
+              <div className="border-b border-slate-800/80 pb-3">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    IMAX 3D
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                    20:30 hrs
                   </span>
                 </div>
-                <div className="text-sm font-black text-emerald-400 font-mono mt-0.5">
-                  Total: ${totalPrice.toFixed(2)} USD
+                <h4 className="text-base font-black text-slate-100 tracking-tight leading-snug">
+                  {movieTitle}
+                </h4>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">{hallName}</p>
+              </div>
+
+              {/* Resumen de Butacas Seleccionadas */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">
+                    {selectedSeats.length > 1 ? 'Butacas seleccionadas:' : 'Butaca seleccionada:'}
+                  </span>
+                  <span data-testid="selected-seats-summary" className="font-bold text-rose-400 font-mono">
+                    {currentSeatLabel || 'Ninguna seleccionada'}
+                  </span>
+                </div>
+
+                {/* Chips de Butacas Morfológicas */}
+                {selectedSeats.length > 0 && (
+                  <div className="pt-2 border-t border-slate-800/60">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
+                      Detalle individual ({selectedSeats.length}):
+                    </span>
+                    <div className="flex flex-col gap-2 max-h-44 overflow-y-auto pr-1">
+                      {selectedSeats.map((seat) => (
+                        <div
+                          key={seat.id}
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-950/80 border border-rose-500/30 text-slate-100 shadow-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="relative w-3.5 h-4 flex flex-col items-center justify-end">
+                              <span className="w-3 h-2.5 rounded-t-sm bg-rose-500 border-t border-rose-300" />
+                              <span className="w-3.5 h-1.5 rounded-sm bg-rose-700" />
+                            </span>
+                            <div>
+                              <span className="text-xs font-mono font-bold text-rose-300 block leading-none">
+                                Butaca {seat.visibleCode}
+                              </span>
+                              <span className="text-[9px] text-slate-400 font-medium leading-none">
+                                {seat.seatType}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-emerald-400 font-mono">
+                              Bs {seat.price.toFixed(2)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSeat(seat)}
+                              aria-label={`Quitar butaca ${seat.visibleCode}`}
+                              className="w-5 h-5 rounded-full bg-slate-800 hover:bg-rose-900 text-slate-400 hover:text-rose-200 flex items-center justify-center text-[10px] font-bold transition"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Total y Desglose Financiero */}
+              <div className="pt-3 border-t border-slate-800/80 space-y-1.5">
+                <div className="flex justify-between items-center text-xs text-slate-400">
+                  <span>Cantidad de entradas:</span>
+                  <span className="font-mono text-slate-200 font-semibold">{selectedSeats.length}</span>
+                </div>
+                <div className="flex justify-between items-baseline pt-1">
+                  <div>
+                    <span className="text-xs text-slate-400 block font-semibold">Total a Pagar:</span>
+                    <span className="text-[11px] text-slate-500 font-mono">
+                      ({selectedSeats.length} {selectedSeats.length === 1 ? 'entrada' : 'entradas'})
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-black text-emerald-400 text-2xl font-mono block">
+                      ${totalPrice.toFixed(2)} USD
+                    </span>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      ≈ Bs {(totalPrice * 6.96).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botón CTA Principal en el Panel Derecho */}
+              <button
+                type="button"
+                disabled={selectedSeats.length === 0}
+                onClick={handleNextToPreview}
+                className={`w-full py-3.5 font-bold rounded-xl shadow-lg transition-all duration-200 text-sm ${
+                  selectedSeats.length === 0
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                    : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30 active:scale-[0.99]'
+                }`}
+              >
+                Continuar a Previsualización ({selectedSeats.length} {selectedSeats.length === 1 ? 'boleto' : 'boletos'})
+              </button>
+            </div>
+          </div>
+
+          {/* BARRA INFERIOR FIJA FLOTANTE (Reservada exclusivamente para móvil < lg) */}
+          {selectedSeats.length > 0 && (
+            <div className="lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 max-w-lg w-[94%] z-40 bg-slate-900/95 backdrop-blur-md border border-rose-500/30 rounded-2xl p-3 shadow-2xl shadow-black/80 flex items-center justify-between gap-3 animate-fadeIn">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-bold text-white font-mono">
+                    {selectedSeats.length} {selectedSeats.length === 1 ? 'Butaca' : 'Butacas'}
+                  </span>
+                </div>
+                <div className="text-xs font-black text-emerald-400 font-mono">
+                  ${totalPrice.toFixed(2)} USD
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={handleNextToPreview}
-                className="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-950/60 transition active:scale-95 flex items-center gap-2"
+                className="px-4 py-2 bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold text-xs rounded-xl shadow-md transition"
               >
-                <span>Continuar</span>
-                <span>→</span>
+                Continuar →
               </button>
             </div>
           )}
@@ -354,7 +429,7 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
 
       {/* ETAPA 2: Previsualización de Credencial MinIO */}
       {currentStep === 2 && (
-        <div className="space-y-6">
+        <div className="max-w-2xl mx-auto space-y-6">
           <TicketPreview
             movieTitle={movieTitle}
             hallName={hallName}

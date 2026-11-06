@@ -1,123 +1,94 @@
 ---
 name: init-servers
-description: Orquestador agnóstico y universal de compilación y ejecución de servidores (/init-servers). Inspecciona cómo están programados los proyectos en cualquier repositorio (scripts de package.json, pom.xml, Makefile, etc.), compila según su configuración y levanta todos sus servicios en segundo plano.
+description: Orquestador y compilador universal de ejecución de servidores (/init-servers). Sin modificar ningún archivo del proyecto, detecta los archivos de despliegue, analiza si es backend, frontend, base de datos o microservicios políglotas, compila según su framework y levanta todos los servicios en segundo plano.
 ---
 
-# Orquestador Universal de Compilación y Servidores (/init-servers)
+# Orquestador y Compilador Universal de Servidores (/init-servers)
 
-Esta skill es **100% agnóstica y universal**. Puede ejecutarse en **cualquier repositorio o proyecto de software** (monolito, monorepositorio, microservicios políglotas, frontend SPA, APIs backend, workers o infraestructura de datos).
+Esta skill actúa como un **compilador y ejecutor agnóstico de servidores**. Su único propósito es **encontrar las rutas de los proyectos, analizar su arquitectura y desplegarlos en tiempo de ejecución**.
 
-Su principio fundamental es la **fidelidad estricta al código fuente**: inspecciona cómo ha sido programado el proyecto por sus desarrolladores (sus scripts, manifiestos y herramientas de build), compila los componentes de acuerdo con sus especificaciones y levanta los servicios en segundo plano.
+> [!IMPORTANT]
+> **REGLA DE NO MODIFICACIÓN (READ-ONLY EN CÓDIGO Y CONFIGURACIÓN):**
+> Esta skill **NO edita, no altera y no refactoriza ningún archivo de código fuente ni de configuración del proyecto**. Su función es estrictamente de descubrimiento, compilación y lanzamiento de los procesos existentes.
 
 ---
 
 ## Cuándo Activar Esta Skill
 * Invocación explícita del comando `/init-servers`.
-* Solicitudes del usuario como: *"compila y levanta los proyectos"*, *"inicia todos los servidores"*, *"arranca el proyecto"*, *"inicia frontend y backend"*.
+* Solicitudes del usuario como: *"arranca los servidores"*, *"compila y levanta el proyecto"*, *"inicia frontend y backend"*, *"despliega los servicios localmente"*.
 
 ---
 
-## Flujo de Orquestación Universal
+## Flujo de Trabajo
 
 ```mermaid
 flowchart TD
-    Discovery["1. Descubrimiento de Manifiestos y Configuración"] --> Inspect["2. Inspección de Scripts de Build y Ejecución"]
-    Inspect --> AuditPorts["3. Auditoría de Puertos en el Host"]
-    Infra --> Compile["5. Compilación según Programación (Build Step)"]
-    AuditPorts --> Infra["4. Infraestructura de Soporte (Bases de Datos / Servicios)"]
-    Compile --> Launch["6. Ejecución en Segundo Plano (Daemons)"]
-    Launch --> Verify["7. Verificación de Salud y Tabla de URLs"]
+    Scan["1. Detección y Análisis de Componentes<br/>(Backend, Frontend, BD, Monolito o Microservicios)"] --> Locate["2. Identificación de Rutas y Frameworks"]
+    Locate --> CheckPorts["3. Auditoría de Puertos en Host"]
+    CheckPorts --> Compile["4. Compilación según Framework (Build Step si aplica)"]
+    Compile --> Launch["5. Ejecución en Segundo Plano (Daemons)"]
+    Launch --> Status["6. Tabla Consolidada de URLs y Estado"]
 ```
 
 ---
 
-### Fase 1: Descubrimiento de Manifiestos de Proyecto
+### Fase 1: Detección y Clasificación del Proyecto
 
-El agente debe escanear el árbol de directorios para identificar los manifiestos de build y configuración programados en el proyecto:
+El agente analiza el repositorio para clasificar qué componentes existen y en qué rutas se ubican:
 
-| Ecosistema | Archivos Clave | Herramientas de Compilación / Ejecución |
-| :--- | :--- | :--- |
-| **Node.js / TypeScript** | `package.json`, `pnpm-workspace.yaml`, `lerna.json` | `npm`, `pnpm`, `yarn`, `bun` |
-| **Java / JVM** | `pom.xml`, `build.gradle`, `build.gradle.kts` | Maven (`./mvnw`), Gradle (`./gradlew`) |
-| **Python** | `pyproject.toml`, `requirements.txt`, `Pipfile`, `setup.py` | `uvicorn`, `gunicorn`, `python manage.py`, `fastapi` |
-| **PHP** | `composer.json`, `artisan` | Composer, `php artisan serve`, `symfony` |
-| **.NET / C#** | `*.sln`, `*.csproj` | `dotnet build`, `dotnet run` |
-| **Go** | `go.mod`, `main.go` | `go build`, `go run` |
-| **Rust** | `Cargo.toml` | `cargo build`, `cargo run` |
-| **Ruby** | `Gemfile`, `Rakefile` | `bundle exec rails s`, `rackup` |
-| **Contenedores** | `docker-compose.yml`, `compose.yaml` | `docker-compose up -d` |
-| **Automatización** | `Makefile`, `Taskfile.yml`, `justfile` | `make`, `task`, `just` |
+1. **¿Solo Backend?**: APIs aisladas (Java, Python, PHP, Node/NestJS, Go, .NET, Rust, etc.).
+2. **¿Solo Frontend?**: SPAs o sitios web (React, Angular, Vue, Svelte, Vite, Next.js, etc.).
+3. **¿Base de Datos / Infraestructura?**: Docker Compose, contenedores de persistencia (PostgreSQL, MySQL, MongoDB, DynamoDB, MinIO, Redis, etc.).
+4. **¿Fullstack / Monorepositorio / Microservicios?**: Múltiples carpetas con frontends, backends e infraestructura desacoplada.
+5. **¿Variantes o Scripts de Despliegue Existentes?**:
+   - Archivos de documentación operativa: `DESPLIEGUE_DEV.md`, `README.md`, `DEPLOY.md`, `Makefile`, `docker-compose.yml`.
 
 ---
 
-### Fase 2: Inspección de Scripts Programados (Fidelidad de Build)
+### Fase 2: Mapeo de Rutas, Frameworks y Comandos de Ejecución
 
-> [!IMPORTANT]
-> El agente **NUNCA debe asumir o inventar comandos genéricos** si el proyecto ya tiene programados scripts específicos. Debe leer el manifiesto y utilizar exactamente los comandos definidos por los autores del proyecto:
+El agente ubica la ruta (`Path`) exacta de cada componente y extrae sus comandos nativos o de contenedor sin modificar nada:
 
-1. **En Node.js (`package.json`)**:
-   - Inspeccionar la sección `"scripts"`:
-     * Si existe script de build (`"build"`, `"compile"`), evaluar si el proyecto requiere compilación previa (ej. compilar TypeScript a JavaScript o empaquetar librerías compartidas).
-     * Identificar el script de desarrollo o ejecución programado: `"start:dev"`, `"dev"`, `"serve"`, `"start"`.
-   - Usar el gestor de paquetes correspondiente al lockfile (`package-lock.json` $\rightarrow$ `npm`, `pnpm-lock.yaml` $\rightarrow$ `pnpm`, `yarn.lock` $\rightarrow$ `yarn`).
-
-2. **En Java (`pom.xml` / `build.gradle`)**:
-   - Respetar los wrappers incluidos (`./mvnw` o `mvnw.cmd` en Windows; `./gradlew` o `gradlew.bat`).
-   - Identificar plugins programados (Spring Boot plugin, Quarkus, Micronaut).
-   - Compilar y ejecutar según la configuración del proyecto (`./mvnw spring-boot:run`, `./mvnw compile`, etc.).
-
-3. **En Python / PHP / Otros**:
-   - Verificar archivos `.env` o configuraciones de entorno del proyecto para respetar puertos y variables.
-   - Respetar entornos virtuales (`.venv`, `venv`) si están presentes.
-
----
-
-### Fase 3: Auditoría de Puertos en el Sistema
-
-Antes de iniciar cualquier servicio:
-1. Inspeccionar puertos activos en el sistema operativo:
-   * Windows: `Get-NetTCPConnection -State Listen | Select-Object -Unique LocalPort`
-   * Linux/macOS: `lsof -iTCP -sTCP:LISTEN -P` o `netstat -tuln`
-2. Identificar si algún puerto asignado por la configuración del proyecto está en colisión para reportarlo o evitar fallas al arrancar.
-
----
-
-### Fase 4: Infraestructura y Bases de Datos
-
-1. Si el proyecto depende de bases de datos o servicios auxiliares definidos en `docker-compose.yml`:
-   * Verificar si las bases de datos ya están escuchando nativamente en el host.
-   * Si no están activas y se dispone de Docker, iniciar únicamente los contenedores de infraestructura necesarios (`docker-compose up -d <servicio-bd>`).
-   * Si faltan credenciales o variables indispensables que no estén en los `.env` de ejemplo, consultar al usuario mediante `ask_question`.
-
----
-
-### Fase 5: Compilación y Ejecución en Segundo Plano (Daemons)
-
-1. **Fase de Compilación (si aplica)**:
-   - Para proyectos que requieran compilación previa de librerías, bundles o código tipado, ejecutar el build sincrónicamente:
-     ```bash
-     npm run build / ./mvnw compile / dotnet build
-     ```
-   - Verificar que el build termine con código de salida `0` antes de lanzar el servidor.
-
-2. **Fase de Ejecución en Segundo Plano**:
-   - Cada servidor de larga duración debe ejecutarse mediante `run_command` configurando:
-     * `IsDaemon: true`
-     * `WaitMsBeforeAsync: 2000-3000` (para capturar los logs iniciales de arranque).
-     * `toolSummary: "Start <nombre> daemon"`
-
----
-
-### Fase 6: Verificación de Salud y Entrega al Usuario
-
-1. Monitorear los logs iniciales de cada tarea para certificar que el servidor arrancó sin excepciones de inicialización.
-2. Comprobar que el puerto esté en estado de escucha (`Listen`).
-3. Si el framework expone endpoints de salud (`/health`, `/actuator/health`, `/api/health`, `/`), realizar un ping HTTP de confirmación.
-4. Generar y presentar al usuario una **tabla consolidada con el estado de todos los servicios**:
-
-| Componente / Directorio | Lenguaje / Stack | Script Ejecutado | Puerto / URL Local | Estado |
+| Componente | Framework / Runtime Detectado | Archivo de Detección | Comando de Compilación | Comando de Ejecución |
 | :--- | :--- | :--- | :--- | :--- |
-| `<directorio-o-modulo>` | `<stack-detectado>` | `<comando-del-proyecto>` | `http://localhost:XXXX` | **ACTIVO (200 OK)** |
-| `<directorio-o-modulo>` | `<stack-detectado>` | `<comando-del-proyecto>` | `http://localhost:YYYY` | **ACTIVO** |
+| **Java / Spring Boot** | Maven / Gradle | `pom.xml`, `mvnw.cmd`, `gradlew` | `.\mvnw.cmd compile` | `.\mvnw.cmd spring-boot:run` |
+| **NestJS / Express** | Node.js / TypeScript | `package.json`, `tsconfig.json` | `npm run build` (si aplica) | `npm run start:dev` o `npm start` |
+| **Angular** | Angular CLI | `angular.json`, `package.json` | `npm run build` | `npm start` (o `npx ng serve`) |
+| **React / Vue (Vite)**| Vite / Node.js | `vite.config.*`, `package.json` | `npm run build` | `npm run dev` |
+| **Python / FastAPI** | Uvicorn / FastAPI / Django | `main.py`, `requirements.txt`, `pyproject.toml` | - | `python main.py` o `uvicorn main:app --reload` |
+| **PHP / Laravel** | Laravel Artisan | `artisan`, `composer.json` | - | `php artisan serve --port XXXX` |
+| **Docker / Infra** | Docker Engine | `docker-compose.yml` | `docker-compose build` | `docker-compose up -d` |
 
-5. Proveer comandos útiles para detener o reiniciar servicios de forma controlada.
+---
+
+### Fase 3: Auditoría Rápida de Puertos
+
+Antes de iniciar procesos:
+1. Comprobar los puertos en escucha en el sistema (`netstat -ano | findstr LISTENING`).
+2. Evitar colisiones si un puerto ya está ocupado por un servicio existente.
+
+---
+
+### Fase 4: Compilación y Lanzamiento de Servicios (Daemons)
+
+1. **Compilación (Build)**:
+   - Si un componente requiere build previo antes de su ejecución, ejecutar el comando sincrónicamente verificando código de salida 0.
+2. **Ejecución en Segundo Plano**:
+   - Para cada servidor backend o frontend, ejecutar mediante `run_command` con:
+     * `IsDaemon: true`
+     * `WaitMsBeforeAsync: 2000-3000` (capturar logs de arranque)
+     * `CommandLine: "cd <ruta-del-componente>; <comando-del-framework>"`
+     * `toolSummary: "Start <nombre-componente> daemon"`
+
+---
+
+### Fase 5: Reporte de URLs y Estado de los Servicios
+
+Una vez lanzados los daemons, presentar al usuario una tabla clara con:
+* Nombre del componente o microservicio
+* Rol (Backend, Frontend, Base de Datos, Infraestructura)
+* Ruta del proyecto (`Path`)
+* Framework / Ecosistema
+* Comando ejecutado
+* URL local de acceso (ej. `http://localhost:XXXX`)
+* Estado de inicio y salud

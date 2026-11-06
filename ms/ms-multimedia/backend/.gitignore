@@ -1,4 +1,6 @@
-# Compiled output
+# Local S3 Storage
+storage/
+
 dist
 node_modules
 

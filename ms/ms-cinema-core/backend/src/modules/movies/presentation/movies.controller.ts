@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   HttpStatus,
@@ -12,7 +13,7 @@ import { CreateMovieUseCase } from '../application/create-movie.use-case';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Movie } from '../domain/movie.entity';
+import { Movie, MovieStatus } from '../domain/movie.entity';
 
 @Controller('api/v1/movies')
 export class MoviesController {
@@ -42,5 +43,25 @@ export class MoviesController {
       throw new NotFoundException(`Película con ID ${id} no encontrada`);
     }
     return movie;
+  }
+
+  @Patch(':id/archive')
+  async archive(@Param('id') id: string) {
+    const movie = await this.movieRepo.findOne({ where: { id } });
+    if (!movie) {
+      throw new NotFoundException(`Película con ID ${id} no encontrada`);
+    }
+    movie.status = MovieStatus.ARCHIVADA;
+    return await this.movieRepo.save(movie);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() body: Partial<Movie>) {
+    const movie = await this.movieRepo.findOne({ where: { id } });
+    if (!movie) {
+      throw new NotFoundException(`Película con ID ${id} no encontrada`);
+    }
+    Object.assign(movie, body);
+    return await this.movieRepo.save(movie);
   }
 }

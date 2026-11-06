@@ -5,6 +5,7 @@ import { HallsModule } from './modules/halls/halls.module';
 import { MoviesModule } from './modules/movies/movies.module';
 import { ShowtimesModule } from './modules/showtimes/showtimes.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
+import { PushModule } from './modules/push/push.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { MetricsModule } from './modules/metrics/metrics.module';
     MoviesModule,
     ShowtimesModule,
     MetricsModule,
+    PushModule,
   ],
   controllers: [],
   providers: [],

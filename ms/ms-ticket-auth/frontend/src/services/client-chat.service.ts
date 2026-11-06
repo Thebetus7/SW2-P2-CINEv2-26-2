@@ -10,6 +10,8 @@ export interface SendMessagePayload {
   currentState?: ChatFlowState;
   selectedShowtimeId?: string;
   selectedSeatCode?: string;
+  sessionId?: string;
+  history?: Array<{ role: string; content: string }>;
 }
 
 export interface ClientChatApiResponse {

@@ -1,5 +1,23 @@
 # Specification: Módulo 04 - Servidor MCP, Agente Auditor GrokCloud y Automatización n8n (MS IA-MCP)
 
+Status: IN_REVIEW
+Version: 2
+
+## Evolución propuesta: asistencia administrativa contextual
+
+El administrador solicita consultas y reportes conversacionales sobre los datos y operaciones disponibles del cine. El asistente debe seleccionar las consultas pertinentes, combinar sus resultados cuando sea necesario y conservar el contexto de la conversación para interpretar preguntas sucesivas. Las respuestas cuantitativas deben identificar indicador, período, fuente y actualización; ante datos no disponibles o fallos debe informarlo sin presentar datos simulados como reales. Solo un administrador autorizado puede acceder a información administrativa.
+
+- **RF-ADM-01:** Ante una solicitud de película más vista, contar boletos utilizados por película; si falta el período, solicitarlo antes de calcular el ranking.
+- **RF-ADM-02:** Permitir consultar ventas por separado de asistencia; considerar boletos confirmados y utilizados para el conteo de ventas.
+- **RF-ADM-03:** Permitir preguntas sucesivas que reutilicen el indicador, período y entidades previamente identificados, solicitando aclaración si no se pueden resolver.
+- **RF-ADM-04:** Informar cuando una pregunta requiere datos o integraciones que no estén disponibles, sin inventar resultados.
+- **SC-ADM-01:** Dado que se pregunta por la película más vista sin período, cuando se procesa la pregunta, se solicita el período y no se inventa un ranking.
+- **SC-ADM-02:** Dado un período indicado y boletos utilizados disponibles, cuando se solicita la película más vista, se presenta el ranking por película con su conteo, período y fuente.
+- **SC-ADM-03:** Dado un resultado previo con película y período, cuando se pregunta por sus ventas, se reutiliza ese contexto y se informa el indicador consultado.
+- **SC-ADM-04:** Dado un servicio de datos no disponible, cuando se consulta un indicador que depende de él, se comunica la indisponibilidad sin atribuir valores simulados a datos reales.
+
+La revisión funcional, el plan técnico, las tareas y la verificación del comportamiento permanecen pendientes.
+
 > **Estado:** APPROVED  
 > **Módulo:** `docs/specs/04-ms-ia-mcp/`  
 > **Ubicación en Código:** `ms/ms-ia-mcp/backend/` y `ms/ms-ia-mcp/frontend/`  

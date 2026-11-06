@@ -5,6 +5,13 @@ import { StepperPayment } from './components/StepperPayment';
 import { MyTicketsEmptyView } from './components/MyTicketsEmptyView';
 import { RealQrCode } from './components/RealQrCode';
 import { ClientChatBubble } from './components/ClientChat/ClientChatBubble';
+import {
+  clearAuthSession,
+  getStoredTickets,
+  restoreSeedCatalog,
+  clearAllTickets,
+  TicketRecord,
+} from './services/ticket-storage.service';
 
 export const DEFAULT_USER_TICKETS_SEED = [
   {
@@ -239,12 +246,7 @@ export const App: React.FC = () => {
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
       if (p.get('action') === 'logout' || p.get('logout') === 'true') {
-        try {
-          localStorage.clear();
-          sessionStorage.clear();
-        } catch {
-          // Entorno de prueba
-        }
+        clearAuthSession();
         return null;
       }
     }
@@ -296,9 +298,8 @@ export const App: React.FC = () => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('action') === 'logout' || urlParams.get('logout') === 'true') {
+        clearAuthSession();
         try {
-          localStorage.clear();
-          sessionStorage.clear();
           window.history.replaceState({}, document.title, window.location.pathname);
         } catch {
           // Entorno de prueba
@@ -400,12 +401,7 @@ export const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-    } catch {
-      // Entorno de prueba
-    }
+    clearAuthSession();
     setToken(null);
     setRole(null);
     setUserName('cliente');
@@ -572,7 +568,7 @@ export const App: React.FC = () => {
         )}
 
         {view === 'stepper' && (
-          <div className="space-y-6 max-w-4xl mx-auto w-full animate-fadeIn">
+          <div className="space-y-6 max-w-6xl mx-auto w-full animate-fadeIn">
             <StepperPayment
               showtimeId={selectedShowtimeId}
               movieTitle={selectedMovie}
@@ -589,32 +585,7 @@ export const App: React.FC = () => {
         )}
 
         {view === 'empty' && (() => {
-          let ticketsList: Array<{
-            ticketId: string;
-            movieTitle: string;
-            hallName: string;
-            seatCodes: string;
-            seatId?: string;
-            showtimeId?: string;
-            amount: number;
-            paymentIntentId: string;
-            purchasedAt: string;
-            issuedAt?: string;
-            signature?: string;
-            sig?: string;
-            status?: string;
-          }> = [];
-          try {
-            const raw = localStorage.getItem('user_tickets_list');
-            if (raw) {
-              ticketsList = JSON.parse(raw);
-            } else {
-              ticketsList = DEFAULT_USER_TICKETS_SEED;
-              localStorage.setItem('user_tickets_list', JSON.stringify(DEFAULT_USER_TICKETS_SEED));
-            }
-          } catch {
-            ticketsList = DEFAULT_USER_TICKETS_SEED;
-          }
+          const ticketsList: TicketRecord[] = getStoredTickets();
 
           if (ticketsList.length === 0) {
             return (
@@ -652,13 +623,13 @@ export const App: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm('¿Deseas restaurar el historial predeterminado de 15 boletos?')) {
-                        localStorage.setItem('user_tickets_list', JSON.stringify(DEFAULT_USER_TICKETS_SEED));
+                      if (confirm('¿Deseas restaurar el historial predeterminado preservando tus compras?')) {
+                        restoreSeedCatalog();
                         setView('empty');
                       }
                     }}
                     className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-800 rounded-xl text-xs transition"
-                    title="Restaurar catálogo inicial"
+                    title="Restaurar catálogo inicial preservando compras"
                   >
                     🔄
                   </button>
@@ -666,7 +637,7 @@ export const App: React.FC = () => {
                     type="button"
                     onClick={() => {
                       if (confirm('¿Deseas vaciar tu historial de boletos de prueba?')) {
-                        localStorage.setItem('user_tickets_list', '[]');
+                        clearAllTickets();
                         setView('billboard');
                       }
                     }}
@@ -688,21 +659,28 @@ export const App: React.FC = () => {
                     <div>
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <span
-                            className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
-                              t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
-                                ? 'bg-purple-950/80 text-purple-400 border border-purple-500/30'
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span
+                              className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
+                                t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
+                                  ? 'bg-purple-950/80 text-purple-400 border border-purple-500/30'
+                                  : t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE'
+                                  ? 'bg-amber-950/80 text-amber-400 border border-amber-500/30'
+                                  : 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30'
+                              }`}
+                            >
+                              {t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
+                                ? 'Ingreso Validado • Utilizado'
                                 : t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE'
-                                ? 'bg-amber-950/80 text-amber-400 border border-amber-500/30'
-                                : 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30'
-                            }`}
-                          >
-                            {t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
-                              ? 'Ingreso Validado • Utilizado'
-                              : t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE'
-                              ? 'Reserva Pendiente'
-                              : 'Válido • Acceso Sala'}
-                          </span>
+                                ? 'Reserva Pendiente'
+                                : 'Válido • Acceso Sala'}
+                            </span>
+                            {t.isPurchasedByUser && (
+                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-950/90 text-rose-300 border border-rose-500/50 shadow-sm flex items-center gap-1">
+                                <span>⭐</span> Comprado por ti
+                              </span>
+                            )}
+                          </div>
                           <h3 className="text-lg font-bold text-white mt-2 group-hover:text-rose-400 transition">
                             {t.movieTitle}
                           </h3>

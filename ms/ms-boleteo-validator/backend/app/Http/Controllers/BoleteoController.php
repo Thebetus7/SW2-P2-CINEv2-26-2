@@ -7,6 +7,8 @@ use App\Services\CryptoValidationService;
 use App\Services\TicketAuthClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class BoleteoController extends Controller
 {
@@ -72,6 +74,18 @@ class BoleteoController extends Controller
         );
 
         if ($authResponse['success']) {
+            // Obtener el título desde la función real; no fabricar uno si falla.
+            if (empty($authResponse['movieTitle']) && ! empty($authResponse['showtimeId'])) {
+                try {
+                    $baseUrl = rtrim((string) config('services.cinema_core.url'), '/');
+                    $showtime = Http::timeout(2)->get($baseUrl.'/api/v1/showtimes/'.$authResponse['showtimeId']);
+                    if ($showtime->successful()) {
+                        $authResponse['movieTitle'] = $showtime->json('movie.title');
+                    }
+                } catch (\Illuminate\Http\Client\ConnectionException $exception) {
+                    Log::warning('No se pudo obtener la película de la función', ['error' => $exception->getMessage()]);
+                }
+            }
             $scan = AccessScan::create([
                 'ticket_id' => $ticketId,
                 'movie_title' => $authResponse['movieTitle'],

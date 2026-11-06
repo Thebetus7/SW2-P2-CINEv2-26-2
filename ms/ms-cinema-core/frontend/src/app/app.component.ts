@@ -33,6 +33,9 @@ import { RouterModule } from '@angular/router';
           <a routerLink="/showtimes" routerLinkActive="bg-slate-800 text-rose-400 font-bold border border-rose-500/30" class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition">
             Cartelera y Funciones
           </a>
+          <a routerLink="/movies" routerLinkActive="bg-slate-800 text-rose-400 font-bold border border-rose-500/30" class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition">
+            Películas (IA)
+          </a>
           <a routerLink="/local-ai" routerLinkActive="bg-slate-800 text-rose-400 font-bold border border-rose-500/30" class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             IA Local Offline

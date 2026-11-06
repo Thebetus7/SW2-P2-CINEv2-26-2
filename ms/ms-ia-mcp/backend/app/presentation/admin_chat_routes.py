@@ -72,6 +72,27 @@ async def process_admin_chat(request: AdminChatRequest) -> AdminChatResponse:
     logger.info(f"Mensaje de Administrador ({request.userId}): {request.message}")
 
     user_query = request.message.strip()
+    # El contexto operativo no incluye un ranking de boletos utilizados. Evitar
+    # que el modelo sustituya los datos del complejo por tendencias externas.
+    normalized_query = user_query.lower()
+    if re.search(r"pel[ií]culas?", normalized_query) and re.search(
+        r"m[aá]s\s+vist[ao]s?|popular(?:es|idad)?|ranking", normalized_query
+    ):
+        has_period = bool(re.search(
+            r"\b(hoy|ayer|semana|mes|año|a[nñ]o|d[ií]as?|desde|hasta|"
+            r"20\d{2}|\d{1,2}[/-]\d{1,2})\b", normalized_query
+        ))
+        if not has_period:
+            reply = (
+                "¿Qué período deseas consultar para conocer las películas más vistas "
+                "de CineV2? El ranking debe contar los boletos utilizados."
+            )
+        else:
+            reply = (
+                "No puedo calcular el ranking de CineV2: la consulta de boletos "
+                "utilizados por película y período todavía no está conectada."
+            )
+        return AdminChatResponse(reply=reply)
     should_generate_excel = request.requestExcel or bool(EXCEL_INTENT_PATTERN.search(user_query))
 
     excel_meta: Optional[ExcelReportMeta] = None
@@ -112,6 +133,9 @@ async def process_admin_chat(request: AdminChatRequest) -> AdminChatResponse:
     # Construcción de Prompt para GrokCloud enriquecido con métricas predictivas
     system_prompt = (
         "Eres el Asistente Ejecutivo de Inteligencia Operativa y Servidor MCP de CineV2. "
+        "No inventes resultados ni afirmes que tienes acceso a datos que no se te hayan proporcionado. "
+        "Película más vista significa entradas utilizadas; si no se indica el período, solicítalo. "
+        "Para ventas se cuentan boletos confirmados y utilizados. "
         "Respondes al Administrador del complejo con tono profesional, ejecutivo, claro y cuantitativo. "
         "IMPORTANTE: Redacta en párrafos ejecutivos fluidos y elegantes. No abuses de viñetas con asteriscos (** o *) ni caracteres Markdown toscos, "
         "ya que la interfaz del usuario procesa y renderiza los datos en tarjetas de componentes visuales (KPI cards, badges y módulos analíticos). "
@@ -129,10 +153,13 @@ async def process_admin_chat(request: AdminChatRequest) -> AdminChatResponse:
             "Confirma al administrador que el documento .xlsx ha sido compilado y sintetiza brevemente los hallazgos."
         )
 
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_query},
-    ]
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(
+        {"role": item["role"], "content": item["content"][:4000]}
+        for item in request.history[-12:]
+        if item.get("role") in ("user", "assistant") and isinstance(item.get("content"), str)
+    )
+    messages.append({"role": "user", "content": user_query})
 
     grok_res = await grok_client.chat_completion(messages=messages, temperature=0.3)
     reply_text = grok_res.get("content", "")

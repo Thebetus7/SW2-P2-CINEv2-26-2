@@ -34,6 +34,7 @@ public class TicketRestController {
             int statusCode,
             String ticketId,
             String status,
+            String showtimeId,
             String hallName,
             String seatLabel,
             String scannedTimestamp
@@ -94,6 +95,7 @@ public class TicketRestController {
                     200,
                     ticket.getId().toString(),
                     TicketStatus.USED.name(),
+                    ticket.getShowtimeId().toString(),
                     "Sala de Exhibición Principal",
                     "Butaca #" + ticket.getSeatId().toString().substring(0, 4).toUpperCase(),
                     timestamp

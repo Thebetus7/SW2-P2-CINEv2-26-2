@@ -73,6 +73,7 @@ class AdminChatRequest(BaseModel):
     message: str
     userId: str = "admin"
     requestExcel: bool = False
+    history: List[Dict[str, str]] = Field(default_factory=list, max_length=12)
 
 
 class ExcelReportMeta(BaseModel):
@@ -148,6 +149,8 @@ class ClientChatRequest(BaseModel):
     currentState: str = "EXPLORING"  # EXPLORING | SHOWTIME_SELECTED | SEAT_ASSIGNED | PAYMENT_PENDING
     selectedShowtimeId: Optional[str] = None
     selectedSeatCode: Optional[str] = None
+    sessionId: Optional[str] = None
+    history: Optional[List[Dict[str, Any]]] = None
 
 
 class ClientChatResponse(BaseModel):
