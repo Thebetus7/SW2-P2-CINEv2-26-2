@@ -89,28 +89,59 @@ flowchart TD
 
 ---
 
+---
+
+### Slice 6: Evolución Dinámica de Cartelera, Componentes Ricos y Retroceso Bidireccional
+- [x] **T6.1 (Detección Dinámica de Películas y Cartelera On-Demand)** `[ms-ia-mcp/backend/app/presentation/client_chat_routes.py]`
+  - Búsqueda y coincidencia flexible por tokens contra el catálogo de `all_cards` (incluyendo Gladiador II, Spider-Man, Deadpool, etc.).
+  - Supresión de tarjetas redundantes en saludos y consultas generales; entrega selectiva exclusiva de la película consultada.
+  - Conexión de intención de compra en lenguaje natural ("quiero comprar entradas entonces") con el contexto del historial reciente.
+  - Trazabilidad: `TEST-CCH-09`, `TEST-CCH-10`.
+- [x] **T6.2 (Componente Visual Hero y Selector con Pantalla de Cine)** `[ms-ticket-auth/frontend/src/components/ClientChat/]`
+  - Creación de `SelectedShowtimeHero.tsx` con metadatos de función seleccionada y botón de retorno.
+  - Mejora de `SeatSelectorPills.tsx` con visualizador curvado `── Pantalla de la Sala ──` y feedback de butacas centrales.
+  - Trazabilidad: `TEST-CCH-11`.
+- [x] **T6.3 (Mecanismo Bidireccional de Retroceso y Botones con Lógica Real)** `[ClientChatWindow.tsx, PurchaseSummaryCard.tsx]`
+  - Botones secundarios en `PurchaseSummaryCard`: `Cambiar butaca` (retrocede a `SHOWTIME_SELECTED`) y `Otra función` (retrocede a `EXPLORING`).
+  - Intercepción de quick chips para acciones directas sin bucles de texto.
+  - Trazabilidad: `TEST-CCH-12`, `TEST-CCH-13`.
+
+---
+
 ## Bitácora de Evidencia de Ejecución
 
 ```text
 [BACKEND PYTEST EVIDENCE - ms-ia-mcp]
-tests/test_client_chat.py::test_seat_recommender_scoring PASSED
-tests/test_client_chat.py::test_client_chat_exploring PASSED
-tests/test_client_chat.py::test_client_chat_showtime_selection PASSED
-tests/test_client_chat.py::test_client_chat_seat_assignment_summary PASSED
-============================== 4 passed in 2.75s ==============================
+tests/test_anomaly_detection.py ..... [ 9%]
+tests/test_audit_flow.py .. [ 13%]
+tests/test_audit_routes.py . [ 15%]
+tests/test_chatbot_flow.py . [ 17%]
+tests/test_chatbot_routes.py .. [ 21%]
+tests/test_client_chat.py ......... [ 39%]
+tests/test_client_chat_multi_turn.py ... [ 45%]
+tests/test_config.py .. [ 49%]
+tests/test_excel_report.py ..... [ 58%]
+tests/test_grok_client.py .. [ 62%]
+tests/test_mcp_tools.py ...... [ 74%]
+tests/test_models.py ...... [ 86%]
+tests/test_n8n_webhook.py .. [ 90%]
+tests/test_scheduler.py . [ 92%]
+tests/test_service_clients.py .. [ 96%]
+tests/test_system_prompt.py .. [100%]
+======================= 51 passed in 21.02s =======================
 
 [FRONTEND VITEST EVIDENCE - ms-ticket-auth]
-Test Files  8 passed (8)
-     Tests  30 passed (30)
-- src/tests/ClientChat.spec.tsx (5 tests passed):
-  ✓ TEST-CCH-01: debe renderizar la burbuja flotante y abrir la ventana al hacer clic
-  ✓ TEST-CCH-02: debe renderizar la lista de tarjetas de funciones y permitir seleccionar una
-  ✓ TEST-CCH-03: debe renderizar el selector de butacas recomendadas por IA
-  ✓ TEST-CCH-04: debe desplegar el resumen financiero y emitir evento de pago
-  ✓ TEST-CCH-05: debe desplegar el ticket emitido con su código QR y botón de descarga
-
-[E2E FLOW CLI VERIFICATION]
-1. EXPLORING State: EXPLORING | Cards count: 2
-2. SHOWTIME_SELECTED State: SHOWTIME_SELECTED | Recom seats: ['C-7', 'C-8', 'D-7']
-3. SEAT_ASSIGNED State: SEAT_ASSIGNED | Total Price: 45.0
+Test Files  11 passed (11)
+     Tests  42 passed (42)
+✓ src/tests/ClientChatFlowNavigation.spec.tsx (3 tests passed)
+✓ src/tests/ClientChatCache.spec.tsx (4 tests passed)
+✓ src/tests/ClientChat.spec.tsx (5 tests passed)
+✓ src/tests/LoginView.test.tsx (3 tests passed)
+✓ src/tests/RealQrCode.test.tsx (3 tests passed)
+✓ src/tests/TicketStoragePersistence.spec.ts (5 tests passed)
+✓ src/tests/EmptyState.test.tsx (3 tests passed)
+✓ src/tests/LoginDemo.spec.tsx (2 tests passed)
+✓ src/tests/AppRoleRedirection.spec.tsx (3 tests passed)
+✓ src/tests/LoginAndPurchase.spec.tsx (2 tests passed)
+✓ src/tests/StepperPayment.test.tsx (9 tests passed)
 ```

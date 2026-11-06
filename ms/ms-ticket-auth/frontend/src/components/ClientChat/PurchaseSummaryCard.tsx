@@ -1,15 +1,19 @@
 import React from 'react';
 import { PurchaseSummary } from '../../types/client-chat.types';
-import { CreditCard, Ticket, CheckCircle2 } from 'lucide-react';
+import { CreditCard, Ticket, Armchair, Film, RotateCcw } from 'lucide-react';
 
 interface PurchaseSummaryCardProps {
   summary: PurchaseSummary;
   onProceedToPayment: () => void;
+  onBackToSeats?: () => void;
+  onBackToShowtimes?: () => void;
 }
 
 export const PurchaseSummaryCard: React.FC<PurchaseSummaryCardProps> = ({
   summary,
   onProceedToPayment,
+  onBackToSeats,
+  onBackToShowtimes,
 }) => {
   return (
     <div
@@ -51,14 +55,43 @@ export const PurchaseSummaryCard: React.FC<PurchaseSummaryCardProps> = ({
         </div>
       </div>
 
+      {/* Botón Principal de Acción */}
       <button
+        type="button"
         onClick={onProceedToPayment}
         data-testid="proceed-payment-button"
-        className="w-full mt-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-lg shadow-rose-950/40 flex items-center justify-center gap-2 transition-all cursor-pointer"
+        className="w-full mt-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-lg shadow-rose-950/40 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
       >
         <CreditCard className="w-4 h-4" />
         <span>Proceder al Pago con Tarjeta</span>
       </button>
+
+      {/* Botones Secundarios de Navegación y Retorno */}
+      <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 gap-2">
+        {onBackToSeats && (
+          <button
+            type="button"
+            onClick={onBackToSeats}
+            data-testid="summary-back-to-seats-button"
+            className="flex-1 py-1.5 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white text-[11px] font-medium flex items-center justify-center gap-1.5 border border-slate-700 transition cursor-pointer"
+          >
+            <Armchair className="w-3 h-3 text-emerald-400" />
+            <span>Cambiar butaca</span>
+          </button>
+        )}
+
+        {onBackToShowtimes && (
+          <button
+            type="button"
+            onClick={onBackToShowtimes}
+            data-testid="summary-back-to-showtimes-button"
+            className="flex-1 py-1.5 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white text-[11px] font-medium flex items-center justify-center gap-1.5 border border-slate-700 transition cursor-pointer"
+          >
+            <Film className="w-3 h-3 text-rose-400" />
+            <span>Otra función</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 };

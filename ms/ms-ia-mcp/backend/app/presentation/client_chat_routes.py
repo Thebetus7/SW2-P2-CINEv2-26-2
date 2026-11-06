@@ -16,6 +16,50 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["ClientChat"])
 
 
+def _extract_movie_tokens(movie_title: str) -> List[str]:
+    """Genera tokens simplificados para búsqueda difusa del título de la película."""
+    clean = movie_title.lower().replace(":", " ").replace("-", " ").replace("2", "ii").replace("dos", "ii")
+    words = [w.strip() for w in clean.split() if len(w.strip()) > 2]
+    # Añadir variantes comunes
+    variants = list(words)
+    if "gladiador" in clean or "gladiator" in clean:
+        variants.extend(["gladiador", "gladiator", "gladiador 2", "gladiador ii"])
+    if "spider" in clean:
+        variants.extend(["spider", "spiderman", "spider-man"])
+    if "avatar" in clean:
+        variants.extend(["avatar", "avatar 2", "pandora"])
+    if "dune" in clean:
+        variants.extend(["dune", "dune 2", "arrakis"])
+    if "intensamente" in clean or "inside" in clean:
+        variants.extend(["intensamente", "insideout", "inside out"])
+    return list(set(variants))
+
+
+def _match_movie_in_text(text: str, all_cards: List[ShowtimeCard]) -> List[ShowtimeCard]:
+    """Retorna las funciones de la película que coincida con el texto proporcionado."""
+    text_lower = text.lower()
+    for card in all_cards:
+        tokens = _extract_movie_tokens(card.movieTitle)
+        if any(tok in text_lower for tok in tokens):
+            # Retornar todas las funciones que pertenezcan a esta misma película
+            return [c for c in all_cards if c.movieTitle.strip().lower() == card.movieTitle.strip().lower()]
+    return []
+
+
+def _find_recent_movie_in_history(history: Any, all_cards: List[ShowtimeCard]) -> List[ShowtimeCard]:
+    """Busca en los últimos turnos del historial si se habló de alguna película específica."""
+    if not history:
+        return []
+    # Recorrer historial en orden inverso (lo más reciente primero)
+    reversed_hist = list(reversed(history[-6:]))
+    for item in reversed_hist:
+        content = item.get("content", "") if isinstance(item, dict) else getattr(item, "content", "")
+        matches = _match_movie_in_text(str(content), all_cards)
+        if matches:
+            return matches
+    return []
+
+
 @router.post("/client-chat", response_model=ClientChatResponse, status_code=status.HTTP_200_OK)
 async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
     """Orquestador conversacional interactivo para compra asistida de boletos (Módulo 07)."""
@@ -36,8 +80,8 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
         poster = st.get("posterUrl") or st.get("movie", {}).get("posterUrl")
 
         # Asignar tipo y precio estimado
-        hall_type = "IMAX" if "imax" in hall_name.lower() else ("3D" if "3d" in hall_name.lower() else "2D")
-        price = 45.0 if hall_type == "IMAX" else (40.0 if hall_type == "3D" else 35.0)
+        hall_type = "IMAX" if "imax" in hall_name.lower() else ("VIP" if "vip" in hall_name.lower() else ("3D" if "3d" in hall_name.lower() else "2D"))
+        price = 45.0 if hall_type == "IMAX" else (65.0 if hall_type == "VIP" else (40.0 if hall_type == "3D" else 35.0))
 
         all_cards.append(
             ShowtimeCard(
@@ -51,9 +95,50 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
             )
         )
 
-    # 2. Manejo de Selección de Butaca y Resumen Pre-Pago (Evaluado primero si ya hay asiento elegido)
-    if request.selectedSeatCode or any(s in msg_lower for s in ["c-8", "c-7", "d-7", "butaca", "asiento"]):
-        chosen_seat = request.selectedSeatCode or ("C-8" if "c-8" in msg_lower else ("C-7" if "c-7" in msg_lower else "D-7"))
+    # 2. Manejo de Retroceso explícito ("Cambiar butaca" o "Volver a elegir butaca")
+    is_cambiar_butaca = any(k in msg_lower for k in [
+        "cambiar butaca", "cambiar asiento", "elegir otra butaca", "otra butaca", "cambiar de butaca", "volver a butacas"
+    ])
+    if is_cambiar_butaca:
+        target_card = next((c for c in all_cards if c.showtimeId == request.selectedShowtimeId), all_cards[0] if all_cards else None)
+        recom_seats = recommend_best_seats([], limit=3)
+        return ClientChatResponse(
+            reply=f"¡Entendido! Puedes elegir otra de las mejores butacas disponibles para '{target_card.movieTitle if target_card else 'tu función'}':",
+            nextState="SHOWTIME_SELECTED",
+            suggestedChips=["Elegir C-8", "Elegir C-7", "Ver otra película"],
+            showtimeCards=[target_card] if target_card else [],
+            recommendedSeats=recom_seats,
+            summary=None,
+        )
+
+    # 3. Manejo de Retroceso explícito ("Cambiar función" o "Ver otra película")
+    is_cambiar_funcion = any(k in msg_lower for k in [
+        "cambiar funcion", "cambiar función", "otra pelicula", "otra película", "ver otra película", "ver otra pelicula", "volver a cartelera"
+    ])
+    if is_cambiar_funcion:
+        return ClientChatResponse(
+            reply="Claro, aquí tienes la cartelera para elegir otra función:",
+            nextState="EXPLORING",
+            suggestedChips=["Funciones económicas", "Salas IMAX", "Películas de la noche"],
+            showtimeCards=all_cards[:3],
+            recommendedSeats=[],
+            summary=None,
+        )
+
+    # 4. Manejo de Selección de Butaca y Resumen Pre-Pago (Solo si NO es cambiar butaca)
+    seat_explicit = request.selectedSeatCode or any(s in msg_lower for s in ["c-8", "c-7", "d-7", "c-5", "c-6", "c-4", "a-3", "d-5", "d-6"])
+    seat_word_select = ("butaca" in msg_lower or "asiento" in msg_lower) and any(w in msg_lower for w in ["elijo", "quiero", "prefiero", "asigna", "selecciona", "dame", "esta"])
+
+    if (seat_explicit or seat_word_select) and not is_cambiar_butaca:
+        chosen_seat = request.selectedSeatCode
+        if not chosen_seat:
+            for s in ["c-8", "c-7", "d-7", "c-5", "c-6", "c-4", "a-3", "d-5", "d-6"]:
+                if s in msg_lower:
+                    chosen_seat = s.upper()
+                    break
+            if not chosen_seat:
+                chosen_seat = "C-8"
+
         selected_card = next((c for c in all_cards if c.showtimeId == request.selectedShowtimeId), all_cards[0] if all_cards else None)
 
         if selected_card:
@@ -75,33 +160,79 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
             return ClientChatResponse(
                 reply=reply,
                 nextState="SEAT_ASSIGNED",
-                suggestedChips=["Cambiar butaca", "Proceder al Pago"],
+                suggestedChips=["Cambiar butaca", "Ver otra película"],
                 showtimeCards=[],
                 recommendedSeats=[],
                 summary=summary_data,
             )
 
-    # 3. Manejo de Selección de Función
-    if request.selectedShowtimeId or "seleccionar-funcion" in msg_lower or any(p in msg_lower for p in ["quiero la función", "quiero la funcion", "avatar", "dune", "oppenheimer", "intensamente"]):
+    # 5. Detección Inteligente de Película Consultada en el Mensaje o Historial
+    matched_movie_cards = _match_movie_in_text(user_msg, all_cards)
+    
+    # Intención conversacional de compra (ej. "quiero comprar entradas entonces", "comprar entradas")
+    is_buying_intent = any(k in msg_lower for k in [
+        "quiero comprar", "comprar entradas", "comprar boletos", "comprar tickets", "comprar entonces", "quiero entradas", "comprar la de"
+    ])
+
+    if is_buying_intent and not matched_movie_cards:
+        # Recuperar película del contexto reciente si no vino nombrada en este turno
+        matched_movie_cards = _find_recent_movie_in_history(request.history, all_cards)
+
+    # Si encontramos funciones de la película mencionada o contextual
+    if matched_movie_cards:
+        # Verificar si además se especificó hora o sala concreta (ej: "19:00", "14:30", "sala 4", "imax")
+        target_card = None
+        for c in matched_movie_cards:
+            if c.startTime in msg_lower or c.hallName.lower() in msg_lower or (c.hallType and c.hallType.lower() in msg_lower):
+                target_card = c
+                break
+
+        # Si especificó hora o si solo hay 1 función y está en modo compra
+        if target_card or (len(matched_movie_cards) == 1 and is_buying_intent):
+            chosen_card = target_card or matched_movie_cards[0]
+            recom_seats = recommend_best_seats([], limit=3)
+            reply = (
+                f"Excelente elección: has seleccionado '{chosen_card.movieTitle}' ({chosen_card.hallType}) "
+                f"en {chosen_card.hallName} a las {chosen_card.startTime}.\n\n"
+                f"He analizado el mapa de la sala y estas son las 3 butacas centrales con mejor visibilidad y sonido. "
+                f"¿Cuál prefieres?"
+            )
+            return ClientChatResponse(
+                reply=reply,
+                nextState="SHOWTIME_SELECTED",
+                suggestedChips=["Elegir C-8", "Ver otra película"],
+                showtimeCards=[chosen_card],
+                recommendedSeats=recom_seats,
+                summary=None,
+            )
+
+        # Si no especificó hora o está preguntando por disponibilidad de esa película:
+        # Devolver ÚNICAMENTE las funciones de esa película
+        reply_title = matched_movie_cards[0].movieTitle
+        reply_text = (
+            f"¡Sí! Tenemos '{reply_title}' disponible en cartelera hoy. "
+            f"Elige a continuación la sala y horario que prefieras para reservar tu butaca:"
+        )
+        return ClientChatResponse(
+            reply=reply_text,
+            nextState="EXPLORING",
+            suggestedChips=[f"Función {c.startTime}" for c in matched_movie_cards[:3]] + ["Ver cartelera completa"],
+            showtimeCards=matched_movie_cards,
+            recommendedSeats=[],
+            summary=None,
+        )
+
+    # 6. Manejo de Selección Explícita de Función (por id o nombre directo)
+    if request.selectedShowtimeId or "seleccionar-funcion" in msg_lower or "quiero la función" in msg_lower or "quiero la funcion" in msg_lower:
         target_id = request.selectedShowtimeId
-        if not target_id:
-            # Buscar función cuyo título o sala coincida con el mensaje
+        selected_card = next((c for c in all_cards if c.showtimeId == target_id), None)
+        if not selected_card:
             for c in all_cards:
                 if c.movieTitle.lower() in msg_lower or c.hallName.lower() in msg_lower or c.showtimeId.lower() in msg_lower:
-                    target_id = c.showtimeId
-                    break
-
-        selected_card = next((c for c in all_cards if c.showtimeId == target_id), None)
-        if not selected_card and request.selectedShowtimeId:
-            selected_card = next((c for c in all_cards if c.showtimeId == request.selectedShowtimeId), None)
-        if not selected_card and any(p in msg_lower for p in ["avatar", "dune", "oppenheimer", "intensamente"]):
-            for c in all_cards:
-                if any(p in c.movieTitle.lower() for p in ["avatar", "dune", "oppenheimer", "intensamente"] if p in msg_lower):
                     selected_card = c
                     break
 
         if selected_card:
-            # Recomendar butacas óptimas (filas C/D)
             recom_seats = recommend_best_seats([], limit=3)
             reply = (
                 f"Excelente elección: has seleccionado '{selected_card.movieTitle}' ({selected_card.hallType}) "
@@ -182,6 +313,15 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
     is_economico = any(k in msg_lower for k in ["ecom", "econ", "barat", "menor precio", "precio bajo", "mas accesible", "costo bajo"])
     is_premium = any(k in msg_lower for k in ["caro", "premium", "vip", "imax", "mejor sala", "pantalla grande"])
 
+    # Detección de intenciones y saludos
+    is_saludo_puro = any(s in msg_lower for s in ["hola", "buenas", "buenos dias", "buenos días", "buenas tardes", "buenas noches"]) and not any(
+        w in msg_lower for w in ["pelicula", "película", "funcion", "función", "cartelera", "ver", "comprar", "horario"]
+    )
+    is_tarde_horario = ("en la tarde" in msg_lower or "por la tarde" in msg_lower or "vespertin" in msg_lower or ("tarde" in msg_lower and "buenas tardes" not in msg_lower)) and not is_saludo_puro
+    is_noche_horario = ("en la noche" in msg_lower or "por la noche" in msg_lower or "nocturn" in msg_lower or ("noche" in msg_lower and "buenas noches" not in msg_lower)) and not is_saludo_puro
+
+    is_genero_especifico = any(g in msg_lower for g in ["terror", "miedo", "comedia", "romance", "animada", "infantil", "documental"])
+
     if is_economico:
         # Ordenar por precio ascendente y filtrar solo las más económicas
         relevant_cards.sort(key=lambda c: c.price)
@@ -190,20 +330,42 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
     elif is_premium:
         # Ordenar por precio descendente (IMAX y salas premium)
         relevant_cards.sort(key=lambda c: c.price, reverse=True)
-        relevant_cards = [c for c in relevant_cards if c.hallType == "IMAX" or c.price >= 40.0] or relevant_cards
-    elif "tarde" in msg_lower:
+        relevant_cards = [c for c in relevant_cards if c.hallType in ("IMAX", "VIP") or c.price >= 40.0] or relevant_cards
+    elif is_tarde_horario:
         def _get_hour(c):
             part = c.startTime.split(":")[0] if ":" in c.startTime else ""
             return int(part) if part.isdigit() else 14
         relevant_cards = [c for c in all_cards if _get_hour(c) < 20] or all_cards
-    elif "noche" in msg_lower:
+    elif is_noche_horario:
         def _get_hour_noche(c):
             part = c.startTime.split(":")[0] if ":" in c.startTime else ""
             return int(part) if part.isdigit() else 21
         relevant_cards = [c for c in all_cards if _get_hour_noche(c) >= 20] or all_cards
-    elif any(k in msg_lower for k in ["dune", "avatar", "oppenheimer", "intensamente"]):
-        # Filtrar por título si se nombra una película
-        relevant_cards = [c for c in all_cards if any(p in c.movieTitle.lower() for p in ["dune", "avatar", "oppenheimer", "intensamente"] if p in msg_lower)] or all_cards
+    else:
+        movie_matches = _match_movie_in_text(user_msg, all_cards)
+        if movie_matches:
+            relevant_cards = movie_matches
+        elif is_genero_especifico:
+            # Si el usuario preguntó por un género que no tiene coincidencias en cartelera, no forzar tarjetas irrelevantes
+            relevant_cards = []
+
+    # Solo adjuntar tarjetas interactivas de cartelera si el usuario solicita cartelera, funciones, horarios o si filtró por atributos
+    pide_cartelera = (
+        not is_saludo_puro
+        and len(relevant_cards) > 0
+        and (
+            is_economico
+            or is_premium
+            or is_tarde_horario
+            or is_noche_horario
+            or any(k in msg_lower for k in [
+                "cartelera", "funcion", "función", "funciones", "horario", "horarios",
+                "que hay", "qué hay", "recomiend", "pelicula", "película", "estreno", "ver", "salas", "opciones"
+            ])
+        )
+    )
+
+    cards_to_return = relevant_cards[:3] if pide_cartelera else []
 
     chips = ["Funciones económicas", "Salas IMAX", "Películas de la noche"]
     if is_economico:
@@ -213,7 +375,7 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
         reply=llm_reply,
         nextState="EXPLORING",
         suggestedChips=chips,
-        showtimeCards=relevant_cards[:3],
+        showtimeCards=cards_to_return,
         recommendedSeats=[],
         summary=None,
     )

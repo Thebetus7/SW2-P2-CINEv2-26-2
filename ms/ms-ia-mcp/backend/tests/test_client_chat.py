@@ -71,3 +71,91 @@ async def test_client_chat_seat_assignment_summary():
         assert data["summary"] is not None
         assert data["summary"]["seatCode"] == "C-8"
         assert data["summary"]["totalPrice"] > 0
+
+
+@pytest.mark.asyncio
+async def test_client_chat_specific_movie_query_gladiator():
+    """Verifica que al consultar por Gladiador II solo retorne las funciones de esa película."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.post("/api/v1/client-chat", json={"message": "tienes gladiador 2?"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["showtimeCards"]) > 0
+        for card in data["showtimeCards"]:
+            assert "Gladiador" in card["movieTitle"]
+
+
+@pytest.mark.asyncio
+async def test_client_chat_conversational_buying_intent_with_history():
+    """Verifica que 'quiero comprar entradas entonces' conecte con la película previa en el historial."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        history = [
+            {"role": "user", "content": "tienes gladiador 2?"},
+            {"role": "assistant", "content": "Sí, tenemos Gladiador II disponible a las 19:00 en Sala 4."},
+        ]
+        resp = await ac.post(
+            "/api/v1/client-chat",
+            json={
+                "message": "quiero comprar entradas entonces",
+                "history": history,
+            }
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        # Debe ofrecer o seleccionar Gladiador II
+        if data["nextState"] == "SHOWTIME_SELECTED":
+            assert len(data["recommendedSeats"]) > 0
+        else:
+            assert any("Gladiador" in c["movieTitle"] for c in data["showtimeCards"])
+
+
+@pytest.mark.asyncio
+async def test_client_chat_change_seat_backwards():
+    """Verifica que al decir 'cambiar butaca' retroceda limpiamente a SHOWTIME_SELECTED."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.post(
+            "/api/v1/client-chat",
+            json={
+                "message": "cambiar butaca",
+                "currentState": "SEAT_ASSIGNED",
+                "selectedShowtimeId": "st-avatar-01",
+            }
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["nextState"] == "SHOWTIME_SELECTED"
+        assert len(data["recommendedSeats"]) > 0
+        assert data["summary"] is None
+
+
+@pytest.mark.asyncio
+async def test_client_chat_change_showtime_backwards():
+    """Verifica que al decir 'cambiar función' retroceda a EXPLORING."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.post(
+            "/api/v1/client-chat",
+            json={
+                "message": "cambiar función",
+                "currentState": "SHOWTIME_SELECTED",
+            }
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["nextState"] == "EXPLORING"
+        assert len(data["showtimeCards"]) > 0
+        assert data["summary"] is None
+
+
+@pytest.mark.asyncio
+async def test_client_chat_casual_message_suppresses_cards():
+    """Verifica que un saludo simple no fuerce tarjetas de cartelera innecesarias."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.post("/api/v1/client-chat", json={"message": "Hola, buenas tardes"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["showtimeCards"]) == 0

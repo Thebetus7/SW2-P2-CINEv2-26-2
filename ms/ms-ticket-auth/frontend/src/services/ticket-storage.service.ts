@@ -11,6 +11,8 @@ export interface TicketRecord {
   paymentIntentId: string;
   purchasedAt: string;
   issuedAt?: string;
+  startTime?: string;
+  date?: string;
   signature?: string;
   sig?: string;
   status?: string;

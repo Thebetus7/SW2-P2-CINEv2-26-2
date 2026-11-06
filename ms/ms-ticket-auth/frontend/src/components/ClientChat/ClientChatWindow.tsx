@@ -9,6 +9,7 @@ import {
 } from '../../types/client-chat.types';
 import { sendClientChatMessage } from '../../services/client-chat.service';
 import { ShowtimeCardList } from './ShowtimeCardList';
+import { SelectedShowtimeHero } from './SelectedShowtimeHero';
 import { SeatSelectorPills } from './SeatSelectorPills';
 import { PurchaseSummaryCard } from './PurchaseSummaryCard';
 import { StripeMicroModal } from './StripeMicroModal';
@@ -209,6 +210,18 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
     });
   };
 
+  const handleBackToSeats = () => {
+    setFlowState('SHOWTIME_SELECTED');
+    setActiveSummary(null);
+    handleSend('cambiar butaca');
+  };
+
+  const handleBackToShowtimes = () => {
+    setFlowState('EXPLORING');
+    setActiveSummary(null);
+    handleSend('cambiar función');
+  };
+
   const handlePaymentSuccess = (ticket: IssuedTicketInfo) => {
     setIsPaymentModalOpen(false);
     setFlowState('TICKET_ISSUED');
@@ -312,15 +325,22 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
                 {msg.text ? msg.text.replace(/\*\*/g, '').replace(/^\s*[\*\-]\s+/gm, '• ') : ''}
               </p>
 
-              {/* Componente: Tarjetas de Funciones */}
-              {msg.showtimeCards && (
-                <ShowtimeCardList
-                  cards={msg.showtimeCards}
-                  onSelect={handleSelectShowtime}
-                />
+              {/* Componente: Tarjetas de Funciones / Función Seleccionada Hero */}
+              {msg.showtimeCards && msg.showtimeCards.length > 0 && (
+                msg.showtimeCards.length === 1 && (flowState === 'SHOWTIME_SELECTED' || (msg.recommendedSeats && msg.recommendedSeats.length > 0)) ? (
+                  <SelectedShowtimeHero
+                    card={msg.showtimeCards[0]}
+                    onChangeShowtime={handleBackToShowtimes}
+                  />
+                ) : (
+                  <ShowtimeCardList
+                    cards={msg.showtimeCards}
+                    onSelect={handleSelectShowtime}
+                  />
+                )
               )}
 
-              {/* Componente: Selector de Butacas Recomendadas */}
+              {/* Componente: Selector de Butacas Recomendadas con Mini-Croquis */}
               {msg.recommendedSeats && (
                 <SeatSelectorPills
                   seats={msg.recommendedSeats}
@@ -328,11 +348,13 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
                 />
               )}
 
-              {/* Componente: Tarjeta Resumen */}
+              {/* Componente: Tarjeta Resumen con Navegación y Retorno */}
               {msg.summary && (
                 <PurchaseSummaryCard
                   summary={msg.summary}
                   onProceedToPayment={() => setIsPaymentModalOpen(true)}
+                  onBackToSeats={handleBackToSeats}
+                  onBackToShowtimes={handleBackToShowtimes}
                 />
               )}
 
@@ -349,6 +371,12 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
                         if (chip === 'Ir a Mis Boletos' && onNavigateToTickets) {
                           onNavigateToTickets();
                           onClose();
+                        } else if (chip.toLowerCase().includes('proceder al pago')) {
+                          setIsPaymentModalOpen(true);
+                        } else if (chip.toLowerCase().includes('cambiar butaca')) {
+                          handleBackToSeats();
+                        } else if (chip.toLowerCase().includes('otra película') || chip.toLowerCase().includes('otra pelicula') || chip.toLowerCase().includes('cambiar función')) {
+                          handleBackToShowtimes();
                         } else {
                           handleSend(chip);
                         }

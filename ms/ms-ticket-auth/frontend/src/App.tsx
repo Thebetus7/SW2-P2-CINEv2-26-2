@@ -22,6 +22,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'C-8',
     seatId: 'C-8',
     showtimeId: 'st-avatar2-hoy-tarde',
+    startTime: '18:00',
+    date: 'Hoy',
     amount: 55.00,
     status: 'CONFIRMED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -37,6 +39,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'C-9',
     seatId: 'C-9',
     showtimeId: 'st-avatar2-hoy-tarde',
+    startTime: '18:00',
+    date: 'Hoy',
     amount: 55.00,
     status: 'CONFIRMED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -52,6 +56,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'D-5',
     seatId: 'D-5',
     showtimeId: 'st-dune2-hoy-tarde',
+    startTime: '14:30',
+    date: 'Ayer',
     amount: 55.00,
     status: 'USED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -67,6 +73,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'D-6',
     seatId: 'D-6',
     showtimeId: 'st-dune2-hoy-tarde',
+    startTime: '14:30',
+    date: 'Ayer',
     amount: 55.00,
     status: 'USED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -82,6 +90,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'B-4',
     seatId: 'B-4',
     showtimeId: 'st-oppenheimer-hoy-noche',
+    startTime: '15:00',
+    date: 'Ayer',
     amount: 35.00,
     status: 'USED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -97,6 +107,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'C-4',
     seatId: 'C-4',
     showtimeId: 'st-insideout2-hoy-tarde',
+    startTime: '19:30',
+    date: 'Hoy',
     amount: 35.00,
     status: 'CONFIRMED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -112,6 +124,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'C-5',
     seatId: 'C-5',
     showtimeId: 'st-insideout2-hoy-tarde',
+    startTime: '19:30',
+    date: 'Hoy',
     amount: 35.00,
     status: 'CONFIRMED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -127,6 +141,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'A-3',
     seatId: 'A-3',
     showtimeId: 'st-gladiator2-hoy-noche',
+    startTime: '21:15',
+    date: 'Hoy',
     amount: 65.00,
     status: 'CONFIRMED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -142,6 +158,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'A-4',
     seatId: 'A-4',
     showtimeId: 'st-gladiator2-hoy-noche',
+    startTime: '16:00',
+    date: 'Ayer',
     amount: 65.00,
     status: 'USED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -157,6 +175,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'D-6',
     seatId: 'D-6',
     showtimeId: 'st-deadpool-hoy-noche',
+    startTime: '22:00',
+    date: 'Hoy',
     amount: 45.00,
     status: 'CONFIRMED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -172,6 +192,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'D-7',
     seatId: 'D-7',
     showtimeId: 'st-deadpool-hoy-noche',
+    startTime: '22:00',
+    date: 'Hoy',
     amount: 45.00,
     status: 'PENDING_PAYMENT',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -187,6 +209,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'E-5',
     seatId: 'E-5',
     showtimeId: 'st-spider-hoy-tarde',
+    startTime: '17:15',
+    date: 'Hoy',
     amount: 40.00,
     status: 'CONFIRMED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -202,6 +226,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'F-5',
     seatId: 'F-5',
     showtimeId: 'st-interstellar-hoy-noche',
+    startTime: '20:45',
+    date: 'Hoy',
     amount: 45.00,
     status: 'CONFIRMED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -217,6 +243,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'B-1',
     seatId: 'B-1',
     showtimeId: 'st-oppenheimer-hoy-noche',
+    startTime: '21:00',
+    date: 'Hoy',
     amount: 65.00,
     status: 'PENDING_PAYMENT',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -232,6 +260,8 @@ export const DEFAULT_USER_TICKETS_SEED = [
     seatCodes: 'E-8',
     seatId: 'E-8',
     showtimeId: 'st-dune2-manana-noche',
+    startTime: '20:30',
+    date: 'Mañana',
     amount: 55.00,
     status: 'CONFIRMED',
     purchasedAt: '2026-11-04T18:00:00Z',
@@ -650,108 +680,173 @@ export const App: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {ticketsList.map((t, idx) => (
-                  <div
-                    key={t.ticketId || idx}
-                    className="bg-slate-900/90 border border-slate-800 hover:border-rose-500/40 rounded-2xl p-5 shadow-xl flex flex-col justify-between relative overflow-hidden group transition"
-                  >
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-rose-500" />
-                    <div>
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span
-                              className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
-                                t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
-                                  ? 'bg-purple-950/80 text-purple-400 border border-purple-500/30'
-                                  : t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE'
-                                  ? 'bg-amber-950/80 text-amber-400 border border-amber-500/30'
-                                  : 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30'
-                              }`}
-                            >
-                              {t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
-                                ? 'Ingreso Validado • Utilizado'
-                                : t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE'
-                                ? 'Reserva Pendiente'
-                                : 'Válido • Acceso Sala'}
-                            </span>
-                            {t.isPurchasedByUser && (
-                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-950/90 text-rose-300 border border-rose-500/50 shadow-sm flex items-center gap-1">
-                                <span>⭐</span> Comprado por ti
-                              </span>
-                            )}
-                          </div>
-                          <h3 className="text-lg font-bold text-white mt-2 group-hover:text-rose-400 transition">
-                            {t.movieTitle}
-                          </h3>
-                          <p className="text-xs text-slate-400">{t.hallName}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-500 block">Total</span>
-                          <span className="font-mono text-emerald-400 font-bold text-sm">
-                            ${Number(t.amount || 45).toFixed(2)} USD
-                          </span>
-                        </div>
-                      </div>
+                {ticketsList.map((t, idx) => {
+                  const isUpcoming = t.status === 'CONFIRMED' || !t.status;
+                  const isUsed = t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO';
+                  const isPending = t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE';
 
-                      <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800/80 space-y-1.5 text-xs mb-4">
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Butacas:</span>
-                          <span className="font-mono font-bold text-rose-400">{t.seatCodes}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Comprado el:</span>
-                          <span className="text-slate-300">
-                            {t.purchasedAt ? new Date(t.purchasedAt).toLocaleString() : 'Reciente'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">ID Ticket:</span>
-                          <span className="font-mono text-[10px] text-slate-400 truncate max-w-[150px]">
-                            {t.ticketId || t.paymentIntentId}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-800/80 flex flex-col items-center gap-2">
-                      <RealQrCode
-                        size={110}
-                        headerText="BOLETO OFICIAL"
-                        payload={{
-                          ticketId: t.ticketId || t.paymentIntentId || 'TKT-AUTH',
-                          seatId: t.seatId || t.seatCodes || 'C-8',
-                          showtimeId: t.showtimeId || 'ST-01',
-                          issuedAt: t.issuedAt || t.purchasedAt || new Date().toISOString(),
-                          movieTitle: t.movieTitle,
-                          hallName: t.hallName,
-                          seats: t.seatCodes,
-                          amount: Number(t.amount || 45),
-                          purchasedAt: t.purchasedAt || new Date().toISOString(),
-                          sig: t.signature || t.sig || 'HMAC-SHA256:VERIFIED',
-                        }}
+                  return (
+                    <div
+                      key={t.ticketId || idx}
+                      className={`rounded-2xl p-5 shadow-2xl flex flex-col justify-between relative overflow-hidden group transition-all duration-300 ${
+                        isUpcoming
+                          ? 'bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 border-2 border-emerald-500/60 shadow-emerald-950/40 hover:border-emerald-400'
+                          : isUsed
+                          ? 'bg-slate-950/80 border border-slate-800/60 opacity-80'
+                          : 'bg-slate-900/90 border border-amber-500/40'
+                      }`}
+                    >
+                      {/* Borde Superior Dinámico */}
+                      <div
+                        className={`absolute top-0 left-0 right-0 h-1.5 ${
+                          isUpcoming
+                            ? 'bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 animate-pulse'
+                            : isUsed
+                            ? 'bg-purple-900/60'
+                            : 'bg-amber-500'
+                        }`}
                       />
-                      <div className="w-full flex items-center justify-between pt-1">
-                        <span className="text-[10px] font-mono text-slate-400">QR HMAC Activo</span>
-                        <span
-                          className={`text-xs font-semibold px-3 py-1 rounded-xl border ${
-                            t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
-                              ? 'text-purple-400 bg-purple-950/40 border-purple-500/30'
-                              : t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE'
-                              ? 'text-amber-400 bg-amber-950/40 border-amber-500/30'
-                              : 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30'
+
+                      <div>
+                        {/* Cabecera de Estado y Badges */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span
+                                className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-extrabold flex items-center gap-1.5 ${
+                                  isUpcoming
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm'
+                                    : isUsed
+                                    ? 'bg-purple-950/80 text-purple-400 border border-purple-500/30'
+                                    : 'bg-amber-950/80 text-amber-400 border border-amber-500/30'
+                                }`}
+                              >
+                                {isUpcoming ? (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                                    <span>FUNCIÓN ACTIVA • ACCESO VÁLIDO</span>
+                                  </>
+                                ) : isUsed ? (
+                                  'Ingreso Validado • Utilizado'
+                                ) : (
+                                  'Reserva Pendiente'
+                                )}
+                              </span>
+
+                              {t.isPurchasedByUser && (
+                                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-950/90 text-rose-300 border border-rose-500/50 shadow-sm flex items-center gap-1">
+                                  <span>⭐</span> Comprado por ti
+                                </span>
+                              )}
+                            </div>
+
+                            <h3 className="text-xl font-black text-white mt-2 group-hover:text-rose-400 transition tracking-tight">
+                              {t.movieTitle}
+                            </h3>
+                            <p className="text-xs text-slate-300 font-medium">{t.hallName}</p>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="text-[10px] text-slate-500 block">Total Pagado</span>
+                            <span className="font-mono text-emerald-400 font-black text-base">
+                              ${Number(t.amount || 45).toFixed(2)} USD
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* HERO PROTAGÓNICO DEL HORARIO DE FUNCIÓN (Visualización Crítica) */}
+                        <div
+                          className={`my-3.5 p-3.5 rounded-xl border flex items-center justify-between shadow-inner ${
+                            isUpcoming
+                              ? 'bg-gradient-to-r from-emerald-950/70 via-slate-900 to-amber-950/40 border-emerald-500/40'
+                              : 'bg-slate-950/90 border-slate-800'
                           }`}
                         >
-                          {t.status === 'USED' || t.status === 'VALIDADA' || t.status === 'VALIDADO'
-                            ? 'Boleto Escaneado'
-                            : t.status === 'PENDING_PAYMENT' || t.status === 'PENDIENTE'
-                            ? 'Pendiente Pago'
-                            : 'Listo para Ingreso'}
-                        </span>
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl font-bold ${
+                                isUpcoming
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-950/60'
+                                  : 'bg-slate-800 text-slate-400'
+                              }`}
+                            >
+                              🕒
+                            </div>
+                            <div>
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
+                                Hora de Función ({t.date || 'Programada'})
+                              </span>
+                              <span
+                                className={`text-2xl font-black font-mono tracking-tight ${
+                                  isUpcoming ? 'text-amber-300' : 'text-slate-400'
+                                }`}
+                              >
+                                {t.startTime || '19:00'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Butacas Asignadas</span>
+                            <span className="text-lg font-black font-mono text-rose-400">
+                              {t.seatCodes}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Metadatos Complementarios */}
+                        <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80 space-y-1 text-xs mb-3 text-slate-400 font-mono">
+                          <div className="flex justify-between">
+                            <span>ID Entrada:</span>
+                            <span className="text-slate-300 truncate max-w-[160px]">
+                              {t.ticketId || t.paymentIntentId}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Emisión:</span>
+                            <span className="text-slate-300">
+                              {t.purchasedAt ? new Date(t.purchasedAt).toLocaleDateString() : 'Reciente'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bloque QR Dinámico */}
+                      <div className="pt-3 border-t border-slate-800/80 flex flex-col items-center gap-2">
+                        <RealQrCode
+                          size={110}
+                          headerText="BOLETO OFICIAL"
+                          payload={{
+                            ticketId: t.ticketId || t.paymentIntentId || 'TKT-AUTH',
+                            seatId: t.seatId || t.seatCodes || 'C-8',
+                            showtimeId: t.showtimeId || 'ST-01',
+                            issuedAt: t.issuedAt || t.purchasedAt || new Date().toISOString(),
+                            movieTitle: t.movieTitle,
+                            hallName: t.hallName,
+                            seats: t.seatCodes,
+                            amount: Number(t.amount || 45),
+                            purchasedAt: t.purchasedAt || new Date().toISOString(),
+                            sig: t.signature || t.sig || 'HMAC-SHA256:VERIFIED',
+                          }}
+                        />
+                        <div className="w-full flex items-center justify-between pt-1">
+                          <span className="text-[10px] font-mono text-slate-400">QR HMAC Activo</span>
+                          <span
+                            className={`text-xs font-semibold px-3 py-1 rounded-xl border ${
+                              isUpcoming
+                                ? 'text-emerald-300 bg-emerald-950/60 border-emerald-500/50 shadow-sm'
+                                : isUsed
+                                ? 'text-purple-400 bg-purple-950/40 border-purple-500/30'
+                                : 'text-amber-400 bg-amber-950/40 border-amber-500/30'
+                            }`}
+                          >
+                            {isUpcoming ? '✓ Listo para Ingreso' : isUsed ? 'Boleto Escaneado' : 'Pendiente Pago'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
