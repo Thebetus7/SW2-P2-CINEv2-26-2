@@ -162,3 +162,48 @@ class ClientChatResponse(BaseModel):
     summary: Optional[Dict[str, Any]] = None
     emptyState: Optional[Dict[str, Any]] = None
 
+
+# Modelos para Bitácora Unificada y Telemetría en Tiempo Real (Módulo 09)
+class LogSeverity(str, Enum):
+    INFO = "INFO"
+    SUCCESS = "SUCCESS"
+    WARN = "WARN"
+    ERROR = "ERROR"
+
+
+class LogActorRole(str, Enum):
+    BOLETERO = "BOLETERO"
+    CLIENTE_WEB = "CLIENTE_WEB"
+    CLIENTE_MOVIL = "CLIENTE_MOVIL"
+    ADMIN = "ADMIN"
+    SISTEMA_IA = "SISTEMA_IA"
+
+
+class SystemLogEvent(BaseModel):
+    id: str
+    timestamp: str
+    sourceService: str
+    actorRole: str
+    actionType: str
+    severity: str
+    summary: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SystemLogIngestRequest(BaseModel):
+    id: Optional[str] = None
+    timestamp: Optional[str] = None
+    sourceService: str
+    actorRole: str
+    actionType: str
+    severity: str
+    summary: str
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+
+
+class SystemLogIngestResponse(BaseModel):
+    status: str = "INGESTED"
+    eventId: str
+    timestamp: str
+
+

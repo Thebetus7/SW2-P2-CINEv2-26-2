@@ -472,44 +472,47 @@ export const App: React.FC = () => {
       {/* BARRA SUPERIOR DE NAVEGACIÓN ESTANDARIZADA */}
       {view === 'stepper' ? (
         /* HEADER DEDICADO DE CHECKOUT (Checkout Wizard Full-Page) */
-        <header className="border-b border-slate-800/80 bg-slate-900/95 backdrop-blur-md sticky top-0 z-40 px-4 sm:px-8 py-3.5 flex justify-between items-center shadow-lg">
+        <header className="border-b border-slate-800/80 bg-slate-900/95 backdrop-blur-md sticky top-0 z-40 px-3 sm:px-6 md:px-8 py-2.5 sm:py-3.5 flex justify-between items-center shadow-lg gap-2">
           <button
             type="button"
             onClick={() => setView('billboard')}
-            className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-rose-400 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 px-3.5 py-2 rounded-xl transition"
+            className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold text-rose-400 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl transition shrink-0"
           >
             <span>←</span>
-            <span>Volver a Cartelera</span>
+            <span className="hidden xs:inline sm:inline">Volver a Cartelera</span>
+            <span className="xs:hidden sm:hidden">Cartelera</span>
           </button>
 
-          <div className="flex items-center gap-2.5">
-            <span className="text-xl">🎬</span>
-            <div className="text-center">
-              <span className="font-extrabold text-sm sm:text-base tracking-wide bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+            <span className="text-lg sm:text-xl shrink-0">🎬</span>
+            <div className="text-center truncate">
+              <span className="font-extrabold text-xs sm:text-base tracking-wide bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent truncate block">
                 Cine Bolivia
               </span>
-              <span className="block text-[10px] text-slate-400 font-medium">Página de Pasos de Compra</span>
+              <span className="hidden xs:block text-[9px] sm:text-[10px] text-slate-400 font-medium truncate">
+                Página de Pasos de Compra
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono bg-emerald-950/50 border border-emerald-500/30 px-3 py-1.5 rounded-xl">
+          <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono bg-emerald-950/50 border border-emerald-500/30 px-2.5 sm:px-3 py-1.5 rounded-xl shrink-0">
             <span>🔒</span>
             <span className="hidden sm:inline">Checkout Seguro SSL</span>
           </div>
         </header>
       ) : (
         /* HEADER ESTÁNDAR DEL PORTAL */
-        <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-6 py-3.5 flex justify-between items-center">
+        <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-3 sm:px-6 py-2.5 sm:py-3.5 flex justify-between items-center gap-2">
           {/* IZQUIERDA: [🎬 Logo / Marca] */}
           <div
             onClick={() => setView('billboard')}
-            className="flex items-center gap-3 cursor-pointer group select-none"
+            className="flex items-center gap-2 sm:gap-3 cursor-pointer group select-none shrink-0"
           >
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-bold text-white shadow-lg shadow-rose-950/60 group-hover:scale-105 transition">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-bold text-white shadow-lg shadow-rose-950/60 group-hover:scale-105 transition shrink-0">
               🎬
             </div>
-            <div>
-              <span className="font-extrabold text-lg md:text-xl tracking-wide bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">
+            <div className="flex items-center">
+              <span className="font-extrabold text-base sm:text-lg md:text-xl tracking-wide bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">
                 Cine Bolivia
               </span>
               <span className="hidden sm:inline-block ml-2 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
@@ -519,67 +522,69 @@ export const App: React.FC = () => {
           </div>
 
           {/* CENTRO: Módulos de navegación de primer nivel (Cartelera y Mis Boletos) */}
-          <nav className="flex items-center gap-2">
+          <nav className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={() => setView('billboard')}
-              className={`text-xs md:text-sm px-4 py-2 rounded-xl font-medium transition duration-200 flex items-center gap-2 ${
+              className={`text-xs md:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl font-medium transition duration-200 flex items-center gap-1.5 sm:gap-2 ${
                 view === 'billboard'
                   ? 'bg-rose-600/10 text-rose-400 font-bold border border-rose-500/30 shadow-sm'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <span>📽️</span>
-              <span>Cartelera</span>
+              <span className="hidden xs:inline sm:inline">Cartelera</span>
             </button>
 
             {token && (
               <button
                 onClick={() => setView('empty')}
-                className={`text-xs md:text-sm px-4 py-2 rounded-xl font-medium transition duration-200 flex items-center gap-2 ${
+                className={`text-xs md:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl font-medium transition duration-200 flex items-center gap-1.5 sm:gap-2 ${
                   view === 'empty'
                     ? 'bg-rose-600/10 text-rose-400 font-bold border border-rose-500/30 shadow-sm'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
                 <span>🎟️</span>
-                <span>Mis Boletos</span>
+                <span className="hidden xs:inline sm:inline">Mis Boletos</span>
               </button>
             )}
           </nav>
 
           {/* DERECHA: @usuario (Nombre/Rol) | Cerrar Sesión */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {token ? (
               <>
-                <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 px-3 py-1.5 rounded-xl text-xs shadow-inner">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-800/90 border border-slate-700/80 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs shadow-inner">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
                   <span className="font-mono font-bold text-amber-400">@{userName}</span>
-                  <span className="text-slate-400 font-medium">({fullName ? `${fullName} / ` : ''}{role})</span>
+                  <span className="hidden md:inline text-slate-400 font-medium">({fullName ? `${fullName} / ` : ''}{role})</span>
                 </div>
 
                 <button
                   onClick={handleLogout}
                   data-testid="logout-button"
-                  className="text-xs px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/90 hover:bg-rose-950 text-rose-300 hover:text-rose-100 border border-rose-900/40 hover:border-rose-700 transition flex items-center gap-1.5 shadow-sm"
+                  className="text-xs px-2.5 sm:px-3.5 py-1.5 rounded-xl font-medium bg-slate-800/90 hover:bg-rose-950 text-rose-300 hover:text-rose-100 border border-rose-900/40 hover:border-rose-700 transition flex items-center gap-1.5 shadow-sm"
                   title="Cerrar sesión actual"
                 >
                   <span>🚪</span>
-                  <span>Cerrar Sesión</span>
+                  <span className="hidden sm:inline">Cerrar Sesión</span>
                 </button>
               </>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="text-xs px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold transition border border-slate-700"
+                  className="text-xs px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold transition border border-slate-700"
                 >
-                  Iniciar Sesión
+                  <span className="hidden xs:inline">Iniciar Sesión</span>
+                  <span className="xs:hidden">Entrar</span>
                 </button>
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="text-xs px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold transition shadow-lg shadow-rose-950/60"
+                  className="text-xs px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold transition shadow-lg shadow-rose-950/60"
                 >
-                  Registrarse
+                  <span className="hidden xs:inline">Registrarse</span>
+                  <span className="xs:hidden">Registro</span>
                 </button>
               </div>
             )}
