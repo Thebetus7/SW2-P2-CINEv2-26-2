@@ -160,4 +160,5 @@ class ClientChatResponse(BaseModel):
     showtimeCards: List[ShowtimeCard] = Field(default_factory=list)
     recommendedSeats: List[RecommendedSeat] = Field(default_factory=list)
     summary: Optional[Dict[str, Any]] = None
+    emptyState: Optional[Dict[str, Any]] = None
 

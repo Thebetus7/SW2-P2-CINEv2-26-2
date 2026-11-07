@@ -31,6 +31,8 @@ export class QRReaderService {
 
   /**
    * Inicia el escaneo continuo desde un elemento HTMLVideoElement.
+   * Los errores por fotograma (NotFoundException, etc.) se ignoran internamente
+   * ya que corresponden al flujo normal de escaneo hasta enfocar un QR.
    */
   public async startContinuousScan(
     videoElement: HTMLVideoElement,
@@ -43,7 +45,7 @@ export class QRReaderService {
     const constraints: MediaStreamConstraints = {
       video: deviceId
         ? { deviceId: { exact: deviceId } }
-        : { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        : { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
     };
 
     try {
@@ -61,9 +63,9 @@ export class QRReaderService {
             }
             onSuccess(text, parsed);
           }
-          if (error && onError && error.name !== 'NotFoundException') {
-            onError(error);
-          }
+          // Nota importante: ZXing emite errores por fotograma cuando la imagen no tiene
+          // un código QR legible (ej: NotFoundException, ChecksumException, FormatException).
+          // Estos fallos por fotograma NO son errores de cámara y NUNCA deben abortar el stream.
         }
       );
 
@@ -82,7 +84,11 @@ export class QRReaderService {
    */
   public stopScan(): void {
     if (this.scannerControls) {
-      this.scannerControls.stop();
+      try {
+        this.scannerControls.stop();
+      } catch {
+        // Ignorar si el stream ya estaba cerrado
+      }
       this.scannerControls = null;
     }
     this.isScanning = false;

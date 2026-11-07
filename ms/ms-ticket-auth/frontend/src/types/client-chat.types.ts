@@ -32,6 +32,15 @@ export interface PurchaseSummary {
   startTime: string;
   unitPrice: number;
   totalPrice: number;
+  ticketCount?: number;
+}
+
+export interface EmptyStateInfo {
+  icon?: string;
+  title: string;
+  message: string;
+  searchedTerm?: string;
+  availableGenres?: string[];
 }
 
 export interface IssuedTicketInfo {
@@ -54,5 +63,6 @@ export interface ClientChatMessage {
   summary?: PurchaseSummary;
   issuedTicket?: IssuedTicketInfo;
   quickChips?: string[];
+  emptyState?: EmptyStateInfo;
 }
 

@@ -12,6 +12,8 @@ import { ShowtimeCardList } from './ShowtimeCardList';
 import { SelectedShowtimeHero } from './SelectedShowtimeHero';
 import { SeatSelectorPills } from './SeatSelectorPills';
 import { PurchaseSummaryCard } from './PurchaseSummaryCard';
+import { EmptySearchCard } from './EmptySearchCard';
+import { ChatFaqHub } from './ChatFaqHub';
 import { StripeMicroModal } from './StripeMicroModal';
 import { IssuedTicketCard } from './IssuedTicketCard';
 import { savePurchasedTicket } from '../../services/ticket-storage.service';
@@ -174,6 +176,7 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
         recommendedSeats: response.recommendedSeats,
         summary: response.summary || undefined,
         quickChips: response.suggestedChips,
+        emptyState: response.emptyState || undefined,
       };
 
       setMessages((prev) => [...prev, botMsg]);
@@ -207,6 +210,13 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
   const handleSelectSeat = (seat: RecommendedSeat) => {
     handleSend(`Elijo la butaca ${seat.seatCode}`, {
       seatCode: seat.seatCode,
+    });
+  };
+
+  const handleSelectMultipleSeats = (seatCodes: string[]) => {
+    const joined = seatCodes.join(', ');
+    handleSend(`Elijo las butacas ${joined}`, {
+      seatCode: joined,
     });
   };
 
@@ -325,6 +335,20 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
                 {msg.text ? msg.text.replace(/\*\*/g, '').replace(/^\s*[\*\-]\s+/gm, '• ') : ''}
               </p>
 
+              {/* Hub de Preguntas Más Frecuentes Inicial (Onboarding) */}
+              {msg.id === 'm-init' && (
+                <ChatFaqHub onSelectQuestion={handleSend} />
+              )}
+
+              {/* Componente: Estado Vacío con Cara Triste ante Búsquedas Sin Resultados */}
+              {msg.emptyState && (
+                <EmptySearchCard
+                  emptyState={msg.emptyState}
+                  onExploreGenre={(q) => handleSend(q)}
+                  onExploreAll={() => handleSend('Ver cartelera completa')}
+                />
+              )}
+
               {/* Componente: Tarjetas de Funciones / Función Seleccionada Hero */}
               {msg.showtimeCards && msg.showtimeCards.length > 0 && (
                 msg.showtimeCards.length === 1 && (flowState === 'SHOWTIME_SELECTED' || (msg.recommendedSeats && msg.recommendedSeats.length > 0)) ? (
@@ -340,11 +364,12 @@ export const ClientChatWindow: React.FC<ClientChatWindowProps> = ({ onClose, onN
                 )
               )}
 
-              {/* Componente: Selector de Butacas Recomendadas con Mini-Croquis */}
+              {/* Componente: Selector de Butacas Recomendadas con Mini-Croquis y Multi-Selección */}
               {msg.recommendedSeats && (
                 <SeatSelectorPills
                   seats={msg.recommendedSeats}
                   onSelect={handleSelectSeat}
+                  onSelectMultiple={handleSelectMultipleSeats}
                 />
               )}
 

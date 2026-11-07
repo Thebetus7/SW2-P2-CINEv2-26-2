@@ -57,7 +57,7 @@ export interface CapabilityItem {
             <div>
               <div class="flex items-center gap-2.5">
                 <h1 class="text-2xl font-bold text-white tracking-tight">Centro de Inteligencia y Auditoría IA</h1>
-                
+
                 <!-- Badge de Estado Activo -->
                 <span
                   *ngIf="useOnlineGrok"
@@ -150,7 +150,9 @@ export interface CapabilityItem {
                 {{ msg.text }}
               </div>
 
-              <!-- COMPONENTE VISUAL 1: TELEMETRÍA EN VIVO (Si hay métricas) -->
+              <!-- ═══════════════════════════════════════════════════════════════
+                   COMPONENTE VISUAL 1: TELEMETRÍA EN VIVO — GRÁFICOS SVG
+                   ═══════════════════════════════════════════════════════════════ -->
               <div
                 *ngIf="msg.metricsSummary"
                 class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 shadow-inner space-y-3"
@@ -162,78 +164,129 @@ export interface CapabilityItem {
                     </svg>
                     Telemetría del Complejo en Vivo
                   </span>
-                  <span class="text-[10px] font-mono text-slate-500">
-                    Sincronizado vía MCP
-                  </span>
+                  <span class="text-[10px] font-mono text-slate-500">Sincronizado vía MCP</span>
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                  <!-- KPI 1: Aforo General -->
-                  <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
-                    <span class="text-[10px] text-slate-400 font-medium">Aforo General</span>
-                    <div class="flex items-baseline justify-between mt-1">
-                      <span class="text-lg font-bold text-white tracking-tight">
-                        {{ msg.metricsSummary.averageOccupancy }}%
-                      </span>
-                      <span
-                        [ngClass]="getOccupancyBadgeClass(msg.metricsSummary.averageOccupancy)"
-                        class="px-1.5 py-0.2 rounded text-[10px] font-semibold"
-                      >
-                        {{ getOccupancyStatusLabel(msg.metricsSummary.averageOccupancy) }}
-                      </span>
-                    </div>
-                    <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                      <div
-                        [ngClass]="getOccupancyBarClass(msg.metricsSummary.averageOccupancy)"
-                        class="h-full rounded-full transition-all duration-500"
-                        [style.width.%]="msg.metricsSummary.averageOccupancy || 0"
-                      ></div>
-                    </div>
-                  </div>
 
-                  <!-- KPI 2: Salas Operativas -->
-                  <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
-                    <span class="text-[10px] text-slate-400 font-medium">Salas Operativas</span>
-                    <div class="flex items-baseline justify-between mt-1">
-                      <span class="text-lg font-bold text-white tracking-tight">
-                        {{ msg.metricsSummary.totalRooms }}
-                      </span>
-                      <span class="text-[10px] text-slate-400 font-mono">Salas</span>
+                  <!-- ── KPI 1: AFORO GENERAL → Donut Chart SVG ── -->
+                  <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-col items-center gap-1.5">
+                    <span class="text-[10px] text-slate-400 font-medium self-start">Aforo General</span>
+                    <div class="relative w-20 h-20">
+                      <svg viewBox="0 0 100 100" class="w-full h-full donut-anim"
+                           [attr.aria-label]="'Aforo general: ' + (msg.metricsSummary.averageOccupancy ?? 0) + '%'">
+                        <!-- Track -->
+                        <circle cx="50" cy="50" r="36"
+                                fill="none"
+                                stroke="#1e293b"
+                                stroke-width="12"/>
+                        <!-- Arc fill — rotated -90° so it starts from top -->
+                        <circle cx="50" cy="50" r="36"
+                                fill="none"
+                                [attr.stroke]="getDonutColor(msg.metricsSummary.averageOccupancy)"
+                                stroke-width="12"
+                                stroke-linecap="round"
+                                [attr.stroke-dasharray]="getDonutDash(msg.metricsSummary.averageOccupancy) + ' 226.2'"
+                                stroke-dashoffset="56.55"
+                                class="donut-arc"/>
+                        <!-- Center label -->
+                        <text x="50" y="46" text-anchor="middle" dominant-baseline="middle"
+                              font-size="16" font-weight="700" fill="white" font-family="monospace">
+                          {{ msg.metricsSummary.averageOccupancy ?? 0 }}
+                        </text>
+                        <text x="50" y="62" text-anchor="middle" dominant-baseline="middle"
+                              font-size="9" fill="#94a3b8" font-family="sans-serif">%</text>
+                      </svg>
                     </div>
-                    <div class="flex items-center gap-1 text-[10px] text-emerald-400 mt-2">
-                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Cartelera activa
-                    </div>
-                  </div>
-
-                  <!-- KPI 3: Funciones Críticas -->
-                  <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
-                    <span class="text-[10px] text-slate-400 font-medium">Aforo Crítico (&lt;15%)</span>
-                    <div class="flex items-baseline justify-between mt-1">
-                      <span class="text-lg font-bold text-white tracking-tight">
-                        {{ msg.metricsSummary.underOccupiedCount }}
-                      </span>
-                      <span
-                        [ngClass]="msg.metricsSummary.underOccupiedCount ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'"
-                        class="px-1.5 py-0.2 rounded text-[10px] font-semibold"
-                      >
-                        {{ msg.metricsSummary.underOccupiedCount ? 'Alerta' : 'Sin alertas' }}
-                      </span>
-                    </div>
-                    <span class="text-[10px] text-slate-500 mt-2 truncate">
-                      {{ msg.metricsSummary.underOccupiedCount ? 'Funciones subocupadas' : 'Aforos saludables' }}
+                    <span
+                      [ngClass]="getOccupancyBadgeClass(msg.metricsSummary.averageOccupancy)"
+                      class="px-2 py-0.5 rounded text-[10px] font-semibold"
+                    >
+                      {{ getOccupancyStatusLabel(msg.metricsSummary.averageOccupancy) }}
                     </span>
                   </div>
 
-                  <!-- KPI 4: Fila Taquilla -->
-                  <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-col justify-between">
+                  <!-- ── KPI 2: SALAS OPERATIVAS → Barras SVG horizontales ── -->
+                  <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-col gap-1.5">
+                    <span class="text-[10px] text-slate-400 font-medium">Salas Operativas</span>
+                    <div class="flex flex-col gap-1.5 mt-1 flex-1 justify-center"
+                         [attr.aria-label]="(msg.metricsSummary.totalRooms ?? 0) + ' salas operativas'">
+                      <ng-container *ngFor="let sala of getRoomArray(msg.metricsSummary.totalRooms); let i = index">
+                        <div class="flex items-center gap-1.5" [title]="'Sala ' + (i + 1) + ' ✓ Activa'">
+                          <span class="text-[9px] text-slate-500 font-mono w-6 flex-shrink-0">S{{ i + 1 }}</span>
+                          <svg viewBox="0 0 60 10" class="flex-1 h-2.5 room-bar-anim">
+                            <rect x="0" y="1" width="60" height="8" rx="4" fill="#1e293b"/>
+                            <rect x="0" y="1"
+                                  [attr.width]="sala.width"
+                                  height="8" rx="4"
+                                  [attr.fill]="sala.color"
+                                  class="room-bar"/>
+                          </svg>
+                          <span class="text-[9px]" [ngClass]="sala.active ? 'text-emerald-400' : 'text-slate-600'">
+                            {{ sala.active ? '✓' : '○' }}
+                          </span>
+                        </div>
+                      </ng-container>
+                      <!-- Filas vacías si hay menos de 4 salas -->
+                      <ng-container *ngFor="let empty of getEmptyRooms(msg.metricsSummary.totalRooms); let j = index">
+                        <div class="flex items-center gap-1.5 opacity-30" title="Sala sin función">
+                          <span class="text-[9px] text-slate-600 font-mono w-6 flex-shrink-0">S{{ (msg.metricsSummary.totalRooms ?? 0) + j + 1 }}</span>
+                          <svg viewBox="0 0 60 10" class="flex-1 h-2.5">
+                            <rect x="0" y="1" width="60" height="8" rx="4" fill="#1e293b"/>
+                          </svg>
+                          <span class="text-[9px] text-slate-700">○</span>
+                        </div>
+                      </ng-container>
+                    </div>
+                    <span class="text-[10px] font-mono text-emerald-400 flex items-center gap-1 mt-1">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+                      {{ msg.metricsSummary.totalRooms ?? 0 }} activas
+                    </span>
+                  </div>
+
+                  <!-- ── KPI 3: AFORO CRÍTICO → Semáforo SVG ── -->
+                  <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-col items-center gap-1">
+                    <span class="text-[10px] text-slate-400 font-medium self-start">Aforo Crítico (&lt;15%)</span>
+                    <svg viewBox="0 0 60 110" class="w-10 h-18 mt-1"
+                         [attr.aria-label]="(msg.metricsSummary.underOccupiedCount ?? 0) + ' salas con aforo crítico'">
+                      <!-- Cuerpo del semáforo -->
+                      <rect x="10" y="5" width="40" height="100" rx="20" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+                      <!-- Rojo: encendido si hay alertas críticas -->
+                      <circle cx="30" cy="27" r="11"
+                              [attr.fill]="(msg.metricsSummary.underOccupiedCount ?? 0) > 0 ? '#ef4444' : '#1e293b'"
+                              [attr.opacity]="(msg.metricsSummary.underOccupiedCount ?? 0) > 0 ? '1' : '0.4'"
+                              [class]="(msg.metricsSummary.underOccupiedCount ?? 0) > 0 ? 'semaforo-pulse' : ''"/>
+                      <!-- Amarillo: encendido si hay 0 alertas pero revisión -->
+                      <circle cx="30" cy="55" r="11"
+                              [attr.fill]="(msg.metricsSummary.underOccupiedCount ?? 0) === 0 && false ? '#f59e0b' : '#1e293b'"
+                              opacity="0.4"/>
+                      <!-- Verde: encendido si no hay alertas -->
+                      <circle cx="30" cy="83" r="11"
+                              [attr.fill]="(msg.metricsSummary.underOccupiedCount ?? 0) === 0 ? '#10b981' : '#1e293b'"
+                              [attr.opacity]="(msg.metricsSummary.underOccupiedCount ?? 0) === 0 ? '1' : '0.4'"
+                              [class]="(msg.metricsSummary.underOccupiedCount ?? 0) === 0 ? 'semaforo-glow' : ''"/>
+                    </svg>
+                    <span class="text-lg font-bold text-white mt-0.5">
+                      {{ msg.metricsSummary.underOccupiedCount ?? 0 }}
+                    </span>
+                    <span
+                      [ngClass]="(msg.metricsSummary.underOccupiedCount ?? 0) > 0 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'"
+                      class="px-1.5 py-0.5 rounded text-[10px] font-semibold text-center"
+                    >
+                      {{ (msg.metricsSummary.underOccupiedCount ?? 0) > 0 ? 'Alerta' : 'Sin alertas' }}
+                    </span>
+                  </div>
+
+                  <!-- ── KPI 4: FILA TAQUILLA → Sparkline SVG + Badge ── -->
+                  <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-col gap-1">
                     <span class="text-[10px] text-slate-400 font-medium">Fila Taquilla</span>
-                    <div class="flex items-baseline justify-between mt-1">
-                      <span class="text-lg font-bold text-white tracking-tight">
-                        {{ msg.metricsSummary.personCount }}
+                    <div class="flex items-center justify-between mt-0.5">
+                      <span class="text-xl font-bold text-white tracking-tight">
+                        {{ msg.metricsSummary.personCount ?? 0 }}
                       </span>
                       <span
                         [ngClass]="msg.metricsSummary.congestionStatus === 'CONGESTIONADA' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'"
-                        class="px-1.5 py-0.2 rounded text-[10px] font-semibold flex items-center gap-1"
+                        class="px-1.5 py-0.5 rounded text-[9px] font-semibold flex items-center gap-1"
                       >
                         <span
                           class="w-1.5 h-1.5 rounded-full"
@@ -242,14 +295,43 @@ export interface CapabilityItem {
                         {{ msg.metricsSummary.congestionStatus }}
                       </span>
                     </div>
-                    <span class="text-[10px] text-slate-500 mt-2 truncate">
-                      Umbral de saturación: 40p
-                    </span>
+                    <!-- Mini sparkline SVG -->
+                    <svg viewBox="0 0 80 28" class="w-full h-7 mt-0.5"
+                         [attr.aria-label]="'Tendencia de fila: ' + (msg.metricsSummary.personCount ?? 0) + ' personas'">
+                      <defs>
+                        <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%"
+                                [attr.stop-color]="msg.metricsSummary.congestionStatus === 'CONGESTIONADA' ? '#f43f5e' : '#10b981'"
+                                stop-opacity="0.4"/>
+                          <stop offset="100%"
+                                [attr.stop-color]="msg.metricsSummary.congestionStatus === 'CONGESTIONADA' ? '#f43f5e' : '#10b981'"
+                                stop-opacity="0"/>
+                        </linearGradient>
+                      </defs>
+                      <!-- Área rellena debajo de la línea -->
+                      <path [attr.d]="getSparklinePath(msg.metricsSummary.personCount, true)"
+                            [attr.fill]="'url(#sparkGrad)'" opacity="0.6"/>
+                      <!-- Línea de tendencia -->
+                      <path [attr.d]="getSparklinePath(msg.metricsSummary.personCount, false)"
+                            fill="none"
+                            [attr.stroke]="msg.metricsSummary.congestionStatus === 'CONGESTIONADA' ? '#f43f5e' : '#10b981'"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="sparkline-draw"/>
+                      <!-- Punto actual -->
+                      <circle cx="76" [attr.cy]="getSparklineEndY(msg.metricsSummary.personCount)" r="2.5"
+                              [attr.fill]="msg.metricsSummary.congestionStatus === 'CONGESTIONADA' ? '#f43f5e' : '#10b981'"/>
+                    </svg>
+                    <span class="text-[10px] text-slate-500 truncate">Umbral de saturación: 40p</span>
                   </div>
+
                 </div>
               </div>
 
-              <!-- COMPONENTE VISUAL 2: MOTOR PREDICTIVO DE MACHINE LEARNING & TEORÍA DE COLAS -->
+              <!-- ═══════════════════════════════════════════════════════════════
+                   COMPONENTE VISUAL 2: MODELOS PREDICTIVOS ML — GRÁFICOS SVG
+                   ═══════════════════════════════════════════════════════════════ -->
               <div
                 *ngIf="msg.predictiveMetrics"
                 class="p-4 rounded-xl bg-gradient-to-r from-indigo-950/40 to-slate-950/80 border border-indigo-500/40 shadow-xl space-y-3 relative overflow-hidden"
@@ -269,35 +351,129 @@ export interface CapabilityItem {
                   </span>
                 </div>
 
-                <!-- Métricas predictivas calculadas -->
+                <!-- Métricas predictivas con gráficos SVG -->
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
-                  <div class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
-                    <span class="text-[10px] text-slate-400">Tiempo de Espera en Fila</span>
-                    <div class="text-base font-bold text-indigo-300 mt-0.5">
-                      ~{{ msg.predictiveMetrics.estimatedWaitTimeMinutes }} minutos
+
+                  <!-- ── ML 1: TIEMPO DE ESPERA → Gauge Semicírculo SVG ── -->
+                  <div class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 flex flex-col items-center gap-1">
+                    <span class="text-[10px] text-slate-400 self-start">Tiempo de Espera en Fila</span>
+                    <div class="relative w-24 h-14 mt-1">
+                      <svg viewBox="0 0 100 56" class="w-full h-full"
+                           [attr.aria-label]="'Tiempo de espera: ' + msg.predictiveMetrics.estimatedWaitTimeMinutes + ' minutos'">
+                        <!-- Track del semicírculo (180°) -->
+                        <path d="M 10 50 A 40 40 0 0 1 90 50"
+                              fill="none" stroke="#1e293b" stroke-width="10" stroke-linecap="round"/>
+                        <!-- Arco relleno según valor -->
+                        <path d="M 10 50 A 40 40 0 0 1 90 50"
+                              fill="none"
+                              [attr.stroke]="getGaugeColor(msg.predictiveMetrics.estimatedWaitTimeMinutes)"
+                              stroke-width="10"
+                              stroke-linecap="round"
+                              [attr.stroke-dasharray]="getGaugeDash(msg.predictiveMetrics.estimatedWaitTimeMinutes) + ' 125.7'"
+                              class="gauge-arc"/>
+                        <!-- Valor central -->
+                        <text x="50" y="44" text-anchor="middle" dominant-baseline="middle"
+                              font-size="16" font-weight="700" fill="white" font-family="monospace">
+                          {{ msg.predictiveMetrics.estimatedWaitTimeMinutes }}
+                        </text>
+                        <text x="50" y="55" text-anchor="middle" dominant-baseline="middle"
+                              font-size="7" fill="#94a3b8" font-family="sans-serif">min</text>
+                      </svg>
                     </div>
                     <span class="text-[10px] text-slate-500">Modelo M/M/c (0.8 trans/min)</span>
                   </div>
 
-                  <div class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
+                  <!-- ── ML 2: AFORO PROYECTADO → Barra Doble SVG ── -->
+                  <div class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 flex flex-col gap-2">
                     <span class="text-[10px] text-slate-400">Aforo Proyectado al Cierre</span>
-                    <div class="text-base font-bold text-emerald-400 mt-0.5">
-                      {{ msg.predictiveMetrics.projectedFinalOccupancy }}%
+                    <div class="mt-1 flex flex-col gap-1.5"
+                         [attr.aria-label]="'Aforo proyectado: ' + msg.predictiveMetrics.projectedFinalOccupancy + '%'">
+                      <!-- Barra Actual -->
+                      <div>
+                        <div class="flex justify-between text-[9px] text-slate-500 mb-0.5">
+                          <span>Actual</span>
+                          <span class="text-indigo-300 font-mono">{{ msg.predictiveMetrics.projectedFinalOccupancy - (msg.predictiveMetrics.projectedOccupancyBoost ?? 0) }}%</span>
+                        </div>
+                        <svg viewBox="0 0 100 8" class="w-full h-2">
+                          <rect x="0" y="0" width="100" height="8" rx="4" fill="#1e293b"/>
+                          <rect x="0" y="0"
+                                [attr.width]="(msg.predictiveMetrics.projectedFinalOccupancy - (msg.predictiveMetrics.projectedOccupancyBoost ?? 0))"
+                                height="8" rx="4" fill="#6366f1" class="proj-bar-anim"/>
+                          <!-- Marcador actual -->
+                          <line
+                            [attr.x1]="(msg.predictiveMetrics.projectedFinalOccupancy - (msg.predictiveMetrics.projectedOccupancyBoost ?? 0))"
+                            y1="0"
+                            [attr.x2]="(msg.predictiveMetrics.projectedFinalOccupancy - (msg.predictiveMetrics.projectedOccupancyBoost ?? 0))"
+                            y2="8"
+                            stroke="white" stroke-width="1.5"/>
+                        </svg>
+                      </div>
+                      <!-- Barra Proyectada -->
+                      <div>
+                        <div class="flex justify-between text-[9px] text-slate-500 mb-0.5">
+                          <span>Proyectado</span>
+                          <span class="text-emerald-400 font-mono font-bold">{{ msg.predictiveMetrics.projectedFinalOccupancy }}%</span>
+                        </div>
+                        <svg viewBox="0 0 100 8" class="w-full h-2">
+                          <rect x="0" y="0" width="100" height="8" rx="4" fill="#1e293b"/>
+                          <rect x="0" y="0"
+                                [attr.width]="msg.predictiveMetrics.projectedFinalOccupancy"
+                                height="8" rx="4" fill="#10b981" class="proj-bar-anim"/>
+                          <!-- Marcador proyectado -->
+                          <line
+                            [attr.x1]="msg.predictiveMetrics.projectedFinalOccupancy"
+                            y1="0"
+                            [attr.x2]="msg.predictiveMetrics.projectedFinalOccupancy"
+                            y2="8"
+                            stroke="white" stroke-width="1.5"/>
+                        </svg>
+                      </div>
                     </div>
-                    <span class="text-[10px] text-slate-500">Incremento de +{{ msg.predictiveMetrics.projectedOccupancyBoost }}%</span>
+                    <span class="text-[10px] text-emerald-400 font-mono font-semibold mt-auto">
+                      +{{ msg.predictiveMetrics.projectedOccupancyBoost }}% boost proyectado
+                    </span>
                   </div>
 
-                  <div class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 col-span-2 md:col-span-1">
-                    <span class="text-[10px] text-slate-400">Drenaje Total de la Cola</span>
-                    <div class="text-base font-bold text-purple-300 mt-0.5">
-                      {{ msg.predictiveMetrics.queueDrainTimeMinutes }} min
+                  <!-- ── ML 3: DRENAJE TOTAL → Reloj Visual SVG ── -->
+                  <div class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 flex flex-col items-center gap-1 col-span-2 md:col-span-1">
+                    <span class="text-[10px] text-slate-400 self-start">Drenaje Total de la Cola</span>
+                    <div class="relative w-16 h-16 mt-1">
+                      <svg viewBox="0 0 80 80" class="w-full h-full"
+                           [attr.aria-label]="'Drenaje de cola en ' + msg.predictiveMetrics.queueDrainTimeMinutes + ' minutos'">
+                        <!-- Círculo de fondo -->
+                        <circle cx="40" cy="40" r="32" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+                        <!-- Arco de progreso del drenaje (máx 60 min) -->
+                        <circle cx="40" cy="40" r="26"
+                                fill="none"
+                                stroke="#1e293b"
+                                stroke-width="8"/>
+                        <circle cx="40" cy="40" r="26"
+                                fill="none"
+                                stroke="#a855f7"
+                                stroke-width="8"
+                                stroke-linecap="round"
+                                [attr.stroke-dasharray]="getDrainDash(msg.predictiveMetrics.queueDrainTimeMinutes) + ' 163.4'"
+                                stroke-dashoffset="40.85"
+                                class="drain-arc"/>
+                        <!-- Icono de reloj pequeño -->
+                        <text x="40" y="37" text-anchor="middle" dominant-baseline="middle"
+                              font-size="14" font-weight="700" fill="white" font-family="monospace">
+                          {{ msg.predictiveMetrics.queueDrainTimeMinutes }}
+                        </text>
+                        <text x="40" y="51" text-anchor="middle" dominant-baseline="middle"
+                              font-size="7" fill="#c084fc" font-family="sans-serif">min</text>
+                      </svg>
                     </div>
-                    <span class="text-[10px] text-slate-500">Para vaciar fila actual</span>
+                    <span class="text-[10px] text-slate-500 text-center">Para vaciar fila actual</span>
+                    <span class="text-[9px] font-mono text-purple-400 mt-0.5">cola → vaciado</span>
                   </div>
                 </div>
 
-                <!-- Recomendación Prescriptiva Automática -->
-                <div class="p-3 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 flex items-start gap-2.5 mt-2">
+                <!-- Recomendación Prescriptiva Automática — con color según riskLevel -->
+                <div
+                  [ngClass]="getRiskAlertClass(msg.predictiveMetrics.riskLevel)"
+                  class="p-3 rounded-lg text-xs flex items-start gap-2.5 mt-2 border"
+                >
                   <span class="text-base flex-shrink-0">💡</span>
                   <div>
                     <span class="font-bold text-white block mb-0.5">Recomendación Prescriptiva del Algoritmo:</span>
@@ -306,7 +482,9 @@ export interface CapabilityItem {
                 </div>
               </div>
 
-              <!-- COMPONENTE VISUAL 3: TARJETA DE REPORTE EXCEL (.xlsx) DESCARGABLE -->
+              <!-- ═══════════════════════════════════════════════════════════════
+                   COMPONENTE VISUAL 3: EXCEL REPORT CARD — CON TABS SVG
+                   ═══════════════════════════════════════════════════════════════ -->
               <div
                 *ngIf="msg.excelReport"
                 class="mt-3 p-4 rounded-xl bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/40 shadow-xl space-y-3.5 relative overflow-hidden"
@@ -341,18 +519,65 @@ export interface CapabilityItem {
                   </span>
                 </div>
 
-                <!-- Hojas incluidas en el libro -->
-                <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-800/80 relative z-10">
-                  <span class="text-[11px] text-slate-400 font-medium">Hojas del Libro:</span>
-                  <span class="text-[11px] bg-slate-900 border border-slate-800 text-slate-300 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> Resumen Ejecutivo + ML
-                  </span>
-                  <span class="text-[11px] bg-slate-900 border border-slate-800 text-slate-300 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Ocupación por Función
-                  </span>
-                  <span class="text-[11px] bg-slate-900 border border-slate-800 text-slate-300 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> Flujo de Filas
-                  </span>
+                <!-- Tabs de Hojas con preview SVG minimalista -->
+                <div class="flex flex-wrap items-stretch gap-2 pt-2 border-t border-slate-800/80 relative z-10">
+                  <!-- Tab 1: Resumen Ejecutivo -->
+                  <div class="flex flex-col items-center gap-1 p-2 rounded-lg bg-slate-950/60 border border-blue-500/30 hover:border-blue-400/60 transition cursor-default" title="Hoja: Resumen Ejecutivo + ML">
+                    <svg viewBox="0 0 36 28" class="w-9 h-7">
+                      <!-- Mini hoja de cálculo -->
+                      <rect x="0" y="0" width="36" height="28" rx="3" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+                      <!-- Header azul -->
+                      <rect x="0" y="0" width="36" height="6" rx="3" fill="#2563eb" opacity="0.8"/>
+                      <!-- Filas de datos -->
+                      <rect x="2" y="9" width="20" height="1.5" rx="0.5" fill="#475569"/>
+                      <rect x="24" y="9" width="10" height="1.5" rx="0.5" fill="#3b82f6" opacity="0.8"/>
+                      <rect x="2" y="13" width="16" height="1.5" rx="0.5" fill="#475569"/>
+                      <rect x="24" y="13" width="10" height="1.5" rx="0.5" fill="#3b82f6" opacity="0.6"/>
+                      <rect x="2" y="17" width="22" height="1.5" rx="0.5" fill="#475569"/>
+                      <rect x="24" y="17" width="10" height="1.5" rx="0.5" fill="#3b82f6" opacity="0.4"/>
+                      <!-- Mini barra chart -->
+                      <rect x="2" y="22" width="4" height="4" rx="0.5" fill="#2563eb"/>
+                      <rect x="8" y="20" width="4" height="6" rx="0.5" fill="#3b82f6"/>
+                      <rect x="14" y="21" width="4" height="5" rx="0.5" fill="#60a5fa"/>
+                      <rect x="20" y="19" width="4" height="7" rx="0.5" fill="#93c5fd"/>
+                    </svg>
+                    <span class="text-[8px] text-blue-400 font-mono font-semibold">Resumen + ML</span>
+                  </div>
+                  <!-- Tab 2: Ocupación por Función -->
+                  <div class="flex flex-col items-center gap-1 p-2 rounded-lg bg-slate-950/60 border border-emerald-500/30 hover:border-emerald-400/60 transition cursor-default" title="Hoja: Ocupación por Función">
+                    <svg viewBox="0 0 36 28" class="w-9 h-7">
+                      <rect x="0" y="0" width="36" height="28" rx="3" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+                      <rect x="0" y="0" width="36" height="6" rx="3" fill="#059669" opacity="0.8"/>
+                      <!-- Barras de ocupación -->
+                      <rect x="2" y="9" width="12" height="1.5" rx="0.5" fill="#475569"/>
+                      <rect x="16" y="9" width="18" height="1.5" rx="0.5" fill="#10b981" opacity="0.9"/>
+                      <rect x="2" y="13" width="12" height="1.5" rx="0.5" fill="#475569"/>
+                      <rect x="16" y="13" width="10" height="1.5" rx="0.5" fill="#10b981" opacity="0.6"/>
+                      <rect x="2" y="17" width="12" height="1.5" rx="0.5" fill="#475569"/>
+                      <rect x="16" y="17" width="15" height="1.5" rx="0.5" fill="#10b981" opacity="0.75"/>
+                      <rect x="2" y="21" width="12" height="1.5" rx="0.5" fill="#475569"/>
+                      <rect x="16" y="21" width="8" height="1.5" rx="0.5" fill="#f59e0b" opacity="0.9"/>
+                    </svg>
+                    <span class="text-[8px] text-emerald-400 font-mono font-semibold">Ocupación</span>
+                  </div>
+                  <!-- Tab 3: Flujo de Filas -->
+                  <div class="flex flex-col items-center gap-1 p-2 rounded-lg bg-slate-950/60 border border-purple-500/30 hover:border-purple-400/60 transition cursor-default" title="Hoja: Flujo de Filas">
+                    <svg viewBox="0 0 36 28" class="w-9 h-7">
+                      <rect x="0" y="0" width="36" height="28" rx="3" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+                      <rect x="0" y="0" width="36" height="6" rx="3" fill="#7c3aed" opacity="0.8"/>
+                      <!-- Sparkline de flujo -->
+                      <polyline points="2,22 8,18 14,20 20,14 26,16 32,10"
+                                fill="none" stroke="#a855f7" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <!-- Área bajo la línea -->
+                      <polygon points="2,22 8,18 14,20 20,14 26,16 32,10 32,25 2,25"
+                               fill="#7c3aed" opacity="0.15"/>
+                      <!-- Puntos -->
+                      <circle cx="8" cy="18" r="1.2" fill="#a855f7"/>
+                      <circle cx="20" cy="14" r="1.2" fill="#a855f7"/>
+                      <circle cx="32" cy="10" r="1.2" fill="#c084fc"/>
+                    </svg>
+                    <span class="text-[8px] text-purple-400 font-mono font-semibold">Flujo Filas</span>
+                  </div>
                 </div>
 
                 <!-- Botón de Descarga Interactiva Directa -->
@@ -499,18 +724,85 @@ export interface CapabilityItem {
     </div>
   `,
   styles: [`
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
+    /* ── Scrollbar personalizado ── */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    /* ── Animación: Donut Arc (traza el arco al aparecer) ── */
+    @keyframes draw-arc {
+      from { stroke-dasharray: 0 226.2; }
     }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
+    .donut-arc {
+      animation: draw-arc 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      transform-origin: center;
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #334155;
-      border-radius: 4px;
+    .donut-anim {
+      transform: rotate(-90deg);
+      transform-origin: center;
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #475569;
+
+    /* ── Animación: Gauge semicírculo ── */
+    @keyframes draw-gauge {
+      from { stroke-dasharray: 0 125.7; }
+    }
+    .gauge-arc {
+      animation: draw-gauge 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    /* ── Animación: Drain arc ── */
+    @keyframes draw-drain {
+      from { stroke-dasharray: 0 163.4; }
+    }
+    .drain-arc {
+      animation: draw-drain 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      transform-origin: center;
+    }
+
+    /* ── Animación: barras de sala ── */
+    @keyframes grow-bar {
+      from { width: 0; }
+    }
+    .room-bar {
+      animation: grow-bar 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    /* ── Animación: barras de proyección ── */
+    @keyframes grow-proj {
+      from { width: 0; }
+    }
+    .proj-bar-anim {
+      animation: grow-proj 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    /* ── Animación: sparkline draw ── */
+    @keyframes draw-line {
+      from { stroke-dashoffset: 200; stroke-dasharray: 200; }
+      to   { stroke-dashoffset: 0; }
+    }
+    .sparkline-draw {
+      stroke-dasharray: 200;
+      stroke-dashoffset: 0;
+      animation: draw-line 1s ease-out forwards;
+    }
+
+    /* ── Semáforo: pulso rojo cuando hay alertas ── */
+    @keyframes semaforo-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .semaforo-pulse {
+      animation: semaforo-pulse 1.4s ease-in-out infinite;
+    }
+
+    /* ── Semáforo: brillo verde cuando todo OK ── */
+    @keyframes semaforo-glow {
+      0%, 100% { filter: drop-shadow(0 0 3px #10b981); }
+      50% { filter: drop-shadow(0 0 8px #10b981); }
+    }
+    .semaforo-glow {
+      animation: semaforo-glow 2s ease-in-out infinite;
     }
   `],
 })
@@ -707,6 +999,117 @@ export class LocalAiChatComponent implements OnInit {
     if (pct >= 60) return 'bg-emerald-500';
     if (pct >= 30) return 'bg-amber-500';
     return 'bg-rose-500';
+  }
+
+  // ── Helpers para gráficos SVG ────────────────────────────────────────────────
+
+  /** Color del donut según porcentaje de aforo */
+  getDonutColor(pct?: number): string {
+    if (pct === undefined || pct === null) return '#475569';
+    if (pct >= 60) return '#10b981'; // emerald
+    if (pct >= 30) return '#f59e0b'; // amber
+    return '#ef4444'; // red
+  }
+
+  /**
+   * stroke-dasharray para el donut.
+   * Circunferencia = 2 * π * 36 ≈ 226.2
+   */
+  getDonutDash(pct?: number): number {
+    const c = 226.2;
+    const val = Math.min(Math.max(pct ?? 0, 0), 100);
+    return parseFloat(((val / 100) * c).toFixed(2));
+  }
+
+  /** Color del gauge de tiempo de espera */
+  getGaugeColor(minutes?: number): string {
+    if (minutes === undefined || minutes === null) return '#475569';
+    if (minutes < 10) return '#10b981';  // verde
+    if (minutes <= 20) return '#f59e0b'; // amarillo
+    return '#ef4444';                     // rojo
+  }
+
+  /**
+   * stroke-dasharray para el gauge semicircular.
+   * Semicircunferencia = π * 40 ≈ 125.7. Máximo rango: 30 minutos.
+   */
+  getGaugeDash(minutes?: number): number {
+    const c = 125.7;
+    const maxMin = 30;
+    const val = Math.min(Math.max(minutes ?? 0, 0), maxMin);
+    return parseFloat(((val / maxMin) * c).toFixed(2));
+  }
+
+  /**
+   * stroke-dasharray para el arco de drenaje de cola.
+   * Circunferencia de r=26: 2*π*26 ≈ 163.4. Máximo: 60 minutos.
+   */
+  getDrainDash(minutes?: number): number {
+    const c = 163.4;
+    const maxMin = 60;
+    const val = Math.min(Math.max(minutes ?? 0, 0), maxMin);
+    return parseFloat(((val / maxMin) * c).toFixed(2));
+  }
+
+  /**
+   * Genera el array de salas activas.
+   * totalRooms indica cuántas están activas (máx 4 celdas visuales).
+   */
+  getRoomArray(totalRooms?: number): Array<{ active: boolean; width: number; color: string }> {
+    const active = Math.min(Math.max(totalRooms ?? 0, 0), 4);
+    const rooms: Array<{ active: boolean; width: number; color: string }> = [];
+    // Generamos siempre 4 filas; las primeras `active` están encendidas
+    for (let i = 0; i < active; i++) {
+      const fill = 40 + Math.round(Math.random() * 20); // 40-60 de 60 (ancho visual)
+      rooms.push({ active: true, width: fill, color: '#10b981' });
+    }
+    return rooms;
+  }
+
+  /** Filas vacías para completar hasta 4 */
+  getEmptyRooms(totalRooms?: number): number[] {
+    const active = Math.min(Math.max(totalRooms ?? 0, 0), 4);
+    return Array(Math.max(4 - active, 0)).fill(0);
+  }
+
+  /**
+   * Genera el path de la sparkline para la fila de taquilla.
+   * @param personCount número actual de personas
+   * @param filled si true devuelve el path cerrado para el área
+   */
+  getSparklinePath(personCount?: number, filled = false): string {
+    const count = Math.min(Math.max(personCount ?? 0, 0), 80);
+    // Simulamos 7 puntos de tendencia hacia el valor actual
+    const pts = [
+      { x: 2,  y: 24 - (count * 0.15) },
+      { x: 14, y: 24 - (count * 0.20) },
+      { x: 26, y: 24 - (count * 0.18) },
+      { x: 38, y: 24 - (count * 0.25) },
+      { x: 50, y: 24 - (count * 0.22) },
+      { x: 63, y: 24 - (count * 0.28) },
+      { x: 76, y: 24 - (count * 0.30) },
+    ].map(p => ({ x: p.x, y: Math.max(2, Math.min(26, p.y)) }));
+
+    const linePts = pts.map(p => `${p.x},${p.y}`).join(' ');
+    if (filled) {
+      return `M ${pts[0].x},${pts[0].y} L ${linePts.replace(/\d+,\d+/g, (m, i) => m)} L ${pts[pts.length - 1].x},27 L ${pts[0].x},27 Z`;
+    }
+    return `M ${pts.map(p => `${p.x},${p.y}`).join(' L ')}`;
+  }
+
+  /** Y final de la sparkline para posicionar el punto actual */
+  getSparklineEndY(personCount?: number): number {
+    const count = Math.min(Math.max(personCount ?? 0, 0), 80);
+    return Math.max(2, Math.min(26, 24 - count * 0.30));
+  }
+
+  /** Clase CSS del bloque de recomendación según nivel de riesgo */
+  getRiskAlertClass(riskLevel?: string): string {
+    if (!riskLevel) return 'bg-indigo-950/40 border-indigo-500/30 text-indigo-200';
+    const r = riskLevel.toUpperCase();
+    if (r === 'ALTO' || r === 'HIGH' || r === 'CRÍTICO') return 'bg-rose-950/40 border-rose-500/40 text-rose-200';
+    if (r === 'MEDIO' || r === 'MEDIUM') return 'bg-amber-950/40 border-amber-500/40 text-amber-200';
+    return 'bg-indigo-950/40 border-indigo-500/30 text-indigo-200';
   }
 
   sendQuery(): void {

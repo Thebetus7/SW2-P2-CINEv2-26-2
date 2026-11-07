@@ -62,27 +62,27 @@ export const CameraScanner: React.FC<CameraScannerProps> = ({
           if (isMounted && !isPaused) {
             onScan({ raw: rawText, payload: parsedPayload });
           }
-        },
-        (err) => {
-          if (isMounted) {
-            setHasPermission(false);
-            setErrorMessage(err.message || 'Error al acceder a la cámara');
-          }
         }
       )
       .then(() => {
         if (isMounted) {
           setHasPermission(true);
           setErrorMessage(null);
+          // Refrescar lista de dispositivos con sus etiquetas ahora que el permiso fue concedido
+          qrService.listVideoInputDevices().then((devList) => {
+            if (isMounted && devList.length > 0) {
+              setDevices(devList);
+            }
+          }).catch(() => {});
         }
       })
       .catch((err) => {
         if (isMounted) {
           setHasPermission(false);
           setErrorMessage(
-            err.name === 'NotAllowedError'
-              ? 'Permiso de cámara denegado. Active el acceso al video en su navegador.'
-              : 'No se pudo iniciar el stream de la cámara.'
+            err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
+              ? 'Permiso de cámara denegado. Permita el acceso a la cámara en los permisos de su navegador.'
+              : (err.message || 'No se pudo iniciar el stream de la cámara.')
           );
         }
       });

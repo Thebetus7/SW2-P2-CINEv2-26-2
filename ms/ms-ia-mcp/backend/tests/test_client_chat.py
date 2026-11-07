@@ -159,3 +159,41 @@ async def test_client_chat_casual_message_suppresses_cards():
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["showtimeCards"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_client_chat_unsupported_genre_returns_empty_state():
+    """Verifica que al consultar por terror u otro género inexistente hoy retorne emptyState con cara triste."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.post("/api/v1/client-chat", json={"message": "hay de terror?"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["showtimeCards"]) == 0
+        assert data["emptyState"] is not None
+        assert data["emptyState"]["icon"] == "frown"
+        assert "terror" in data["emptyState"]["title"].lower()
+        assert "terror" in data["reply"].lower()
+
+
+@pytest.mark.asyncio
+async def test_client_chat_multi_seat_selection_and_pricing():
+    """Verifica selección de múltiples butacas simultáneas con cálculo de total acumulado."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.post(
+            "/api/v1/client-chat",
+            json={
+                "message": "elijo las butacas C-7 y C-8",
+                "selectedShowtimeId": "st-avatar-01",
+                "selectedSeatCode": "C-7, C-8",
+            }
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["nextState"] == "SEAT_ASSIGNED"
+        assert data["summary"] is not None
+        assert "C-7" in data["summary"]["seatCode"]
+        assert "C-8" in data["summary"]["seatCode"]
+        # Debe costar el doble que 1 sola entrada
+        assert data["summary"]["totalPrice"] == data["summary"]["unitPrice"] * 2

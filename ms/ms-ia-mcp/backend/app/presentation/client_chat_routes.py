@@ -16,47 +16,121 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["ClientChat"])
 
 
-def _extract_movie_tokens(movie_title: str) -> List[str]:
-    """Genera tokens simplificados para búsqueda difusa del título de la película."""
-    clean = movie_title.lower().replace(":", " ").replace("-", " ").replace("2", "ii").replace("dos", "ii")
-    words = [w.strip() for w in clean.split() if len(w.strip()) > 2]
-    # Añadir variantes comunes
-    variants = list(words)
-    if "gladiador" in clean or "gladiator" in clean:
-        variants.extend(["gladiador", "gladiator", "gladiador 2", "gladiador ii"])
-    if "spider" in clean:
-        variants.extend(["spider", "spiderman", "spider-man"])
-    if "avatar" in clean:
-        variants.extend(["avatar", "avatar 2", "pandora"])
-    if "dune" in clean:
-        variants.extend(["dune", "dune 2", "arrakis"])
-    if "intensamente" in clean or "inside" in clean:
-        variants.extend(["intensamente", "insideout", "inside out"])
-    return list(set(variants))
+import re
+import difflib
+
+# Palabras genéricas o stopwords que NUNCA deben usarse para identificar una película
+STOPWORDS_TITLES = {
+    "de", "del", "la", "las", "el", "los", "en", "un", "una", "unos", "unas", "por", "para", "con", "y", "o", "a",
+    "dos", "parte", "sentido", "agua", "man", "verso", "hoy", "tarde", "noche", "pelicula", "peliculas"
+}
+
+
+def _match_movie_semantically(text: str, all_cards: List[ShowtimeCard]) -> Dict[str, Any]:
+    """
+    Evalúa la película consultada por el usuario comparando el título COMPLETO o tokens
+    significativos usando límites de palabra exactos (\b...\b) o similitud difusa (fuzzy ratio).
+    
+    Retorna un diccionario:
+    - 'match': 'EXACT' | 'FUZZY' | 'NONE'
+    - 'cards': List[ShowtimeCard]
+    - 'suggestedTitle': str (si fue aproximado / fuzzy)
+    """
+    clean_text = text.lower().strip()
+    words_in_text = set(re.findall(r"\b[a-záéíóúñ0-9]{3,}\b", clean_text))
+
+    # 1. Búsqueda por coincidencia de frase completa o título principal
+    for card in all_cards:
+        title_lower = card.movieTitle.lower()
+        # Normalizar título quitando subtítulos tras ':'
+        main_title = title_lower.split(":")[0].strip()
+        
+        # Coincidencia directa del título o título principal
+        if title_lower in clean_text or main_title in clean_text:
+            return {
+                "match": "EXACT",
+                "cards": [c for c in all_cards if c.movieTitle.strip().lower() == card.movieTitle.strip().lower()],
+                "suggestedTitle": card.movieTitle
+            }
+
+    # 2. Búsqueda por palabras clave distintivas exclusivas del título (ej: 'avatar', 'gladiador', 'oppenheimer', 'interstellar')
+    distinctive_keywords = {
+        "avatar": "Avatar 2: El Sentido del Agua",
+        "pandora": "Avatar 2: El Sentido del Agua",
+        "dune": "Dune: Parte Dos",
+        "arrakis": "Dune: Parte Dos",
+        "gladiador": "Gladiador II",
+        "gladiator": "Gladiador II",
+        "spiderman": "Spider-Man: A Través del Spider-Verso",
+        "spider-man": "Spider-Man: A Través del Spider-Verso",
+        "oppenheimer": "Oppenheimer",
+        "interstellar": "Interestelar",
+        "interestelar": "Interestelar",
+        "intensamente": "Intensamente 2",
+        "insideout": "Intensamente 2",
+        "deadpool": "Deadpool & Wolverine",
+        "wolverine": "Deadpool & Wolverine",
+    }
+
+    # Evaluar palabras aisladas completas (\b)
+    for kw, target_title in distinctive_keywords.items():
+        pattern = rf"\b{re.escape(kw)}\b"
+        if re.search(pattern, clean_text):
+            matched = [c for c in all_cards if target_title.lower() in c.movieTitle.lower()]
+            if matched:
+                return {
+                    "match": "EXACT",
+                    "cards": matched,
+                    "suggestedTitle": matched[0].movieTitle
+                }
+
+    # 3. Similitud difusa (Fuzzy Matching) para errores tipográficos o nombres aproximados
+    # Ej: "la de dunas" -> "Dune", "espiderman" -> "Spider-Man", "openjaimer" -> "Oppenheimer"
+    unique_titles = list({c.movieTitle for c in all_cards})
+    for title in unique_titles:
+        title_clean = title.lower()
+        # Comparar con palabras o n-gramas del texto
+        ratio = difflib.SequenceMatcher(None, clean_text, title_clean).ratio()
+        if ratio >= 0.65:
+            matched = [c for c in all_cards if c.movieTitle == title]
+            return {
+                "match": "FUZZY",
+                "cards": matched,
+                "suggestedTitle": title
+            }
+        
+        # Comparar también contra cada palabra del usuario
+        for word in words_in_text:
+            if word in STOPWORDS_TITLES:
+                continue
+            word_ratio = difflib.SequenceMatcher(None, word, title_clean.split(":")[0].strip()).ratio()
+            if word_ratio >= 0.75 and len(word) >= 5:
+                matched = [c for c in all_cards if c.movieTitle == title]
+                return {
+                    "match": "FUZZY",
+                    "cards": matched,
+                    "suggestedTitle": title
+                }
+
+    return {"match": "NONE", "cards": [], "suggestedTitle": None}
 
 
 def _match_movie_in_text(text: str, all_cards: List[ShowtimeCard]) -> List[ShowtimeCard]:
-    """Retorna las funciones de la película que coincida con el texto proporcionado."""
-    text_lower = text.lower()
-    for card in all_cards:
-        tokens = _extract_movie_tokens(card.movieTitle)
-        if any(tok in text_lower for tok in tokens):
-            # Retornar todas las funciones que pertenezcan a esta misma película
-            return [c for c in all_cards if c.movieTitle.strip().lower() == card.movieTitle.strip().lower()]
-    return []
+    """Helper de compatibilidad que retorna la lista de funciones de la película identificada."""
+    res = _match_movie_semantically(text, all_cards)
+    return res.get("cards", [])
 
 
 def _find_recent_movie_in_history(history: Any, all_cards: List[ShowtimeCard]) -> List[ShowtimeCard]:
     """Busca en los últimos turnos del historial si se habló de alguna película específica."""
     if not history:
         return []
-    # Recorrer historial en orden inverso (lo más reciente primero)
     reversed_hist = list(reversed(history[-6:]))
     for item in reversed_hist:
         content = item.get("content", "") if isinstance(item, dict) else getattr(item, "content", "")
-        matches = _match_movie_in_text(str(content), all_cards)
-        if matches:
-            return matches
+        res = _match_movie_semantically(str(content), all_cards)
+        if res["cards"]:
+            return res["cards"]
     return []
 
 
@@ -125,35 +199,48 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
             summary=None,
         )
 
-    # 4. Manejo de Selección de Butaca y Resumen Pre-Pago (Solo si NO es cambiar butaca)
+    # 4. Manejo de Selección de Butaca y Resumen Pre-Pago (Soporte Multi-Butaca)
     seat_explicit = request.selectedSeatCode or any(s in msg_lower for s in ["c-8", "c-7", "d-7", "c-5", "c-6", "c-4", "a-3", "d-5", "d-6"])
     seat_word_select = ("butaca" in msg_lower or "asiento" in msg_lower) and any(w in msg_lower for w in ["elijo", "quiero", "prefiero", "asigna", "selecciona", "dame", "esta"])
 
     if (seat_explicit or seat_word_select) and not is_cambiar_butaca:
-        chosen_seat = request.selectedSeatCode
-        if not chosen_seat:
-            for s in ["c-8", "c-7", "d-7", "c-5", "c-6", "c-4", "a-3", "d-5", "d-6"]:
-                if s in msg_lower:
-                    chosen_seat = s.upper()
-                    break
-            if not chosen_seat:
-                chosen_seat = "C-8"
+        chosen_seats: List[str] = []
+        if request.selectedSeatCode:
+            chosen_seats = [s.strip().upper() for s in request.selectedSeatCode.replace(" y ", ",").split(",") if s.strip()]
 
+        if not chosen_seats:
+            import re
+            found = re.findall(r"\b([A-Fa-f]-[0-9]{1,2})\b", msg_lower)
+            if found:
+                chosen_seats = [f.upper() for f in found]
+            else:
+                for s in ["c-8", "c-7", "d-7", "c-5", "c-6", "c-4", "a-3", "d-5", "d-6"]:
+                    if s in msg_lower and s.upper() not in chosen_seats:
+                        chosen_seats.append(s.upper())
+
+        if not chosen_seats:
+            chosen_seats = ["C-8"]
+
+        chosen_seat_str = ", ".join(chosen_seats)
+        ticket_count = len(chosen_seats)
         selected_card = next((c for c in all_cards if c.showtimeId == request.selectedShowtimeId), all_cards[0] if all_cards else None)
 
         if selected_card:
+            total_calc = selected_card.price * ticket_count
             summary_data = {
                 "showtimeId": selected_card.showtimeId,
                 "movieTitle": selected_card.movieTitle,
                 "hallName": selected_card.hallName,
                 "hallType": selected_card.hallType,
-                "seatCode": chosen_seat,
+                "seatCode": chosen_seat_str,
                 "startTime": selected_card.startTime,
                 "unitPrice": selected_card.price,
-                "totalPrice": selected_card.price,
+                "totalPrice": total_calc,
+                "ticketCount": ticket_count,
             }
+            plural = "las butacas" if ticket_count > 1 else "la butaca"
             reply = (
-                f"¡Perfecto! Tienes reservada temporalmente la butaca '{chosen_seat}' para '{selected_card.movieTitle}'.\n\n"
+                f"¡Perfecto! Tienes reservada temporalmente {plural} '{chosen_seat_str}' ({ticket_count} {('entradas' if ticket_count > 1 else 'entrada')}) para '{selected_card.movieTitle}'.\n\n"
                 f"Revisa el resumen financiero a continuación y presiona 'Proceder al Pago' para confirmar tu entrada "
                 f"con pasarela Stripe segura y emitir tu código QR dinámico."
             )
@@ -164,6 +251,7 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
                 showtimeCards=[],
                 recommendedSeats=[],
                 summary=summary_data,
+                emptyState=None,
             )
 
     # 5. Detección Inteligente de Película Consultada en el Mensaje o Historial
@@ -290,9 +378,24 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
     except Exception as ex:
         logger.warning(f"Excepción en GroqCloud: {ex}")
 
+    # Detección contextual de géneros específicos en la consulta
+    is_terror = any(g in msg_lower for g in ["terror", "miedo", "horror", "suspenso"])
+    is_romance = any(g in msg_lower for g in ["romance", "romantica", "comedia romantica"])
+    is_genero_especifico = is_terror or is_romance or any(g in msg_lower for g in ["comedia", "animada", "infantil", "documental"])
+
     # Fallback conversacional si la API se encuentra saturada (429) o en contingencia
     if not llm_reply:
-        if "mañana" in msg_lower:
+        if is_terror:
+            llm_reply = (
+                "Lamentablemente hoy no contamos con películas de terror en cartelera. "
+                "Nuestras funciones de hoy están enfocadas en ciencia ficción, acción y animación."
+            )
+        elif is_romance:
+            llm_reply = (
+                "Por el momento no tenemos funciones de romance en la programación de hoy. "
+                "Te invito a explorar nuestras opciones de acción y ciencia ficción disponibles."
+            )
+        elif "mañana" in msg_lower:
             llm_reply = (
                 "Para mañana la programación oficial se habilitará en las próximas horas, pero te muestro las funciones destacadas "
                 "que continúan en cartelera para que puedas reservar con anticipación."
@@ -320,7 +423,7 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
     is_tarde_horario = ("en la tarde" in msg_lower or "por la tarde" in msg_lower or "vespertin" in msg_lower or ("tarde" in msg_lower and "buenas tardes" not in msg_lower)) and not is_saludo_puro
     is_noche_horario = ("en la noche" in msg_lower or "por la noche" in msg_lower or "nocturn" in msg_lower or ("noche" in msg_lower and "buenas noches" not in msg_lower)) and not is_saludo_puro
 
-    is_genero_especifico = any(g in msg_lower for g in ["terror", "miedo", "comedia", "romance", "animada", "infantil", "documental"])
+    empty_state_payload = None
 
     if is_economico:
         # Ordenar por precio ascendente y filtrar solo las más económicas
@@ -348,6 +451,14 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
         elif is_genero_especifico:
             # Si el usuario preguntó por un género que no tiene coincidencias en cartelera, no forzar tarjetas irrelevantes
             relevant_cards = []
+            searched_name = "terror" if is_terror else ("romance" if is_romance else "este género")
+            empty_state_payload = {
+                "icon": "frown",
+                "title": f"Sin películas de {searched_name} para hoy",
+                "message": "Actualmente nuestra programación cuenta con funciones destacadas de Acción, Ciencia Ficción y Animación.",
+                "searchedTerm": searched_name,
+                "availableGenres": ["Acción", "Ciencia Ficción", "Animación"],
+            }
 
     # Solo adjuntar tarjetas interactivas de cartelera si el usuario solicita cartelera, funciones, horarios o si filtró por atributos
     pide_cartelera = (
@@ -370,6 +481,8 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
     chips = ["Funciones económicas", "Salas IMAX", "Películas de la noche"]
     if is_economico:
         chips = ["Ver en Sala 2", "Ver en Sala 3", "Ver salas IMAX"]
+    elif empty_state_payload:
+        chips = ["Ver películas de Acción", "Ver Ciencia Ficción", "Ver Cartelera Completa"]
 
     return ClientChatResponse(
         reply=llm_reply,
@@ -378,4 +491,5 @@ async def process_client_chat(request: ClientChatRequest) -> ClientChatResponse:
         showtimeCards=cards_to_return,
         recommendedSeats=[],
         summary=None,
+        emptyState=empty_state_payload,
     )

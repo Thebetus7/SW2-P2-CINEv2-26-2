@@ -1,4 +1,4 @@
-import { ClientChatMessage, ShowtimeCard, RecommendedSeat, PurchaseSummary, ChatFlowState } from '../types/client-chat.types';
+import { ClientChatMessage, ShowtimeCard, RecommendedSeat, PurchaseSummary, ChatFlowState, EmptyStateInfo } from '../types/client-chat.types';
 
 const CLIENT_CHAT_API_URL =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_CLIENT_CHAT_API_URL) ||
@@ -21,6 +21,7 @@ export interface ClientChatApiResponse {
   showtimeCards: ShowtimeCard[];
   recommendedSeats: RecommendedSeat[];
   summary: PurchaseSummary | null;
+  emptyState?: EmptyStateInfo | null;
 }
 
 export async function sendClientChatMessage(payload: SendMessagePayload): Promise<ClientChatApiResponse> {

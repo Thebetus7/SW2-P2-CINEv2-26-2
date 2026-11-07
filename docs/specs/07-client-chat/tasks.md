@@ -105,6 +105,11 @@ flowchart TD
   - Botones secundarios en `PurchaseSummaryCard`: `Cambiar butaca` (retrocede a `SHOWTIME_SELECTED`) y `Otra función` (retrocede a `EXPLORING`).
   - Intercepción de quick chips para acciones directas sin bucles de texto.
   - Trazabilidad: `TEST-CCH-12`, `TEST-CCH-13`.
+- [x] **T6.4 (Resaltado de Boletos Próximos y Hora de Función)** `[ms-ticket-auth/frontend/src/App.tsx]`
+  - Implementado borde halo y gradiente esmeralda (`border-emerald-500/60`, badge `🟢 FUNCIÓN ACTIVA • ACCESO VÁLIDO`) para boletos no utilizados.
+  - Implementado bloque hero protagónico para la hora de la función (`Clock` digital monospace `text-2xl font-black text-amber-300`).
+  - Compatibilidad de seeders con campo `startTime`.
+  - Trazabilidad: `TEST-CCH-14`.
 
 ---
 
@@ -112,23 +117,23 @@ flowchart TD
 
 ```text
 [BACKEND PYTEST EVIDENCE - ms-ia-mcp]
-tests/test_anomaly_detection.py ..... [ 9%]
-tests/test_audit_flow.py .. [ 13%]
-tests/test_audit_routes.py . [ 15%]
-tests/test_chatbot_flow.py . [ 17%]
-tests/test_chatbot_routes.py .. [ 21%]
-tests/test_client_chat.py ......... [ 39%]
-tests/test_client_chat_multi_turn.py ... [ 45%]
-tests/test_config.py .. [ 49%]
-tests/test_excel_report.py ..... [ 58%]
-tests/test_grok_client.py .. [ 62%]
-tests/test_mcp_tools.py ...... [ 74%]
-tests/test_models.py ...... [ 86%]
-tests/test_n8n_webhook.py .. [ 90%]
-tests/test_scheduler.py . [ 92%]
-tests/test_service_clients.py .. [ 96%]
-tests/test_system_prompt.py .. [100%]
-======================= 51 passed in 21.02s =======================
+ms/ms-ia-mcp/backend/tests/test_anomaly_detection.py .....               [  9%]
+ms/ms-ia-mcp/backend/tests/test_audit_flow.py ..                         [ 13%]
+ms/ms-ia-mcp/backend/tests/test_audit_routes.py .                        [ 15%]
+ms/ms-ia-mcp/backend/tests/test_chatbot_flow.py .                        [ 16%]
+ms/ms-ia-mcp/backend/tests/test_chatbot_routes.py ..                     [ 20%]
+ms/ms-ia-mcp/backend/tests/test_client_chat.py ...........               [ 41%]
+ms/ms-ia-mcp/backend/tests/test_client_chat_multi_turn.py ...            [ 47%]
+ms/ms-ia-mcp/backend/tests/test_config.py ..                             [ 50%]
+ms/ms-ia-mcp/backend/tests/test_excel_report.py .....                    [ 60%]
+ms/ms-ia-mcp/backend/tests/test_grok_client.py ..                        [ 64%]
+ms/ms-ia-mcp/backend/tests/test_mcp_tools.py ......                      [ 75%]
+ms/ms-ia-mcp/backend/tests/test_models.py ......                         [ 86%]
+ms/ms-ia-mcp/backend/tests/test_n8n_webhook.py ..                        [ 90%]
+ms/ms-ia-mcp/backend/tests/test_scheduler.py .                           [ 92%]
+ms/ms-ia-mcp/backend/tests/test_service_clients.py ..                    [ 96%]
+ms/ms-ia-mcp/backend/tests/test_system_prompt.py ..                      [100%]
+====================== 53 passed in 96.49s ======================
 
 [FRONTEND VITEST EVIDENCE - ms-ticket-auth]
 Test Files  11 passed (11)
