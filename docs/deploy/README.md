@@ -1,66 +1,104 @@
-# Despliegue de Infraestructura y Operaciones Cloud: Ecosistema CineV2
+# Arquitectura Multi-Cloud Distribuida — Ecosistema CineV2
 
-Guía maestra y matriz de asignación para el despliegue del ecosistema **CineV2** en proveedores de nube pública bajo arquitecturas de **Costo Mínimo** y aprovechamiento máximo de **Capas Gratuitas (Free Tier / Always Free)**.
-
----
-
-## 1. Matriz de Otorgamiento y Asignación de Roles de Servidor
-
-En cumplimiento del principio de menor privilegio (*Principle of Least Privilege - PoLP*), los accesos a la infraestructura de nube y a las capas del sistema se segregan rígidamente según el rol organizativo:
-
-| Rol Organizativo | Responsabilidades Operativas | Accesos y Credenciales Otorgadas | Restricciones Estrictas |
-| :--- | :--- | :--- | :--- |
-| **Ingeniero Cloud / DevOps (SysAdmin)** | Provisión de VMs, red, firewall, certificados SSL, scripts de backup de PostgreSQL y monitoreo del host. | Llaves SSH (`id_rsa`), credenciales IAM de consola Cloud (AWS/GCP/Azure), usuario `sudo` en el servidor host. | Sin privilegios comerciales ni operativos sobre venta o anulación manual de boletos en base de datos. |
-| **Administrador del Complejo (Gerente)** | Gestión de salas, películas, funciones y programación de cartelera, consulta de métricas de afluencia y reportes predictivos. | Usuario y contraseña web (`admin@cine.local`), acceso a `admin.<TU_DOMINIO>` (FRONTWEB Angular `:4200`) y descarga de reportes Excel. | **Terminantemente prohibido acceso SSH**, terminal de consola o credenciales directas a base de datos. |
-| **Boletero de Puerta (Control de Acceso)** | Escaneo continuo de códigos QR dinámicos en accesos a salas y validación criptográfica en tiempo real. | Usuario y contraseña web (`boletero@cine.local`), acceso exclusivo a `boleteo.<TU_DOMINIO>` (Panel de Boleteo `:5177`). | Restringido a la vista de escáner. Sin acceso a edición de salas, cartelera ni base de datos. |
-| **Auditor Comercial / Oficial de Seguridad** | Monitoreo de anomalías en taquilla, trazabilidad de firmas HMAC-SHA256 e inspección de reportes generados por n8n y GrokCloud. | Acceso a `ia.<TU_DOMINIO>` (Consola de IA `:5176`) y visor de logs de auditoría comercial. | Sin acceso SSH al servidor ni modificación de precios de entradas. |
-| **Cliente Final (Público General)** | Consulta de cartelera, compra asistida por chatbot conversacional y presentación de tickets offline. | Registro público / acceso a `cine.<TU_DOMINIO>` (`:5174`) y aplicación PWA móvil (`:5173`). | Restringido al catálogo y pasarela de checkout. |
+Este documento define la arquitectura física, técnica y operativa del ecosistema **CineV2** distribuido entre tres proveedores de nube pública (**Google Cloud Platform**, **Microsoft Azure** y **Amazon Web Services**) para un proyecto de examen universitario de alta especialización.
 
 ---
 
-## 2. Comparativa de Opciones de Nube de Bajo Costo / Free Tier
+## 1. Distribución Estratégica de Microservicios por Proveedor de Nube
 
-| Proveedor | Servicio de Cómputo | Capa Gratuita (Free Tier) | Costo Residual Estimado | Enlace a Documentación |
-| :--- | :--- | :--- | :--- | :--- |
-| **Amazon Web Services (AWS)** | EC2 `t4g.small` (ARM64) o `t3.micro` / Lightsail | 750 horas/mes gratis durante los primeros 12 meses (EC2 `t3.micro` o `t4g.small`), S3 5GB gratis, DynamoDB 25GB siempre gratis. | **$0.00 / mes** (Meses 1-12)<br>o ~$3.50 a $5.00/mes en Lightsail posterior. | [Guía AWS](aws/00_RESUMEN_GENERAL.md) |
-| **Google Cloud Platform (GCP)** | Compute Engine `e2-micro` (2 vCPU compartidas, 1 GB RAM) en `us-central1` o `us-east1`. | **Always Free Tier de por vida** (1 instancia `e2-micro` + 30 GB de disco persistente estándar sin costo mensual recurrente). | **$0.00 / mes** (Requiere configuración de 4GB Swap por memoria). | [Guía GCP](gcp/00_RESUMEN_GENERAL.md) |
-| **Microsoft Azure** | Virtual Machines `B1s` (1 vCPU, 1 GB RAM) o `B2s` (2 vCPU, 4 GB RAM). | 750 horas/mes gratis durante los primeros 12 meses (VM Linux `B1s` con 64 GB SSD P6) + $200 USD de crédito inicial los primeros 30 días. | **$0.00 / mes** (Mes 1 con crédito y 1-12 con B1s)<br>o ~$7.50/mes con `B1s`. | [Guía Azure](azure/00_RESUMEN_GENERAL.md) |
+Cada microservicio se aloja en la nube más idónea técnica y financieramente, maximizando el aprovechamiento de las **Capas Gratuitas (Free Tier / Always Free)**:
 
----
+```mermaid
+flowchart TB
+    Docente["Docente / Evaluador (Internet)"]
 
-## 3. Estructura de Suites Documentales por Nube
+    subgraph AZURE["Microsoft Azure (Nodo de Autenticación, Boletos e IA)"]
+        direction TB
+        VM_AZURE["Azure VM: Standard_B1s / B2s (Free Tier 12 Meses - eastus)<br/>IP Pública: http://&lt;IP_AZURE&gt;"]
+        AuthFE["ms-ticket-auth-frontend<br/>Puerto :5174 (Portal Clientes)"]
+        AuthBE["ms-ticket-auth-backend<br/>Puerto :8081 (Spring Boot 3 / Java 21)"]
+        IAFE["ms-ia-mcp-frontend<br/>Puerto :5176 (Auditoría IA)"]
+        IABe["ms-ia-mcp-backend<br/>Puerto :8001 (FastAPI GrokCloud)"]
+        PGAUTH[("PostgreSQL Auth<br/>Puerto :5434")]
+        
+        AuthFE --> AuthBE
+        AuthBE --> PGAUTH
+        IAFE --> IABe
+    end
 
-Cada carpeta contiene la suite operativa completa y verificable para el proveedor correspondiente:
+    subgraph GCP["Google Cloud Platform (Nodo de Administración y Boleteo)"]
+        direction TB
+        VM_GCP["Compute Engine: e2-micro (Always Free - us-central1)<br/>IP Pública: http://&lt;IP_GCP&gt;"]
+        CoreFE["ms-cinema-core-frontend<br/>Puerto :4200 (Admin Angular 17)"]
+        CoreBE["ms-cinema-core-backend<br/>Puerto :3000 (NestJS TypeORM)"]
+        BolFE["ms-boleteo-validator-frontend<br/>Puerto :5177 (Lector QR Cámara)"]
+        BolBE["ms-boleteo-validator-backend<br/>Puerto :8000 (Laravel 11 PHP)"]
+        PGCORE[("PostgreSQL Core<br/>Puerto :5433")]
+        
+        CoreFE --> CoreBE
+        CoreBE --> PGCORE
+        BolFE --> BolBE
+        BolBE --> CoreBE
+    end
 
-```text
-docs/deploy/
-├── README.md                      # Esta guía maestra y matriz de roles
-├── aws/                           # Suite de despliegue en Amazon Web Services
-│   ├── 00_RESUMEN_GENERAL.md
-│   ├── 01_CONFIGURAR_PROYECTO.md
-│   ├── 02_CREAR_INFRAESTRUCTURA.md
-│   ├── 03_INSTALAR_HERRAMIENTAS.md
-│   ├── 04_DESPLEGAR_Y_VERIFICAR.md
-│   ├── 05_ACTUALIZAR_PRODUCCION.md
-│   ├── 06_APAGAR_Y_REACTIVAR.md
-│   └── 07_FLUJO_VISUAL_DESPLIEGUE.html
-├── gcp/                           # Suite de despliegue en Google Cloud Platform
-│   ├── 00_RESUMEN_GENERAL.md
-│   ├── 01_CONFIGURAR_PROYECTO.md
-│   ├── 02_CREAR_INFRAESTRUCTURA.md
-│   ├── 03_INSTALAR_HERRAMIENTAS.md
-│   ├── 04_DESPLEGAR_Y_VERIFICAR.md
-│   ├── 05_ACTUALIZAR_PRODUCCION.md
-│   ├── 06_APAGAR_Y_REACTIVAR.md
-│   └── 07_FLUJO_VISUAL_DESPLIEGUE.html
-└── azure/                         # Suite de despliegue en Microsoft Azure
-    ├── 00_RESUMEN_GENERAL.md
-    ├── 01_CONFIGURAR_PROYECTO.md
-    ├── 02_CREAR_INFRAESTRUCTURA.md
-    ├── 03_INSTALAR_HERRAMIENTAS.md
-    ├── 04_DESPLEGAR_Y_VERIFICAR.md
-    ├── 05_ACTUALIZAR_PRODUCCION.md
-    ├── 06_APAGAR_Y_REACTIVAR.md
-    └── 07_FLUJO_VISUAL_DESPLIEGUE.html
+    subgraph AWS["Amazon Web Services (Nodo Multimedia y Storage S3)"]
+        direction TB
+        VM_AWS["EC2: t3.micro (Free Tier 12 Meses - us-east-1)<br/>IP Pública: http://&lt;IP_AWS&gt;"]
+        MedFE["ms-multimedia-frontend<br/>Puerto :5175 (Simulador)"]
+        MedBE["ms-multimedia-backend<br/>Puerto :3001 (NestJS TensorFlow)"]
+        S3Bucket[("Bucket AWS S3 Real<br/>s3://cinev2-media-bucket-prod")]
+        
+        MedFE --> MedBE
+        MedBE --> S3Bucket
+    end
+
+    %% Accesos de Usuario
+    Docente -->|"http://&lt;IP_AZURE&gt;:5174"| AuthFE
+    Docente -->|"http://&lt;IP_GCP&gt;:4200"| CoreFE
+    Docente -->|"http://&lt;IP_GCP&gt;:5177"| BolFE
+    Docente -->|"http://&lt;IP_AZURE&gt;:5176"| IAFE
+    Docente -->|"http://&lt;IP_AWS&gt;:5175"| MedFE
+
+    %% Comunicación Cross-Cloud
+    AuthBE -.->|"Consulta Cartelera http://&lt;IP_GCP&gt;:3000"| CoreBE
+    IABe -.->|"Inspección MCP http://&lt;IP_GCP&gt;:3000"| CoreBE
+    BolBE -.->|"Valida Firma HMAC http://&lt;IP_AZURE&gt;:8081"| AuthBE
+    CoreBE -.->|"Carga Posters en S3"| S3Bucket
+    MedBE -.->|"Consulta Estado de Sala http://&lt;IP_GCP&gt;:3000"| CoreBE
 ```
 
+> [!NOTE]
+> El proyecto `movil-client` (puerto :5173) corresponde a la aplicación móvil PWA orientada a ejecución en dispositivos y se excluye de los servidores en la nube.
+
+---
+
+## 2. Matriz de Asignación por Servidor y Costes
+
+| Proveedor de Nube | Microservicios y Frameworks Asignados | Infraestructura Base | Manifiesto de Despliegue | Costo Mensual |
+| :--- | :--- | :--- | :--- | :--- |
+| **Microsoft Azure** | **Spring Boot 3 (Java 21)** + **FastAPI (Python)**<br>`ms-ticket-auth` (Portal Clientes :5174 + Backend Java :8081 + PostgreSQL :5434)<br>`ms-ia-mcp` (Auditoría :5176 + FastAPI :8001) | Azure VM `Standard_B1s`<br>Disco 64 GB SSD P6 | `docker-compose.azure.yml` | **$0.00 USD** (Free Tier 12 Meses / $200 crédito) |
+| **Google Cloud (GCP)** | **NestJS (Node.js)** + **Angular 17** + **Laravel 11 (PHP 8.2)**<br>`ms-cinema-core` (Admin Angular :4200 + Backend NestJS :3000 + PostgreSQL :5433)<br>`ms-boleteo-validator` (Boletero :5177 + Laravel :8000) | Compute Engine `e2-micro`<br>Disco 30 GB pd-standard | `docker-compose.gcp.yml` | **$0.00 USD** (Always Free de por vida) |
+| **Amazon Web Services (AWS)** | **NestJS** + **TensorFlow COCO-SSD**<br>`ms-multimedia` (Simulador :5175 + Backend TensorFlow :3001)<br>Almacenamiento: **Bucket real de AWS S3** | EC2 `t3.micro` + S3 Bucket (5 GB Free Tier) | `docker-compose.aws.yml` | **$0.00 USD** (Free Tier 12 Meses) |
+| **TOTAL MULTI-CLOUD:** | **Todo el Ecosistema en Producción** | **3 Servidores + 1 S3 Bucket** | — | **$0.00 USD / mes** |
+
+---
+
+## 3. Matriz de Puertos y Reglas de Firewall Cross-Cloud
+
+Para que los servicios se comuniquen entre servidores mediante sus IPs públicas, cada nube abre exclusivamente los puertos que aloja:
+
+| Servidor / Nube | Puertos Requeridos en Firewall | Servicios Escuchando |
+| :--- | :--- | :--- |
+| **Azure (NSG nsg-cinev2-auth)** | `22, 5174, 8081, 5176, 8001` | SSH, Portal Clientes, Ticket-Auth API, Consola IA, IA-MCP API |
+| **GCP (Regla allow-cinev2-core)** | `22, 4200, 3000, 5177, 8000` | SSH, Admin Angular, Cinema-Core API, Validador Boletero, Boleteo API |
+| **AWS (Security Group sg-cinev2)** | `22, 5175, 3001` | SSH, Simulador Multimedia, Multimedia API |
+
+---
+
+## 4. Guías Detalladas por Nube
+
+Cada carpeta contiene las instrucciones de despliegue paso a paso con los comandos CLI para su respectivo servidor:
+
+1. [Guía de Despliegue en Microsoft Azure](azure/00_RESUMEN_GENERAL.md)
+2. [Guía de Despliegue en Google Cloud Platform (GCP)](gcp/00_RESUMEN_GENERAL.md)
+3. [Guía de Despliegue en Amazon Web Services (AWS)](aws/00_RESUMEN_GENERAL.md)

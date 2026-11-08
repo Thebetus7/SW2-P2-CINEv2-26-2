@@ -1,79 +1,65 @@
-# Despliegue en Google Cloud Platform (GCP) — 00. Resumen General
+# Despliegue en Google Cloud Platform (GCP) — 00. Resumen General (Nodo Cinema-Core + Boleteo)
 
-## 1. Propósito y Arquitectura de Producción
+## 1. Rol de Google Cloud en la Arquitectura Multi-Cloud
 
-Este documento define la arquitectura física y operativa para desplegar el ecosistema **CineV2** en **Google Cloud Platform (GCP)** bajo el nivel de coste más bajo posible, aprovechando el programa **GCP Always Free Tier** (gratuito de forma vitalicia sin vencimiento a los 12 meses).
+En esta arquitectura distribuida, **Google Cloud Platform (GCP)** aloja el **cerebro de administración del cine, cartelera, salas y el control de acceso en puerta**:
 
-### Arquitectura de Producción en GCP Compute Engine
+- **Microservicio Cinema-Core (`ms-cinema-core`):**
+  - Backend en **NestJS (Node.js / TypeORM)** en el puerto `3000` con base de datos **PostgreSQL 15** en el puerto `5433`.
+  - Frontend en **Angular 17** en el puerto `4200` (Panel de Administración de Cartelera, Salas y Butacas).
+  - Integrado con **AWS S3** para lectura y almacenamiento de posters de películas.
+- **Microservicio Boleteo-Validator (`ms-boleteo-validator`):**
+  - Backend en **Laravel 11 (PHP 8.2)** en el puerto `8000`, que valida la firma criptográfica HMAC de los boletos comunicándose con el nodo de Azure.
+  - Frontend en **React + Vite** en el puerto `5177` (Lector de Códigos QR con Cámara web y móvil).
+- **Manifiesto de Ejecución:** `docker-compose.gcp.yml`.
+
+---
+
+## 2. Diagrama del Nodo GCP
 
 ```mermaid
-flowchart TB
-    Internet([Usuarios en Internet]) --> CloudDNS["Cloud DNS / Dominio Externo"]
-    CloudDNS -->|"HTTP (80) / HTTPS (443)"| StaticIP["GCP External Static IP"]
-    
-    subgraph VPC ["VPC Network (Región: us-central1)"]
-        subgraph FirewallRules ["Firewall Rules: cinev2-allow-web (Puertos 22, 80, 443)"]
-            subgraph GCE ["Instancia Compute Engine (e2-micro - Always Free)"]
-                NginxProxy["Nginx Reverse Proxy + Certbot SSL Let's Encrypt"]
-                Swap["4 GB Swap Space (Memoria Virtual sobre Disco Persistente)"]
-                
-                subgraph DockerBridge ["Red Docker: cinev2-network"]
-                    FrontAuth["Frontend Auth & Stepper (:5174)"]
-                    FrontCore["Frontend Admin Angular (:4200)"]
-                    FrontBol["Frontend Boleteo Cámara (:5177)"]
-                    FrontMov["Frontend Móvil PWA (:5173)"]
-                    FrontIA["Frontend IA Consola (:5176)"]
-                    FrontMed["Frontend Multimedia (:5175)"]
+flowchart TD
+    Docente["Evaluador / Administrador / Boletero"]
+    AzureNode["Nodo Azure (Ticket-Auth :8081)"]
+    AWSNode["Nodo AWS (Bucket S3)"]
 
-                    BackAuth["MS Ticket-Auth (Spring Boot Java 21 :8081)"]
-                    BackCore["MS Cinema-Core (NestJS :3000)"]
-                    BackBol["MS Boleteo-Validator (Laravel :8000)"]
-                    BackIA["MS IA-MCP (FastAPI :8001)"]
-                    BackMed["MS Multimedia (NestJS + TF :3001)"]
-
-                    DBAuth[("PostgreSQL 15 (:5434)<br/>db_tickets_auth")]
-                    DBCore[("PostgreSQL 15 (:5433)<br/>db_cinema_core")]
-                    MinIO[("MinIO S3 Emulado (:9000)<br/>Posters & Tickets")]
-                    DynamoLocal[("DynamoDB Local (:8002)<br/>Analítica de Filas")]
-                    N8N["n8n Automation (:5678)"]
-                end
-
-                NginxProxy --> FrontAuth
-                NginxProxy --> FrontCore
-                NginxProxy --> FrontBol
-                NginxProxy --> FrontMov
-                NginxProxy --> FrontIA
-            end
+    subgraph GCP["Instancia GCP: e2-micro (Always Free - us-central1)"]
+        subgraph DockerGCP["docker-compose.gcp.yml"]
+            CoreFE["ms-cinema-core-frontend<br/>Puerto :4200 (Admin Angular)"]
+            CoreBE["ms-cinema-core-backend<br/>Puerto :3000 (NestJS TypeORM)"]
+            PGCore[("PostgreSQL Core<br/>Puerto :5433 (db_cinema_core)")]
+            
+            BolFE["ms-boleteo-validator-frontend<br/>Puerto :5177 (Lector QR Cámara)"]
+            BolBE["ms-boleteo-validator-backend<br/>Puerto :8000 (Laravel 11 PHP)"]
         end
     end
+
+    Docente -->|"http://&lt;IP_GCP&gt;:4200"| CoreFE
+    Docente -->|"http://&lt;IP_GCP&gt;:5177"| BolFE
+    CoreFE --> CoreBE
+    CoreBE --> PGCore
+    BolFE --> BolBE
+    BolBE --> CoreBE
+    
+    BolBE -.->|"Verifica HMAC http://&lt;IP_AZURE&gt;:8081"| AzureNode
+    CoreBE -.->|"Almacena Posters"| AWSNode
 ```
 
 ---
 
-## 2. Prerrequisitos y Beneficios del Always Free Tier de GCP
+## 3. Matriz de Enlaces Públicos del Nodo GCP
 
-### Prerrequisitos
-- Proyecto de GCP activo con facturación habilitada (necesaria para activar APIs, aunque no se cobre en el rango Free).
-- Google Cloud SDK (`gcloud` CLI) instalado localmente o uso de **Google Cloud Shell** en el navegador.
-- Dominio propio o DNS comodín gratuito basado en IP (`<TU_IP_PUBLICA>.sslip.io` o `<TU_IP_PUBLICA>.nip.io`).
-
-### Desglose de Costes y Capa Gratuita (Always Free)
-
-| Recurso | Tipo en GCP | Beneficio Always Free (Sin Vencimiento) | Costo Residual |
+| Servicio | URL Pública Directa | Framework / Tecnología | Función en el Examen |
 | :--- | :--- | :--- | :--- |
-| **Cómputo (VM)** | Compute Engine `e2-micro` (2 vCPUs compartidas, 1 GB RAM) en `us-central1`, `us-east1` o `us-west1`. | **1 instancia al 100% gratuita de por vida** (744 horas al mes cubiertas). | **$0.00 USD / mes** |
-| **Almacenamiento en Disco** | Disco persistente estándar (pd-standard) de 30 GB. | **30 GB mensuales cubiertos en Always Free** | **$0.00 USD / mes** |
-| **Dirección IP Externa** | Dirección IPv4 externa estática asignada a VM activa. | Gratuita mientras la instancia `e2-micro` esté corriendo. | ~$0.01 / hora si se desasocia |
-| **Tráfico Saliente** | Tráfico de red hacia Internet | 1 GB mensual gratuito hacia todas las regiones (excepto China/Australia). | ~$0.12 por GB excedente |
-| **Certificados SSL** | Let's Encrypt mediante Certbot Nginx | 100% gratuito siempre | **$0.00 USD** |
-| **Total Estimado** | — | **$0.00 USD / mes** | **$0.00 USD / mes** |
+| **Panel Admin Cine** | `http://<IP_GCP>:4200` | Angular 17 | Gestión de salas, butacas, películas y cartelera. |
+| **Validador de Boleteo (Cámara)** | `http://<IP_GCP>:5177` | React + Inertia | **Escáner QR en puerta** y validación de boletos en vivo. |
+| **API Cinema-Core** | `http://<IP_GCP>:3000` | NestJS + TypeORM | API de salas y funciones consultada por Azure y AWS. |
+| **API Boleteo-Validator** | `http://<IP_GCP>:8000` | Laravel 11 (PHP 8.2) | Endpoint de validación criptográfica HMAC. |
 
 ---
 
-## 3. Matriz de Responsabilidades y Asignación de Servidores en GCP
+## 4. Costo Total en GCP
 
-- **DevOps / SysAdmin:** Administra el proyecto GCP, crea la instancia `e2-micro`, gestiona reglas de firewall en VPC, configura la memoria Swap de 4 GB y renueva certificados SSL. Acceso mediante `gcloud compute ssh`.
-- **Administrador del Complejo (Gerente):** Accede a `https://admin.<TU_DOMINIO>` (`:4200`) para registrar salas, butacas y películas. Sin credenciales de GCP ni acceso a la consola de Google Cloud.
-- **Boletero:** Accede a `https://boleteo.<TU_DOMINIO>` (`:5177`) para validar entradas con cámara en vivo sin bloqueos de navegador.
-- **Auditor Comercial:** Accede a `https://ia.<TU_DOMINIO>` (`:5176`) para trazabilidad de boletos y reportes automáticos.
-
+- **Instancia Compute Engine e2-micro:** \$0.00 USD (Always Free de por vida en us-central1).
+- **Disco de 30 GB pd-standard:** \$0.00 USD (Always Free).
+- **TOTAL EN GCP:** **$0.00 USD / mes**.

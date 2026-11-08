@@ -3,64 +3,57 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CineV2 — Flujo Visual de Despliegue en AWS</title>
+  <title>CineV2 — Nodo AWS: Multimedia & AWS S3 Bucket</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body { background-color: #0b0f19; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
     .glass { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-    .step-card:hover { border-color: rgba(56, 189, 248, 0.5); transform: translateY(-2px); transition: all 0.2s; }
+    .step-card:hover { border-color: rgba(245, 158, 11, 0.5); transform: translateY(-2px); transition: all 0.2s; }
   </style>
 </head>
 <body class="min-h-screen p-6 md:p-12">
-  <div class="max-w-6xl mx-auto space-y-8">
+  <div class="max-w-5xl mx-auto space-y-8">
     
     <!-- Encabezado -->
-    <header class="glass rounded-2xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <header class="glass rounded-2xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-l-4 border-l-amber-500">
       <div>
         <div class="flex items-center gap-3">
           <span class="px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full text-xs font-bold uppercase tracking-wider">
             <i class="fab fa-aws mr-1"></i> Amazon Web Services
           </span>
           <span class="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-xs font-semibold">
-            Free Tier / Costo $0
+            Nodo Multi-Cloud: Multimedia + S3
+          </span>
+          <span class="px-3 py-1 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs font-semibold">
+            Free Tier 12 Meses
           </span>
         </div>
-        <h1 class="text-3xl font-extrabold text-white mt-2">Guía Interactiva de Despliegue en AWS</h1>
-        <p class="text-slate-400 text-sm mt-1">Ecosistema CineV2 en EC2 t3.micro / Lightsail + Docker Compose + Nginx SSL</p>
+        <h1 class="text-3xl font-extrabold text-white mt-2">Despliegue del Nodo AWS (CineV2)</h1>
+        <p class="text-slate-400 text-sm mt-1">Servidor de Procesamiento Multimedia (TensorFlow) y Bucket Real de Almacenamiento S3</p>
       </div>
       <div class="text-right">
-        <div class="text-xs text-slate-400">Progreso de Despliegue</div>
-        <div class="text-2xl font-bold text-cyan-400" id="progressText">0 / 6 Pasos</div>
+        <div class="text-xs text-slate-400">Progreso</div>
+        <div class="text-2xl font-bold text-amber-400" id="progressText">0 / 4 Pasos</div>
       </div>
     </header>
 
-    <!-- Mapa de Arquitectura Rápido -->
+    <!-- Mapa de Enlaces Directos -->
     <section class="glass rounded-2xl p-6">
       <h2 class="text-lg font-bold text-white flex items-center gap-2 mb-4">
-        <i class="fas fa-network-wired text-cyan-400"></i>
-        Mapeo de Rutas y Servicios Públicos
+        <i class="fas fa-network-wired text-amber-400"></i>
+        Accesos Públicos del Nodo AWS
       </h2>
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
         <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-          <div class="text-cyan-400 font-bold mb-1">Portal Clientes / Login</div>
-          <div class="text-slate-300 font-mono">https://cine.&lt;DOMINIO&gt;</div>
-          <div class="text-slate-500 mt-2">Puerto interno: :5174 (React)</div>
+          <div class="text-amber-400 font-bold mb-1">Simulador Multimedia de Cámaras (React)</div>
+          <div class="text-slate-300 font-mono">http://&lt;IP_AWS&gt;:5175</div>
+          <div class="text-slate-500 mt-2">Detección de ocupación de butacas con TensorFlow COCO-SSD</div>
         </div>
         <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-          <div class="text-indigo-400 font-bold mb-1">Panel Administrador</div>
-          <div class="text-slate-300 font-mono">https://admin.&lt;DOMINIO&gt;</div>
-          <div class="text-slate-500 mt-2">Puerto interno: :4200 (Angular)</div>
-        </div>
-        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-          <div class="text-emerald-400 font-bold mb-1">Validador Boletero</div>
-          <div class="text-slate-300 font-mono">https://boleteo.&lt;DOMINIO&gt;</div>
-          <div class="text-slate-500 mt-2">Puerto interno: :5177 (Cámara)</div>
-        </div>
-        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-          <div class="text-purple-400 font-bold mb-1">Consola Auditoría IA</div>
-          <div class="text-slate-300 font-mono">https://ia.&lt;DOMINIO&gt;</div>
-          <div class="text-slate-500 mt-2">Puerto interno: :5176 (FastAPI)</div>
+          <div class="text-blue-400 font-bold mb-1">Almacenamiento en AWS S3 Real</div>
+          <div class="text-slate-300 font-mono">s3://cinev2-media-bucket-prod</div>
+          <div class="text-slate-500 mt-2">Posters de películas y capturas de salas</div>
         </div>
       </div>
     </section>
@@ -72,14 +65,14 @@
       <div class="glass step-card rounded-2xl p-6 transition" id="step1">
         <div class="flex items-start justify-between">
           <div class="flex items-center gap-3">
-            <input type="checkbox" onchange="toggleStep(1)" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0 cursor-pointer">
-            <h3 class="text-base font-bold text-white">1. Crear Security Group y Llaves SSH en AWS</h3>
+            <input type="checkbox" onchange="toggleStep(1)" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-0 cursor-pointer">
+            <h3 class="text-base font-bold text-white">1. Crear Bucket Real en AWS S3</h3>
           </div>
-          <span class="text-xs text-slate-400 font-mono">Local / AWS CLI</span>
+          <span class="text-xs text-slate-400 font-mono">AWS CLI</span>
         </div>
-        <div class="mt-3 bg-black/60 rounded-xl p-4 font-mono text-xs text-cyan-300 flex justify-between items-center overflow-x-auto">
-          <code>aws ec2 create-security-group --group-name cinev2-sg --description "CineV2 SG" --region us-east-1<br>aws ec2 create-key-pair --key-name cinev2-key --query 'KeyMaterial' --output text --region us-east-1 > cinev2-key.pem && chmod 400 cinev2-key.pem</code>
-          <button onclick="copyToClipboard('aws ec2 create-security-group --group-name cinev2-sg --description \"CineV2 SG\" --region us-east-1\naws ec2 create-key-pair --key-name cinev2-key --query \'KeyMaterial\' --output text --region us-east-1 > cinev2-key.pem && chmod 400 cinev2-key.pem')" class="ml-4 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs">Copiar</button>
+        <div class="mt-3 bg-black/60 rounded-xl p-4 font-mono text-xs text-amber-300 flex justify-between items-center overflow-x-auto">
+          <code>aws s3api create-bucket --bucket cinev2-media-bucket-prod --region us-east-1</code>
+          <button onclick="copyCommand(this)" class="ml-4 px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-xs">Copiar</button>
         </div>
       </div>
 
@@ -87,14 +80,14 @@
       <div class="glass step-card rounded-2xl p-6 transition" id="step2">
         <div class="flex items-start justify-between">
           <div class="flex items-center gap-3">
-            <input type="checkbox" onchange="toggleStep(2)" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0 cursor-pointer">
-            <h3 class="text-base font-bold text-white">2. Lanzar Instancia EC2 (t3.micro Free Tier) y Elastic IP</h3>
+            <input type="checkbox" onchange="toggleStep(2)" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-0 cursor-pointer">
+            <h3 class="text-base font-bold text-white">2. Crear Security Group y Lanzar Instancia EC2 t3.micro</h3>
           </div>
-          <span class="text-xs text-slate-400 font-mono">AWS Console / CLI</span>
+          <span class="text-xs text-slate-400 font-mono">aws ec2 run-instances</span>
         </div>
-        <div class="mt-3 bg-black/60 rounded-xl p-4 font-mono text-xs text-cyan-300 flex justify-between items-center overflow-x-auto">
-          <code>aws ec2 run-instances --image-id ami-0c7217cdde317cfec --instance-type t3.micro --key-name cinev2-key --security-groups cinev2-sg --block-device-mappings '[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":30,"VolumeType":"gp3"}}]'</code>
-          <button onclick="copyToClipboard('aws ec2 run-instances --image-id ami-0c7217cdde317cfec --instance-type t3.micro --key-name cinev2-key --security-groups cinev2-sg --block-device-mappings \'[{\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":30,\"VolumeType\":\"gp3\"}}]\'')" class="ml-4 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs">Copiar</button>
+        <div class="mt-3 bg-black/60 rounded-xl p-4 font-mono text-xs text-amber-300 flex justify-between items-center overflow-x-auto">
+          <code>aws ec2 create-security-group --group-name sg-cinev2-multimedia --description "CineV2 Multimedia" && aws ec2 authorize-security-group-ingress --group-name sg-cinev2-multimedia --protocol tcp --port 22 --cidr 0.0.0.0/0 && aws ec2 authorize-security-group-ingress --group-name sg-cinev2-multimedia --protocol tcp --port 5175 --cidr 0.0.0.0/0</code>
+          <button onclick="copyCommand(this)" class="ml-4 px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-xs">Copiar</button>
         </div>
       </div>
 
@@ -102,14 +95,14 @@
       <div class="glass step-card rounded-2xl p-6 transition" id="step3">
         <div class="flex items-start justify-between">
           <div class="flex items-center gap-3">
-            <input type="checkbox" onchange="toggleStep(3)" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0 cursor-pointer">
-            <h3 class="text-base font-bold text-white">3. Conectarse y Configurar 4 GB de Memoria Swap</h3>
+            <input type="checkbox" onchange="toggleStep(3)" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-0 cursor-pointer">
+            <h3 class="text-base font-bold text-white">3. Conectar por SSH y Crear Swap de 4GB</h3>
           </div>
           <span class="text-xs text-slate-400 font-mono">SSH / Instancia EC2</span>
         </div>
-        <div class="mt-3 bg-black/60 rounded-xl p-4 font-mono text-xs text-cyan-300 flex justify-between items-center overflow-x-auto">
+        <div class="mt-3 bg-black/60 rounded-xl p-4 font-mono text-xs text-amber-300 flex justify-between items-center overflow-x-auto">
           <code>sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile && echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab</code>
-          <button onclick="copyToClipboard('sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile && echo \'/swapfile none swap sw 0 0\' | sudo tee -a /etc/fstab')" class="ml-4 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs">Copiar</button>
+          <button onclick="copyCommand(this)" class="ml-4 px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-xs">Copiar</button>
         </div>
       </div>
 
@@ -117,74 +110,69 @@
       <div class="glass step-card rounded-2xl p-6 transition" id="step4">
         <div class="flex items-start justify-between">
           <div class="flex items-center gap-3">
-            <input type="checkbox" onchange="toggleStep(4)" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0 cursor-pointer">
-            <h3 class="text-base font-bold text-white">4. Instalar Docker, Docker Compose, Nginx y Certbot</h3>
+            <input type="checkbox" onchange="toggleStep(4)" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-0 cursor-pointer">
+            <h3 class="text-base font-bold text-white">4. Instalar Docker y Levantar el Manifiesto de AWS</h3>
           </div>
-          <span class="text-xs text-slate-400 font-mono">Instancia EC2</span>
+          <span class="text-xs text-slate-400 font-mono">docker compose</span>
         </div>
-        <div class="mt-3 bg-black/60 rounded-xl p-4 font-mono text-xs text-cyan-300 flex justify-between items-center overflow-x-auto">
-          <code>sudo apt update && sudo apt install -y docker.io docker-compose-v2 nginx certbot python3-certbot-nginx && sudo usermod -aG docker $USER</code>
-          <button onclick="copyToClipboard('sudo apt update && sudo apt install -y docker.io docker-compose-v2 nginx certbot python3-certbot-nginx && sudo usermod -aG docker $USER')" class="ml-4 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs">Copiar</button>
-        </div>
-      </div>
-
-      <!-- Paso 5 -->
-      <div class="glass step-card rounded-2xl p-6 transition" id="step5">
-        <div class="flex items-start justify-between">
-          <div class="flex items-center gap-3">
-            <input type="checkbox" onchange="toggleStep(5)" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0 cursor-pointer">
-            <h3 class="text-base font-bold text-white">5. Clonar Proyecto y Levantar Ecosistema con Docker Compose</h3>
-          </div>
-          <span class="text-xs text-slate-400 font-mono">Instancia EC2</span>
-        </div>
-        <div class="mt-3 bg-black/60 rounded-xl p-4 font-mono text-xs text-cyan-300 flex justify-between items-center overflow-x-auto">
-          <code>git clone &lt;REPO_URL&gt; && cd CINEv2 && docker compose up -d --build && docker exec -it SW2-P2-CINEv2-ms-cinema-core-backend npm run seed:core</code>
-          <button onclick="copyToClipboard('git clone <REPO_URL> && cd CINEv2 && docker compose up -d --build && docker exec -it SW2-P2-CINEv2-ms-cinema-core-backend npm run seed:core')" class="ml-4 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs">Copiar</button>
-        </div>
-      </div>
-
-      <!-- Paso 6 -->
-      <div class="glass step-card rounded-2xl p-6 transition" id="step6">
-        <div class="flex items-start justify-between">
-          <div class="flex items-center gap-3">
-            <input type="checkbox" onchange="toggleStep(6)" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0 cursor-pointer">
-            <h3 class="text-base font-bold text-white">6. Configurar Nginx Reverse Proxy y Emitir Certificados SSL</h3>
-          </div>
-          <span class="text-xs text-slate-400 font-mono">Instancia EC2</span>
-        </div>
-        <div class="mt-3 bg-black/60 rounded-xl p-4 font-mono text-xs text-cyan-300 flex justify-between items-center overflow-x-auto">
-          <code>sudo certbot --nginx -d cine.&lt;DOMINIO&gt; -d admin.&lt;DOMINIO&gt; -d boleteo.&lt;DOMINIO&gt; -d ia.&lt;DOMINIO&gt; --non-interactive --agree-tos -m devops@&lt;DOMINIO&gt;</code>
-          <button onclick="copyToClipboard('sudo certbot --nginx -d cine.<DOMINIO> -d admin.<DOMINIO> -d boleteo.<DOMINIO> -d ia.<DOMINIO> --non-interactive --agree-tos -m devops@<DOMINIO>')" class="ml-4 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs">Copiar</button>
+        <div class="mt-3 bg-black/60 rounded-xl p-4 font-mono text-xs text-amber-300 flex justify-between items-center overflow-x-auto">
+          <code>sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2 git && sudo usermod -aG docker $USER && git clone https://github.com/&lt;ORG&gt;/CINEv2.git && cd CINEv2 && docker compose -f docker-compose.aws.yml up -d</code>
+          <button onclick="copyCommand(this)" class="ml-4 px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-xs">Copiar</button>
         </div>
       </div>
 
     </section>
 
-    <!-- Notificación Flotante -->
-    <div id="toast" class="fixed bottom-6 right-6 bg-cyan-600 text-white text-xs px-4 py-2.5 rounded-lg shadow-xl opacity-0 transition-opacity pointer-events-none">
-      Comando copiado al portapapeles
-    </div>
+    <footer class="text-center text-xs text-slate-500 pt-6">
+      CineV2 Multi-Cloud — Nodo Amazon Web Services.
+    </footer>
 
   </div>
 
   <script>
-    let completedSteps = 0;
-    const totalSteps = 6;
+    function updateProgress() {
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+      let checkedCount = 0;
+      checkboxes.forEach((cb, index) => {
+        if (cb.checked) {
+          checkedCount++;
+          document.getElementById('step' + (index + 1)).classList.add('border-amber-500/50', 'bg-amber-950/20');
+        } else {
+          document.getElementById('step' + (index + 1)).classList.remove('border-amber-500/50', 'bg-amber-950/20');
+        }
+      });
+      document.getElementById('progressText').textContent = checkedCount + ' / ' + checkboxes.length + ' Pasos';
+      localStorage.setItem('cinev2_deploy_aws_node', JSON.stringify(Array.from(checkboxes).map(c => c.checked)));
+    }
 
     function toggleStep(stepNum) {
-      const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-      completedSteps = Array.from(checkboxes).filter(cb => cb.checked).length;
-      document.getElementById('progressText').innerText = `${completedSteps} / ${totalSteps} Pasos`;
+      updateProgress();
     }
 
-    function copyToClipboard(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        const toast = document.getElementById('toast');
-        toast.style.opacity = '1';
-        setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+    function copyCommand(btn) {
+      const code = btn.previousElementSibling.textContent;
+      navigator.clipboard.writeText(code).then(() => {
+        const originalText = btn.textContent;
+        btn.textContent = '¡Copiado!';
+        btn.classList.add('bg-amber-600', 'text-white');
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.classList.remove('bg-amber-600', 'text-white');
+        }, 1500);
       });
     }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('cinev2_deploy_aws_node');
+      if (saved) {
+        const states = JSON.parse(saved);
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach((cb, i) => {
+          if (states[i]) cb.checked = true;
+        });
+        updateProgress();
+      }
+    });
   </script>
 </body>
 </html>
-

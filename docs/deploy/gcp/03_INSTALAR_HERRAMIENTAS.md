@@ -1,80 +1,66 @@
-# Despliegue en Google Cloud Platform (GCP) — 03. Instalar Herramientas
+# Despliegue en Google Cloud Platform (GCP) — 03. Instalar Herramientas en la Terminal SSH
 
-Conéctese a la instancia de GCP mediante `gcloud` o SSH:
-```bash
-gcloud compute ssh cinev2-production-server --zone=us-central1-a
-```
+Este paso se realiza **dentro de la ventana negra de la terminal SSH** que se abrió en tu navegador al hacer clic en el botón **"SSH"** en Google Cloud Console.
+
+> [!TIP]
+> **¿Cómo pegar texto en la ventana SSH de Google Cloud?**  
+> Puedes presionar `Ctrl + V` (o clic derecho en la pantalla negra y seleccionar *Paste* o *Pegar*). Si el navegador te pregunta *"¿Permitir que console.cloud.google.com acceda al portapapeles?"*, haz clic en **Permitir**.
 
 ---
 
-## 1. Configuración Obligatoria de 4 GB de Swap
+## 1. Crear Memoria Swap (4 GB) — Obligatorio para no saturar la máquina
 
-La instancia `e2-micro` de Google Cloud posee 1 GB de RAM física. Para que los 11 microservicios (Java 21 Spring Boot, NestJS, TensorFlow, Laravel, Python) corran sin interrupciones, es **mandatorio** configurar 4 GB de Swap en el disco persistente de 30 GB:
+La máquina virtual gratuita de Google tiene 1 GB de memoria RAM. Como Spring Boot (Java 21) y Docker consumen memoria al arrancar, debemos activar 4 GB de memoria virtual de intercambio (Swap) para que no se congele:
+
+Copia y pega este bloque completo en la terminal negra y presiona `Enter`:
 
 ```bash
-# 1. Crear el archivo swap de 4 GB
 sudo fallocate -l 4G /swapfile
 sudo chmod 600 /swapfile
-
-# 2. Formatear y activar swap
 sudo mkswap /swapfile
 sudo swapon /swapfile
-
-# 3. Registrar en fstab para persistencia tras reinicios
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-
-# 4. Ajustar swappiness a 10 para balancear uso de RAM y disco
-sudo sysctl vm.swappiness=10
-echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
-
-# 5. Comprobar memoria y swap activos
+sudo sysctl vm.swappiness=20
+echo 'vm.swappiness=20' | sudo tee -a /etc/sysctl.conf
 free -h
 ```
-Resultado observable esperado: `Swap: Total: 4.0Gi, Used: 0B, Free: 4.0Gi`.
+
+**Resultado esperado en pantalla:**  
+Al final verás una línea que dice:  
+`Swap: 4.0Gi total`  
+¡Eso significa que la memoria virtual ya está lista!
 
 ---
 
-## 2. Actualización de Paquetes Base
+## 2. Instalar Docker y Docker Compose (V2)
+
+Copia y pega este bloque en la terminal y presiona `Enter`:
 
 ```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl wget git unzip htop ca-certificates gnupg lsb-release
+# 1. Actualizar repositorios e instalar Docker y Git
+sudo apt-get update
+sudo apt-get install -y git curl docker.io docker-compose-v2
+
+# 2. Habilitar el servicio Docker
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# 3. Otorgar permisos a tu usuario para usar Docker sin escribir 'sudo'
+sudo usermod -aG docker $USER
+newgrp docker
 ```
 
 ---
 
-## 3. Instalación Oficial de Docker y Docker Compose v2
+## 3. Verificar que Docker esté Funcionando
+
+Escribe en la terminal:
 
 ```bash
-# 1. Agregar repositorio oficial de Docker
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-# 2. Instalar Docker Engine y Compose
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-# 3. Asignar permisos al usuario actual de GCP
-sudo usermod -aG docker $USER
-newgrp docker
-
-# 4. Verificar versiones
-docker --version
 docker compose version
 ```
 
----
+**Resultado esperado:**  
+`Docker Compose version v2.x.x`
 
-## 4. Instalación de Nginx y Certbot (Let's Encrypt)
-
-```bash
-sudo apt install -y nginx certbot python3-certbot-nginx
-sudo systemctl enable nginx
-sudo systemctl start nginx
-```
-Resultado observable esperado: `Nginx running en puerto 80`.
-
+¡Tu servidor de Google Cloud ya tiene todas las herramientas listas para recibir el proyecto! Ahora pasa al archivo `04_DESPLEGAR_Y_VERIFICAR.md`.

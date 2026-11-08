@@ -1,0 +1,92 @@
+version: '3.8'
+
+networks:
+  cinev2-gcp-network:
+    driver: bridge
+
+volumes:
+  postgres_core_data:
+
+services:
+  # ===================================================================
+  # NODO GOOGLE CLOUD PLATFORM (GCP): CINEMA-CORE + BOLETEO-VALIDATOR
+  # Frameworks: NestJS (Node.js) + Angular 17 + Laravel 11 (PHP 8.2) + React
+  # ===================================================================
+
+  postgres-core:
+    image: postgres:15-alpine
+    container_name: SW2-P2-CINEv2-postgres-core
+    environment:
+      POSTGRES_DB: db_cinema_core
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_core_data:/var/lib/postgresql/data
+    networks:
+      - cinev2-gcp-network
+    restart: unless-stopped
+
+  ms-cinema-core-backend:
+    build:
+      context: ./ms/ms-cinema-core/backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-cinema-core-backend
+    environment:
+      DB_HOST: postgres-core
+      DB_PORT: 5432
+      DB_NAME: db_cinema_core
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      # Integración con AWS S3 Bucket Real
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-cinev2-media-bucket-prod}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-mock_key}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-mock_secret}
+      NODE_OPTIONS: "--max-old-space-size=384"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres-core
+    networks:
+      - cinev2-gcp-network
+    restart: unless-stopped
+
+  ms-cinema-core-frontend:
+    build:
+      context: ./ms/ms-cinema-core/frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-cinema-core-frontend
+    ports:
+      - "4200:80"
+    networks:
+      - cinev2-gcp-network
+    restart: unless-stopped
+
+  ms-boleteo-validator-backend:
+    build:
+      context: ./ms/ms-boleteo-validator/backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-boleteo-validator-backend
+    environment:
+      # Conexión Cross-Cloud hacia Azure (Ticket-Auth para validación de firmas HMAC)
+      TICKET_AUTH_URL: ${AUTH_API_URL:-http://localhost:8081}
+      # Conexión local interna en GCP (Cinema Core)
+      CINEMA_CORE_URL: http://ms-cinema-core-backend:3000
+    ports:
+      - "8000:8000"
+    networks:
+      - cinev2-gcp-network
+    restart: unless-stopped
+
+  ms-boleteo-validator-frontend:
+    build:
+      context: ./ms/ms-boleteo-validator/frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-boleteo-validator-frontend
+    ports:
+      - "5177:80"
+    networks:
+      - cinev2-gcp-network
+    restart: unless-stopped

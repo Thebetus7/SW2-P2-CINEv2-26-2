@@ -1,0 +1,89 @@
+version: '3.8'
+
+networks:
+  cinev2-azure-network:
+    driver: bridge
+
+volumes:
+  postgres_auth_data:
+
+services:
+  # ===================================================================
+  # NODO MICROSOFT AZURE: TICKET-AUTH + IA-MCP
+  # Frameworks: Spring Boot 3 (Java 21) + React + FastAPI (Python 3.11)
+  # ===================================================================
+
+  postgres-auth:
+    image: postgres:15-alpine
+    container_name: SW2-P2-CINEv2-postgres-auth
+    environment:
+      POSTGRES_DB: db_tickets_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - cinev2-azure-network
+    restart: unless-stopped
+
+  ms-ticket-auth-backend:
+    build:
+      context: ./ms/ms-ticket-auth/backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ticket-auth-backend
+    environment:
+      DB_HOST: postgres-auth
+      DB_PORT: 5432
+      DB_NAME: db_tickets_auth
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      # Conexión Cross-Cloud hacia GCP (Cinema Core) y AWS (Multimedia)
+      CINEMA_CORE_URL: ${CORE_API_URL:-http://localhost:3000}
+      MULTIMEDIA_URL: ${MULTIMEDIA_URL:-http://localhost:3001}
+      JAVA_OPTS: "-Xms128m -Xmx384m -XX:+UseG1GC"
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres-auth
+    networks:
+      - cinev2-azure-network
+    restart: unless-stopped
+
+  ms-ticket-auth-frontend:
+    build:
+      context: ./ms/ms-ticket-auth/frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ticket-auth-frontend
+    ports:
+      - "5174:80"
+    networks:
+      - cinev2-azure-network
+    restart: unless-stopped
+
+  ms-ia-mcp-backend:
+    build:
+      context: ./ms/ms-ia-mcp/backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ia-mcp-backend
+    environment:
+      CORE_API_URL: ${CORE_API_URL:-http://localhost:3000}
+      MULTIMEDIA_API_URL: ${MULTIMEDIA_URL:-http://localhost:3001}
+      GROK_API_KEY: ${GROK_API_KEY:-xai-mock-or-real-api-key}
+    ports:
+      - "8001:8001"
+    networks:
+      - cinev2-azure-network
+    restart: unless-stopped
+
+  ms-ia-mcp-frontend:
+    build:
+      context: ./ms/ms-ia-mcp/frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-ia-mcp-frontend
+    ports:
+      - "5176:80"
+    networks:
+      - cinev2-azure-network
+    restart: unless-stopped

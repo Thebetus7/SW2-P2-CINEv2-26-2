@@ -1,171 +1,124 @@
-# Despliegue en Microsoft Azure — 02. Crear Infraestructura
+# Despliegue en Microsoft Azure — 02. Crear Servidor Paso a Paso (Guía Visual Portal Web)
 
-Este documento describe la secuencia exacta de comandos mediante **Azure CLI (`az`)** para provisionar toda la infraestructura necesaria dentro del nivel gratuito (Free Tier).
-
----
-
-## 1. Prerrequisitos en su Máquina Local
-
-Instale y autentique Azure CLI:
-
-```bash
-# 1. Iniciar sesión en Microsoft Azure
-az login
-
-# 2. Verificar la suscripción activa
-az account show --output table
-
-# 3. Si tiene múltiples suscripciones, seleccionar la suscripción de Free Account:
-az account set --subscription "<NOMBRE_O_ID_DE_SUSCRIPCION>"
-```
+Esta guía está diseñada paso a paso para personas que **nunca han creado un servidor en Microsoft Azure**. En AWS el servidor se llama **EC2**; en Azure se llama simplemente **"Máquinas virtuales" (Virtual Machines)**.
 
 ---
 
-## 2. Variables de Configuración
+## Paso 0: Activar tu Suscripción (Imprescindible para empezar)
 
-Defina las variables operativas en su terminal Bash o PowerShell:
+En la pantalla principal de Azure (**"Le damos la bienvenida a Azure"**), verás un aviso que dice:  
+*¿No tiene ninguna suscripción? Consulte las opciones siguientes.*
 
-```bash
-RESOURCE_GROUP="rg-cinev2-prod"
-LOCATION="eastus"              # Región elegible para B1s Free Tier
-VNET_NAME="vnet-cinev2"
-SUBNET_NAME="subnet-cinev2"
-NSG_NAME="nsg-cinev2"
-PUBLIC_IP_NAME="pip-cinev2-prod"
-NIC_NAME="nic-cinev2-prod"
-VM_NAME="vm-cinev2-prod"
-VM_SIZE="Standard_B1s"         # 1 vCPU, 1 GB RAM (Free Tier 750h/mes)
-ADMIN_USER="ubuntu"
-```
+Tienes dos botones azules para activarla:
 
----
+- **Opción A (Recomendada si tienes correo de universidad):**  
+  En la tarjeta **"Microsoft Azure for Students"**, haz clic en el botón azul **"Inicio"**.  
+  *(Te dará **$100 USD de crédito anual** y **NO PIDE TARJETA DE CRÉDITO NI DÉBITO**, solo validar tu correo institucional).*
+- **Opción B (Con cuenta personal de Hotmail/Outlook):**  
+  En la tarjeta **"Empiece con una prueba gratuita de Azure"**, haz clic en el botón azul **"Inicio"**.  
+  *(Te dará **$200 USD de crédito gratis** durante 30 días y 12 meses de servicios gratuitos. Solo pide una tarjeta para verificar identidad con $1 USD temporal reembolsable).*
 
-## 3. Creación Paso a Paso de la Infraestructura
-
-### Paso 1: Crear el Grupo de Recursos (Resource Group)
-```bash
-az group create \
-  --name $RESOURCE_GROUP \
-  --location $LOCATION
-```
-
-### Paso 2: Crear el Grupo de Seguridad de Red (NSG) y Reglas de Tráfico
-```bash
-# 1. Crear el NSG
-az network nsg create \
-  --resource-group $RESOURCE_GROUP \
-  --name $NSG_NAME \
-  --location $LOCATION
-
-# 2. Permitir acceso SSH (Puerto 22)
-az network nsg rule create \
-  --resource-group $RESOURCE_GROUP \
-  --nsg-name $NSG_NAME \
-  --name AllowSSH \
-  --protocol Tcp \
-  --direction Inbound \
-  --priority 1000 \
-  --source-address-prefix '*' \
-  --source-port-range '*' \
-  --destination-address-prefix '*' \
-  --destination-port-range 22 \
-  --access Allow
-
-# 3. Permitir tráfico web HTTP (Puerto 80)
-az network nsg rule create \
-  --resource-group $RESOURCE_GROUP \
-  --nsg-name $NSG_NAME \
-  --name AllowHTTP \
-  --protocol Tcp \
-  --direction Inbound \
-  --priority 1010 \
-  --source-address-prefix '*' \
-  --source-port-range '*' \
-  --destination-address-prefix '*' \
-  --destination-port-range 80 \
-  --access Allow
-
-# 4. Permitir tráfico web seguro HTTPS (Puerto 443 - Requerido para la Cámara)
-az network nsg rule create \
-  --resource-group $RESOURCE_GROUP \
-  --nsg-name $NSG_NAME \
-  --name AllowHTTPS \
-  --protocol Tcp \
-  --direction Inbound \
-  --priority 1020 \
-  --source-address-prefix '*' \
-  --source-port-range '*' \
-  --destination-address-prefix '*' \
-  --destination-port-range 443 \
-  --access Allow
-```
-
-### Paso 3: Crear Virtual Network (VNet) y Subred
-```bash
-az network vnet create \
-  --resource-group $RESOURCE_GROUP \
-  --name $VNET_NAME \
-  --address-prefix 10.0.0.0/16 \
-  --subnet-name $SUBNET_NAME \
-  --subnet-prefix 10.0.1.0/24 \
-  --network-security-group $NSG_NAME \
-  --location $LOCATION
-```
-
-### Paso 4: Reservar Dirección IP Pública Estática
-```bash
-az network public-ip create \
-  --resource-group $RESOURCE_GROUP \
-  --name $PUBLIC_IP_NAME \
-  --sku Standard \
-  --allocation-method Static \
-  --location $LOCATION
-```
-
-### Paso 5: Crear la Interfaz de Red (NIC)
-```bash
-az network nic create \
-  --resource-group $RESOURCE_GROUP \
-  --name $NIC_NAME \
-  --vnet-name $VNET_NAME \
-  --subnet $SUBNET_NAME \
-  --network-security-group $NSG_NAME \
-  --public-ip-address $PUBLIC_IP_NAME \
-  --location $LOCATION
-```
-
-### Paso 6: Crear la Máquina Virtual Linux B1s (Free Tier)
-```bash
-az vm create \
-  --resource-group $RESOURCE_GROUP \
-  --name $VM_NAME \
-  --nics $NIC_NAME \
-  --image Ubuntu2204 \
-  --size $VM_SIZE \
-  --os-disk-size-gb 64 \
-  --storage-sku StandardSSD_LRS \
-  --admin-username $ADMIN_USER \
-  --generate-ssh-keys \
-  --location $LOCATION
-```
+> Una vez completado ese registro, volverás a la página principal de Azure ya con tu suscripción activa.
 
 ---
 
-## 4. Obtención de la IP Pública y Verificación de Conexión
+## Paso 1: Ir a "Máquinas virtuales"
 
-Una vez provisionada la máquina virtual, obtenga su dirección IP pública asignada:
+1. En la página de inicio de Azure, en la sección **Servicios de Azure**, busca el ícono de una pantalla azul de computadora que dice **"Máquinas virtuales"** (Virtual machines) y haz clic sobre él.  
+   *(O escribe `máquinas virtuales` en la barra de búsqueda superior y presiona Enter).*
+2. En la barra superior de la pantalla que se abre, haz clic en el botón **"+ Crear"** y selecciona:  
+   👉 **"Máquina virtual de Azure"** (Azure virtual machine).
 
-```bash
-# Obtener la IP pública
-AZURE_IP=$(az network public-ip show \
-  --resource-group $RESOURCE_GROUP \
-  --name $PUBLIC_IP_NAME \
-  --query ipAddress \
-  --output tsv)
+---
 
-echo "IP Pública de CineV2 en Azure: $AZURE_IP"
+## Paso 2: Llenar el Formulario de la Máquina Virtual
 
-# Probar conexión SSH inmediata
-ssh -i ~/.ssh/id_rsa ubuntu@$AZURE_IP
-```
+Verás un formulario con pestañas en la parte superior. Solo configuraremos lo necesario:
 
+### Pestaña 1: "Aspectos básicos" (Datos generales)
+
+1. **Detalles del proyecto:**
+   - **Suscripción:** Selecciona la suscripción que activaste en el Paso 0.
+   - **Grupo de recursos:** Haz clic en el enlace azul **"Crear nuevo"**, escribe de nombre `rg-cinev2-azure` y presiona **Aceptar**.
+2. **Detalles de la instancia:**
+   - **Nombre de máquina virtual:** Escribe `vm-cinev2-auth-node`
+   - **Región:** Selecciona **(EE. UU.) Este de EE. UU.** (`eastus`).
+   - **Opciones de disponibilidad:** Déjalo en *"No se requiere redundancia de la infraestructura"*.
+   - **Tipo de seguridad:** Selecciona **Estándar** (Standard).
+   - **Imagen:** Haz clic en el menú desplegable y selecciona:  
+     👉 **Ubuntu Server 22.04 LTS - x64 Gen2**
+   - **Tamaño:** Haz clic en *"Ver todos los tamaños"* o selecciona:  
+     👉 **`Standard_B1s` (1 vcpu, 1 GiB de memoria)** *(Elegible para la capa gratuita de 750h/mes)*  
+     *(Si tienes el crédito de $200 USD de bienvenida, también puedes elegir `Standard_B2s` de 2 vcpu y 4 GiB de memoria para mayor velocidad).*
+3. **Cuenta de administrador (¿Cómo entrarás al servidor?):**
+   - **Tipo de autenticación:** Para que no te compliques con llaves `.pem` de inicio, marca la opción **"Contraseña"** (Password).
+   - **Nombre de usuario:** Escribe `ubuntu`
+   - **Contraseña:** Escribe una contraseña que recuerdes (ej: `CineBolivia2026!`).
+   - **Confirmar contraseña:** Vuelve a escribir la misma contraseña.
+4. **Reglas de puertos de entrada:**
+   - **Puertos de entrada públicos:** Marca **"Permitir los puertos seleccionados"**.
+   - **Seleccionar puertos de entrada:** Marca las casillas:
+     - ☑ **SSH (22)**
+     - ☑ **HTTP (80)**
+     - ☑ **HTTPS (443)**
+
+---
+
+### Pestaña 2: "Discos"
+
+1. En la parte superior, haz clic en la pestaña **"Discos"** (o presiona el botón azul "Siguiente: Discos").
+2. **Tipo de disco del SO:** Selecciona **SSD estándar (almacenamiento con redundancia local)** o **SSD Premium**.
+3. **Tamaño del disco:** Déjalo en el valor por defecto (30 GB o 64 GB).
+
+---
+
+### Pestaña 3: "Redes" (Networking)
+
+1. Haz clic en la pestaña superior **"Redes"**.
+2. Verás que Azure ya crea automáticamente una **Red virtual** (`vnet`), una **Subred** y una **Dirección IP pública**. No necesitas cambiar nada aquí.
+
+---
+
+### Pestaña 4: "Revisar y crear"
+
+1. Haz clic directamente en el botón azul grande que está en la esquina inferior izquierda: **"Revisar y crear"** (Review + create).
+2. Azure hará una comprobación automática de 5 segundos. Verás arriba un mensaje en verde que dice:  
+   `✔ Validación superada` (Validation passed).
+3. Haz clic en el botón azul al fondo: **"Crear"** (Create).
+4. Espera entre 1 y 2 minutos mientras Azure provisiona el servidor. Verás el mensaje:  
+   *`Se completó la implementación`*.
+5. Haz clic en el botón azul **"Ir al recurso"** (Go to resource).
+
+---
+
+## Paso 3: Abrir los Puertos de CineV2 en el Firewall de Azure
+
+Tus microservicios en Azure escuchan en los puertos `5174`, `8081`, `5176` y `8001`. Para abrirlos:
+
+1. Estando en la pantalla de tu máquina virtual `vm-cinev2-auth-node`:
+2. En el **menú vertical de la izquierda**, busca la categoría **Configuración** y haz clic en **"Redes"** (Networking).
+3. En la parte derecha verás una tabla con las reglas de firewall. Haz clic en el botón **"+ Agregar regla de puerto de entrada"** (Add inbound port rule).
+4. En el panel lateral que se abre a la derecha, configura:
+   - **Intervalos de puertos de destino:** Escribe `5174,8081,5176,8001`
+   - **Protocolo:** Selecciona **TCP**.
+   - **Acción:** Asegúrate de que esté en **Permitir** (Allow).
+   - **Prioridad:** Déjalo en el número que sugiere (ej: `1010` o `310`).
+   - **Nombre:** Escribe `AllowCineV2Auth`
+5. Haz clic en el botón azul **"Agregar"** (Add) al fondo.
+
+---
+
+## Paso 4: Dónde ver la IP Pública y Conectarte por SSH
+
+1. En el menú de la izquierda de tu máquina virtual, haz clic arriba en **"Información general"** (Overview).
+2. En el panel central derecho verás un campo que dice:  
+   👉 **Dirección IP pública:** (Por ejemplo: `20.120.45.89`).  
+   ¡Esta es la IP de tu servidor en Azure!
+3. **Para conectarte por terminal:**
+   - Abre la terminal de tu computadora (PowerShell, CMD o Git Bash) y escribe:
+     ```bash
+     ssh ubuntu@<TU_IP_PUBLICA_AZURE>
+     ```
+   - Te preguntará: `Are you sure you want to continue connecting (yes/no/[fingerprint])?` -> Escribe `yes` y presiona Enter.
+   - Te pedirá la contraseña: Escribe la contraseña que definiste en el Paso 2 (ej: `CineBolivia2026!`).
+   - ¡Listo! Ya estás dentro de tu servidor de Azure listo para correr Docker.

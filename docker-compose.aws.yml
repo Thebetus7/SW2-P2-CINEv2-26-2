@@ -1,0 +1,54 @@
+version: '3.8'
+
+networks:
+  cinev2-aws-network:
+    driver: bridge
+
+services:
+  # ===================================================================
+  # NODO AMAZON WEB SERVICES (AWS): MULTIMEDIA + AWS S3 BUCKET + DYNAMODB
+  # Framework: NestJS + TensorFlow COCO-SSD + React
+  # ===================================================================
+
+  ms-multimedia-backend:
+    build:
+      context: ./ms/ms-multimedia/backend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-multimedia-backend
+    environment:
+      # Conexión Cross-Cloud hacia GCP (Cinema Core para metadatos de sala)
+      CORE_SERVICE_URL: ${CORE_API_URL:-http://localhost:3000}
+      # Integración con AWS S3 Bucket Real
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-cinev2-media-bucket-prod}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-mock_key}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-mock_secret}
+      # Integración DynamoDB
+      DYNAMODB_ENDPOINT: ${DYNAMODB_ENDPOINT:-http://dynamodb-local:8000}
+      NODE_OPTIONS: "--max-old-space-size=384"
+    ports:
+      - "3001:3001"
+    networks:
+      - cinev2-aws-network
+    restart: unless-stopped
+
+  ms-multimedia-frontend:
+    build:
+      context: ./ms/ms-multimedia/frontend
+      dockerfile: Dockerfile
+    container_name: SW2-P2-CINEv2-ms-multimedia-frontend
+    ports:
+      - "5175:80"
+    networks:
+      - cinev2-aws-network
+    restart: unless-stopped
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: SW2-P2-CINEv2-dynamodb-local
+    command: "-jar DynamoDBLocal.jar -sharedDb"
+    ports:
+      - "8002:8000"
+    networks:
+      - cinev2-aws-network
+    restart: unless-stopped

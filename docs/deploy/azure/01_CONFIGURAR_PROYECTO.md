@@ -1,127 +1,75 @@
-# Despliegue en Microsoft Azure — 01. Configurar Proyecto
+# Despliegue en Microsoft Azure — 01. Configurar Proyecto (Nodo Ticket-Auth + IA-MCP)
 
-Este documento establece las variables de entorno (`.env`) requeridas por los cinco microservicios y las bases de datos de producción para ejecutarse de forma segura y optimizada en una máquina virtual `Standard_B1s` de Microsoft Azure.
-
----
-
-## 1. Tuning de Memoria para Máquina Virtual B1s (1 GB RAM + 4 GB Swap)
-
-Dado que la instancia `Standard_B1s` cuenta con 1 GB de RAM física, aplicamos las siguientes directrices de contención:
-
-- **Spring Boot 3 (Java 21):** Limitar heap de la JVM mediante `-Xms128m -Xmx384m -XX:+UseG1GC`.
-- **Node.js (NestJS / Angular / React):** Limitar tamaño de heap en compilación con `--max-old-space-size=512`.
-- **PostgreSQL (Auth y Core):** Ajustar `shared_buffers = 128MB` y `max_connections = 60`.
+Este documento detalla las variables de entorno necesarias en la máquina virtual de Microsoft Azure para `ms-ticket-auth` (Spring Boot Java 21) y `ms-ia-mcp` (FastAPI Python), configurando la conexión Cross-Cloud hacia GCP (Cinema-Core) y AWS (Multimedia).
 
 ---
 
-## 2. Variables de Entorno por Microservicio
+## 1. Archivo `.env` Global de Azure (`/home/ubuntu/CINEv2/.env`)
 
-### 2.1 Backend de Cinema-Core (`ms/ms-cinema-core/backend/.env`)
+Cree o edite el archivo `.env` en la raíz del proyecto dentro de la máquina de Azure:
+
 ```env
-PORT=3000
-NODE_ENV=production
+# ===================================================================
+# CONFIGURACIÓN DEL NODO AZURE (TICKET-AUTH + IA-MCP)
+# Frameworks: Spring Boot 3 (Java 21) + React + FastAPI (Python 3.11)
+# ===================================================================
 
-# Base de datos PostgreSQL Core
-DB_HOST=SW2-P2-CINEv2-postgres-core
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=<DB_PASSWORD_PROD_AZURE>
-DB_NAME=cine_core_db
+# Base de datos local PostgreSQL Auth (Puerto 5434)
+DB_PASSWORD=postgres
 
-# Almacenamiento MinIO S3
-S3_ENDPOINT=SW2-P2-CINEv2-minio-s3
-S3_PORT=9000
-S3_ACCESS_KEY=minioadmin
-S3_SECRET_KEY=<MINIO_SECRET_PROD_AZURE>
-S3_BUCKET_POSTERS=cinema-posters
-S3_USE_SSL=false
+# Conexiones Cross-Cloud hacia GCP y AWS
+CORE_API_URL=http://<IP_PUBLICA_GCP>:3000
+MULTIMEDIA_URL=http://<IP_PUBLICA_AWS>:3001
 
-# Clave secreta JWT (debe coincidir con ms-ticket-auth)
-JWT_SECRET=<JWT_SECRET_HEX_64_CHARS>
+# Llave de IA GrokCloud / xAI
+GROK_API_KEY=xai-mock-or-real-api-key
 
-# Límites de memoria Node.js
-NODE_OPTIONS=--max-old-space-size=384
+# Secretos Criptográficos
+HMAC_SECRET_KEY=clave_secreta_para_firmar_boletos_qr_hmac_sha256_cinev2_universidad_2026
+JWT_SECRET=supersecretjwtkeyforcinemav2production2026hexformat001122334455667788
 ```
 
-### 2.2 Backend de Ticket-Auth (`ms/ms-ticket-auth/backend/.env`)
+---
+
+## 2. Variables de Ticket-Auth Backend (`ms/ms-ticket-auth/backend/.env`)
+
 ```env
 PORT=8081
 SPRING_PROFILES_ACTIVE=prod
 
-# Base de datos PostgreSQL Auth
-DB_HOST=SW2-P2-CINEv2-postgres-auth
+# Base de datos local
+DB_HOST=postgres-auth
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=<DB_PASSWORD_PROD_AZURE>
-DB_NAME=cine_auth_db
+DB_PASSWORD=postgres
+DB_NAME=db_tickets_auth
 
-# Seguridad Criptográfica de Boletos (HMAC-SHA256)
-HMAC_SECRET_KEY=<CLAVE_SECRETA_HMAC_64_BYTES>
-JWT_SECRET=<JWT_SECRET_HEX_64_CHARS>
+# Integración Cross-Cloud
+CINEMA_CORE_URL=http://<IP_PUBLICA_GCP>:3000
+MULTIMEDIA_URL=http://<IP_PUBLICA_AWS>:3001
+
+# Seguridad Criptográfica
+HMAC_SECRET_KEY=clave_secreta_para_firmar_boletos_qr_hmac_sha256_cinev2_universidad_2026
+JWT_SECRET=supersecretjwtkeyforcinemav2production2026hexformat001122334455667788
 JWT_EXPIRATION_HOURS=24
 
 # Opciones de JVM para Azure B1s
-JAVA_OPTS=-Xms128m -Xmx384m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError
-```
-
-### 2.3 Backend de Multimedia (`ms/ms-multimedia/backend/.env`)
-```env
-PORT=3001
-NODE_ENV=production
-
-# Servicio de Cinema Core para validar reservas de salas
-CORE_SERVICE_URL=http://SW2-P2-CINEv2-ms-cinema-core-backend:3000
-
-# Parámetros del modelo TensorFlow COCO-SSD
-TENSORFLOW_CONFIDENCE_THRESHOLD=0.60
-NODE_OPTIONS=--max-old-space-size=384
-```
-
-### 2.4 Backend de IA-MCP (`ms/ms-ia-mcp/backend/.env`)
-```env
-PORT=8001
-ENVIRONMENT=production
-
-# Proveedor de Inteligencia Artificial GrokCloud / xAI
-GROK_API_KEY=<TU_API_KEY_GROKCLOUD>
-GROK_MODEL=grok-beta
-
-# Conexión al servidor MCP de Cinema
-MCP_SERVER_CORE_URL=http://SW2-P2-CINEv2-ms-cinema-core-backend:3000/mcp
-```
-
-### 2.5 Backend de Boleteo-Validator (`ms/ms-boleteo-validator/backend/.env`)
-```env
-APP_NAME=CineBoliviaBoleteo
-APP_ENV=production
-APP_KEY=<BASE64_LARAVEL_KEY_AQUI>
-APP_DEBUG=false
-APP_URL=https://boletero.<TU_DOMINIO_AZURE>
-
-LOG_CHANNEL=stderr
-LOG_LEVEL=info
-
-# Verificación de HMAC de boletos (idéntica a ms-ticket-auth)
-HMAC_SECRET_KEY=<CLAVE_SECRETA_HMAC_64_BYTES>
-
-# Integración con Core
-CORE_API_URL=http://SW2-P2-CINEv2-ms-cinema-core-backend:3000/api/v1
+JAVA_OPTS=-Xms128m -Xmx384m -XX:+UseG1GC
 ```
 
 ---
 
-## 3. Generación Segura de Secretos Criptográficos
+## 3. Variables de IA-MCP Backend (`ms/ms-ia-mcp/backend/.env`)
 
-Ejecute los siguientes comandos en su consola local para generar claves criptográficas de alta entropía:
+```env
+PORT=8001
+ENVIRONMENT=production
 
-```bash
-# Generar JWT Secret de 64 caracteres hex
-openssl rand -hex 32
+# Conexiones Cross-Cloud
+CORE_API_URL=http://<IP_PUBLICA_GCP>:3000
+MULTIMEDIA_API_URL=http://<IP_PUBLICA_AWS>:3001
 
-# Generar HMAC Secret Key de 64 caracteres hex
-openssl rand -hex 32
-
-# Generar APP_KEY de Laravel
-openssl rand -base64 32
+# Proveedor IA
+GROK_API_KEY=xai-mock-or-real-api-key
+GROK_MODEL=grok-beta
 ```
-

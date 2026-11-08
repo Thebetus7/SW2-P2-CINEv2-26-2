@@ -1,84 +1,78 @@
-# Despliegue en Google Cloud Platform (GCP) — 01. Configurar Proyecto
+# Despliegue en Google Cloud Platform (GCP) — 01. Configurar Proyecto (Nodo Cinema-Core + Boleteo)
 
-## 1. Variables de Entorno de Producción
+Este documento detalla las variables de entorno necesarias en la máquina virtual de Google Cloud para `ms-cinema-core` y `ms-boleteo-validator`, configurando la conexión Cross-Cloud hacia Azure (Ticket-Auth) y AWS (S3 Bucket).
 
-En cumplimiento de `INV-BIZ-07`, configure las variables de entorno en cada microservicio dentro de la VM de GCP. Cree o edite los archivos `.env` en cada subcarpeta:
+---
 
-### A. ms/ms-cinema-core/backend/.env
-```bash
-PORT=3000
-DB_HOST=postgres-core
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=<POSTGRES_CORE_PASSWORD_GCP>
-DB_NAME=db_cinema_core
-SYNCHRONIZE=false
-RUN_MIGRATIONS=true
-MULTIMEDIA_API_URL=http://ms-multimedia-backend:3001
-```
+## 1. Archivo `.env` Global de GCP (`/home/ubuntu/CINEv2/.env`)
 
-### B. ms/ms-ticket-auth/backend/.env
-```bash
-PORT=8081
-DB_HOST=postgres-auth
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=<POSTGRES_AUTH_PASSWORD_GCP>
-DB_NAME=db_tickets_auth
-CINEMA_CORE_URL=http://ms-cinema-core-backend:3000
-MULTIMEDIA_URL=http://ms-multimedia-backend:3001
-JWT_SECRET=<JWT_SECRET_ALEATORIO_64_CHARS>
-STRIPE_SECRET_KEY=<STRIPE_SECRET_KEY_PROD_O_TEST>
-HMAC_SECRET=clave_secreta_universitaria_mcp
-```
+Cree o edite el archivo `.env` en la raíz del proyecto dentro de la máquina de GCP:
 
-### C. ms/ms-multimedia/backend/.env
-```bash
-PORT=3001
-S3_ENDPOINT=http://minio-s3:9000
-S3_REGION=us-central1
-MINIO_ROOT_USER=<MINIO_USER_PROD>
-MINIO_ROOT_PASSWORD=<MINIO_PASSWORD_PROD>
-DYNAMODB_ENDPOINT=http://dynamodb-local:8000
-HMAC_SECRET=clave_secreta_universitaria_mcp
-```
+```env
+# ===================================================================
+# CONFIGURACIÓN DEL NODO GCP (CINEMA-CORE + BOLETEO)
+# Frameworks: NestJS + Angular 17 + Laravel 11 PHP + React
+# ===================================================================
 
-### D. ms/ms-ia-mcp/backend/.env
-```bash
-PORT=8001
-CORE_API_URL=http://ms-cinema-core-backend:3000
-MULTIMEDIA_API_URL=http://ms-multimedia-backend:3001
-N8N_WEBHOOK_URL=http://n8n:5678/webhook/contingency
-GROK_API_KEY=<GROK_API_KEY_DE_PRODUCCION>
-```
+# Base de datos local PostgreSQL Core (Puerto 5433)
+DB_PASSWORD=postgres
 
-### E. ms/ms-boleteo-validator/backend/.env
-```bash
-APP_NAME="CineV2 Boleteo"
-APP_ENV=production
-APP_KEY=<BASE64_LARAVEL_KEY>
-APP_DEBUG=false
-APP_URL=https://boleteo.<TU_DOMINIO>
-TICKET_AUTH_URL=http://ms-ticket-auth-backend:8081
-CINEMA_CORE_URL=http://ms-cinema-core-backend:3000
-HMAC_SECRET=clave_secreta_universitaria_mcp
+# Conexión Cross-Cloud hacia Azure (Ticket-Auth para firmas HMAC)
+AUTH_API_URL=http://<IP_PUBLICA_AZURE>:8081
+
+# Conexión hacia AWS S3 Real (Bucket para Posters de Cartelera)
+AWS_S3_BUCKET=cinev2-media-bucket-prod
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=<TU_AWS_ACCESS_KEY_ID>
+AWS_SECRET_ACCESS_KEY=<TU_AWS_SECRET_ACCESS_KEY>
+
+# Secretos Criptográficos
+HMAC_SECRET_KEY=clave_secreta_para_firmar_boletos_qr_hmac_sha256_cinev2_universidad_2026
+JWT_SECRET=supersecretjwtkeyforcinemav2production2026hexformat001122334455667788
 ```
 
 ---
 
-## 2. Optimización de Memoria para Java 21 y Node.js en GCP
+## 2. Variables de Cinema-Core Backend (`ms/ms-cinema-core/backend/.env`)
 
-Para que la instancia `e2-micro` ejecute el backend de Spring Boot 3 con estabilidad absoluta:
+```env
+PORT=3000
+NODE_ENV=production
 
-```dockerfile
-# En ms/ms-ticket-auth/backend/Dockerfile
-ENV JAVA_OPTS="-Xms128m -Xmx384m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+# Base de datos local
+DB_HOST=postgres-core
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=db_cinema_core
+
+# AWS S3 Real
+AWS_S3_BUCKET=cinev2-media-bucket-prod
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=<TU_AWS_ACCESS_KEY_ID>
+AWS_SECRET_ACCESS_KEY=<TU_AWS_SECRET_ACCESS_KEY>
+
+# Tuning de memoria Node para e2-micro
+NODE_OPTIONS=--max-old-space-size=384
 ```
 
-Y para los servicios de Node.js / NestJS:
-```dockerfile
-# En los Dockerfiles de NestJS (Cinema-Core y Multimedia)
-ENV NODE_OPTIONS="--max-old-space-size=256"
-```
+---
 
+## 3. Variables de Boleteo-Validator (`ms/ms-boleteo-validator/backend/.env`)
+
+```env
+APP_NAME=CineBoliviaBoleteo
+APP_ENV=production
+APP_KEY=base64:s7V1u2XyZ3aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456=
+APP_DEBUG=false
+APP_URL=http://localhost:8000
+
+# Conexión Cross-Cloud hacia Azure (Ticket-Auth)
+TICKET_AUTH_URL=http://<IP_PUBLICA_AZURE>:8081
+
+# Conexión local a Cinema Core en GCP
+CINEMA_CORE_URL=http://ms-cinema-core-backend:3000
+
+# Clave compartida para verificar HMAC-SHA256
+HMAC_SECRET_KEY=clave_secreta_para_firmar_boletos_qr_hmac_sha256_cinev2_universidad_2026
+```

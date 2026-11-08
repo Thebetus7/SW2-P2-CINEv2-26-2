@@ -1,109 +1,100 @@
-# Despliegue en Amazon Web Services (AWS) — 02. Crear Infraestructura
+# Despliegue en Amazon Web Services (AWS) — 02. Crear Infraestructura (Nodo Multimedia + S3)
 
-## 1. Provisión de Recursos mediante AWS CLI o Consola Web
+Este documento describe la creación del bucket de almacenamiento en AWS S3 y el aprovisionamiento de la instancia EC2 para el nodo de multimedia.
 
-### Paso 1: Crear el Security Group (`cinev2-sg`)
-Permitiremos tráfico únicamente para SSH (22), HTTP (80) y HTTPS (443):
+---
+
+## 1. Crear el Bucket Real de AWS S3 para Posters
+
+Ejecute desde su consola local con AWS CLI:
 
 ```bash
-# 1. Crear el grupo de seguridad
-aws ec2 create-security-group \
-    --group-name cinev2-sg \
-    --description "Security Group para el Ecosistema CineV2" \
-    --region us-east-1
+# Definir nombre del bucket (debe ser globalmente único)
+BUCKET_NAME="cinev2-media-bucket-prod"
+REGION="us-east-1"
 
-# 2. Obtener el GROUP_ID generado y autorizar puertos públicos
-VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query "Vpcs[0].VpcId" --output text --region us-east-1)
-SG_ID=$(aws ec2 describe-security-groups --group-names cinev2-sg --query "SecurityGroups[0].GroupId" --output text --region us-east-1)
+# 1. Crear el bucket en AWS S3
+aws s3api create-bucket \
+  --bucket $BUCKET_NAME \
+  --region $REGION
 
-# Permitir SSH (administración DevOps)
-aws ec2 authorize-security-group-ingress \
-    --group-id $SG_ID \
-    --protocol tcp \
-    --port 22 \
-    --cidr 0.0.0.0/0 \
-    --region us-east-1
+# 2. Desactivar el bloqueo de acceso público para permitir que los navegadores lean los posters
+aws s3api put-public-access-block \
+  --bucket $BUCKET_NAME \
+  --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"
 
-# Permitir HTTP (Nginx / Certbot challenge)
-aws ec2 authorize-security-group-ingress \
-    --group-id $SG_ID \
-    --protocol tcp \
-    --port 80 \
-    --cidr 0.0.0.0/0 \
-    --region us-east-1
+# 3. Aplicar política de lectura pública para las imágenes de cartelera
+cat <<EOF > /tmp/s3-policy.json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadGetObject",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::$BUCKET_NAME/*"
+    }
+  ]
+}
+EOF
 
-# Permitir HTTPS (Tráfico web seguro y cámara en boletero)
-aws ec2 authorize-security-group-ingress \
-    --group-id $SG_ID \
-    --protocol tcp \
-    --port 443 \
-    --cidr 0.0.0.0/0 \
-    --region us-east-1
+aws s3api put-bucket-policy --bucket $BUCKET_NAME --policy file:///tmp/s3-policy.json
+echo "Bucket AWS S3 creado y configurado exitosamente: s3://$BUCKET_NAME"
 ```
 
 ---
 
-### Paso 2: Crear el Par de Llaves SSH (`cinev2-key`)
+## 2. Crear Security Group y Llaves SSH para la Instancia EC2
+
+Solo abrimos los puertos del nodo AWS:
+- `22`: SSH
+- `5175`: Simulador Multimedia (Frontend React)
+- `3001`: Backend Multimedia (API TensorFlow)
 
 ```bash
-aws ec2 create-key-pair \
-    --key-name cinev2-key \
-    --query 'KeyMaterial' \
-    --output text \
-    --region us-east-1 > cinev2-key.pem
+# 1. Crear Security Group
+SG_ID=$(aws ec2 create-security-group \
+  --group-name "sg-cinev2-multimedia" \
+  --description "Security Group para Nodo Multimedia CineV2" \
+  --query 'GroupId' --output text)
 
-# Asignar permisos seguros al archivo de la llave (Unix / WSL / Git Bash)
-chmod 400 cinev2-key.pem
+# 2. Abrir puertos de entrada
+aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 22 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 5175 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 3001 --cidr 0.0.0.0/0
+
+# 3. Crear par de llaves SSH (si no tiene una)
+aws ec2 create-key-pair --key-name cinev2-aws-key --query 'KeyMaterial' --output text > ~/.ssh/cinev2-aws-key.pem
+chmod 400 ~/.ssh/cinev2-aws-key.pem
 ```
 
 ---
 
-### Paso 3: Lanzar la Instancia EC2 (Ubuntu 22.04 LTS en Free Tier)
-
-Utilizaremos la AMI oficial de Ubuntu 22.04 LTS x86_64 con instancia `t3.micro` o `t4g.small` (elegible en Free Tier) y disco EBS gp3 de 30 GB (límite máximo gratuito):
+## 3. Lanzar Instancia EC2 `t3.micro` (Free Tier)
 
 ```bash
-# Obtener el ID de la última AMI de Ubuntu 22.04 en us-east-1
-AMI_ID=$(aws ssm get-parameter \
-    --name /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id \
-    --query "Parameter.Value" \
-    --output text \
-    --region us-east-1)
+# AMI oficial de Ubuntu 22.04 LTS en us-east-1
+AMI_ID=$(aws ssm get-parameters --names /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id --query 'Parameters[0].Value' --output text)
 
-# Lanzar la instancia
+# Lanzar la instancia EC2
 INSTANCE_ID=$(aws ec2 run-instances \
-    --image-id $AMI_ID \
-    --count 1 \
-    --instance-type t3.micro \
-    --key-name cinev2-key \
-    --security-group-ids $SG_ID \
-    --block-device-mappings '[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":30,"VolumeType":"gp3","DeleteOnTermination":true}}]' \
-    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=CineV2-Production-Server}]' \
-    --region us-east-1 \
-    --query 'Instances[0].InstanceId' \
-    --output text)
+  --image-id $AMI_ID \
+  --instance-type t3.micro \
+  --key-name cinev2-aws-key \
+  --security-group-ids $SG_ID \
+  --block-device-mappings "[{\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":30,\"VolumeType\":\"gp3\"}}]" \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=cinev2-aws-multimedia-node}]' \
+  --query 'Instances[0].InstanceId' --output text)
 
-echo "Instancia creada con ID: $INSTANCE_ID"
-```
+echo "Esperando que la instancia EC2 esté en ejecución..."
+aws ec2 wait instance-running --instance-ids $INSTANCE_ID
 
----
-
-### Paso 4: Asignar y Enlazar una Elastic IP (IP Pública Fija)
-
-```bash
-# Asignar IP elástica
-ALLOC_ID=$(aws ec2 allocate-address --domain vpc --region us-east-1 --query 'AllocationId' --output text)
-PUBLIC_IP=$(aws ec2 describe-addresses --allocation-ids $ALLOC_ID --query 'Addresses[0].PublicIp' --output text --region us-east-1)
-
-# Esperar a que la instancia pase a estado 'running'
-aws ec2 wait instance-running --instance-ids $INSTANCE_ID --region us-east-1
-
-# Asociar la IP elástica a la instancia
-aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $ALLOC_ID --region us-east-1
+# Obtener la IP pública de la instancia EC2
+IP_AWS=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 
 echo "=========================================================="
-echo "Servidor listo en IP Pública: $PUBLIC_IP"
-echo "Comando de acceso SSH: ssh -i cinev2-key.pem ubuntu@$PUBLIC_IP"
+echo "IP Pública del Nodo AWS: $IP_AWS"
+echo "Simulador Multimedia: http://$IP_AWS:5175"
 echo "=========================================================="
 ```
-
