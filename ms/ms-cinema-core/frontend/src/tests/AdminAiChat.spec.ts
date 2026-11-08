@@ -55,6 +55,7 @@ describe('AdminAiChatService - Integración con GrokCloud y Reportes Excel', () 
             message: 'Generar reporte excel',
             userId: 'admin',
             requestExcel: false,
+            history: [],
           }
         );
         done();

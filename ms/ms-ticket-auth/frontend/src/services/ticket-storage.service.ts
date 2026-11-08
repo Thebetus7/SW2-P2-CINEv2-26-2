@@ -100,8 +100,51 @@ export function savePurchasedTicket(newTicket: TicketRecord): void {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('storage'));
     }
+
+    // 3. Telemetría no bloqueante (fire-and-forget) hacia Consola IA-MCP (RF-09.3, RB-02)
+    emitPurchaseTelemetry({
+      actionType: 'COMPRA_FINALIZADA',
+      severity: 'SUCCESS',
+      summary: `Compra de boleto #${newTicket.ticketId} para '${newTicket.movieTitle}' confirmada`,
+      metadata: {
+        ticketId: newTicket.ticketId,
+        movieTitle: newTicket.movieTitle,
+        hallName: newTicket.hallName,
+        seats: newTicket.seatCodes,
+        amount: newTicket.amount,
+      },
+    });
   } catch (err) {
     console.error('Error al guardar boleto comprado:', err);
+  }
+}
+
+/**
+ * Emite eventos de telemetría del proceso de compra del cliente hacia la consola de auditoría en admin.
+ */
+export function emitPurchaseTelemetry(event: {
+  actionType: string;
+  severity: 'SUCCESS' | 'INFO' | 'WARN' | 'ERROR';
+  summary: string;
+  metadata?: Record<string, any>;
+}): void {
+  try {
+    fetch('http://localhost:8001/api/v1/logs/ingest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sourceService: 'ms-ticket-auth',
+        actorRole: 'CLIENTE_WEB',
+        actionType: event.actionType,
+        severity: event.severity,
+        summary: event.summary,
+        metadata: event.metadata || {},
+      }),
+    }).catch(() => {
+      // Silencioso fire-and-forget
+    });
+  } catch {
+    // Ignorar fallos de red
   }
 }
 

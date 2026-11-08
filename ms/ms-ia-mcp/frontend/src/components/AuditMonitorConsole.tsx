@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { SystemLogStreamView } from './SystemLogStreamView'
 import {
   ShieldAlert,
   Bot,
@@ -48,7 +49,7 @@ interface ChatMessage {
 }
 
 export const AuditMonitorConsole: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'audit' | 'chatbot'>('audit')
+  const [activeTab, setActiveTab] = useState<'audit' | 'chatbot' | 'logs'>('audit')
   const [isAuditing, setIsAuditing] = useState(false)
   const [currentAudit, setCurrentAudit] = useState<AuditRecord | null>(null)
   const [history, setHistory] = useState<AuditRecord[]>([])
@@ -223,12 +224,25 @@ export const AuditMonitorConsole: React.FC = () => {
           >
             Chatbot Asistente
           </button>
+          <button
+            onClick={() => setActiveTab('logs')}
+            data-testid="tab-logs-btn"
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
+              activeTab === 'logs' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Bitácora en Vivo (LOG)
+          </button>
         </div>
       </header>
 
       {/* Main Body */}
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {activeTab === 'audit' ? (
+        {activeTab === 'logs' ? (
+          <section className="lg:col-span-3 w-full">
+            <SystemLogStreamView />
+          </section>
+        ) : activeTab === 'audit' ? (
           <>
             {/* Left 2 Cols: Control & Current Verdict */}
             <section className="lg:col-span-2 space-y-6">

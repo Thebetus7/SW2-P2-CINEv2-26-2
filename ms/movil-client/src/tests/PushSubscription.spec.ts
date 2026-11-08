@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   urlBase64ToUint8Array,
   PushSubscriptionService,
@@ -152,6 +152,84 @@ describe('Vertical Slice 4: Service Worker y Notificaciones Push en Canal Móvil
       }
 
       expect(mockClients.openWindow).toHaveBeenCalledWith('/billboard');
+    });
+  });
+
+  describe('Service Worker Lifecycle & Robustez (T4.1, Fallback Backend & Test Alerts)', () => {
+    it('debe manejar fallback limpio si el backend de Cinema-Core está inaccesible', async () => {
+      (global as any).Notification = {
+        permission: 'granted',
+        requestPermission: vi.fn().mockResolvedValue('granted'),
+      };
+
+      const mockSubJson = {
+        endpoint: 'https://push.example.com/sub/123',
+        keys: { p256dh: 'k1', auth: 'k2' },
+      };
+
+      const mockPushManager = {
+        getSubscription: vi.fn().mockResolvedValue(null),
+        subscribe: vi.fn().mockResolvedValue({
+          toJSON: () => mockSubJson,
+        }),
+      };
+
+      Object.defineProperty(global.navigator, 'serviceWorker', {
+        value: {
+          ready: Promise.resolve({
+            pushManager: mockPushManager,
+          }),
+        },
+        configurable: true,
+      });
+
+      // Simular que el backend de Cinema-Core da error de conexión
+      global.fetch = vi.fn().mockRejectedValue(new Error('Failed to fetch'));
+
+      const result = await service.subscribeUserToPush();
+
+      // Debe completar la suscripción local exitosamente a pesar de que el backend esté offline
+      expect(result.success).toBe(true);
+      expect(result.subscription).toEqual(mockSubJson);
+    });
+
+    it('debe emitir notificación de prueba local cuando el permiso es concedido', async () => {
+      const mockShowNotification = vi.fn().mockResolvedValue(undefined);
+      (global as any).Notification = {
+        permission: 'granted',
+        requestPermission: vi.fn().mockResolvedValue('granted'),
+      };
+
+      Object.defineProperty(global.navigator, 'serviceWorker', {
+        value: {
+          getRegistration: vi.fn().mockResolvedValue({
+            showNotification: mockShowNotification,
+          }),
+        },
+        configurable: true,
+      });
+
+      const success = await service.showTestNotification('Prueba Cine Bolivia', {
+        body: 'Alerta de prueba',
+      });
+
+      expect(success).toBe(true);
+      expect(mockShowNotification).toHaveBeenCalledWith(
+        'Prueba Cine Bolivia',
+        expect.objectContaining({
+          body: 'Alerta de prueba',
+        })
+      );
+    });
+
+    it('debe rechazar notificación de prueba si el permiso de notificaciones es denegado', async () => {
+      (global as any).Notification = {
+        permission: 'denied',
+        requestPermission: vi.fn().mockResolvedValue('denied'),
+      };
+
+      const success = await service.showTestNotification('Prueba Cine Bolivia');
+      expect(success).toBe(false);
     });
   });
 });

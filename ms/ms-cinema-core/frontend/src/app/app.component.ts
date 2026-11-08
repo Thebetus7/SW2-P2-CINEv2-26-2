@@ -43,6 +43,10 @@ import { RouterModule } from '@angular/router';
           <a routerLink="/audit-demo" routerLinkActive="bg-slate-800 text-rose-400 font-bold border border-rose-500/30" class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition">
             Auditoría Jurado
           </a>
+          <a href="http://localhost:5176" target="_blank" class="px-3 py-1.5 rounded-xl text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition flex items-center gap-1.5 shadow-sm text-xs font-bold" title="Abrir Consola de Bitácora y Auditoría en Tiempo Real">
+            <span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+            Bitácora LOG (:5176)
+          </a>
         </nav>
 
         <!-- DERECHA: @usuario (Nombre/Rol) | Cerrar Sesión -->

@@ -56,6 +56,11 @@ class BoleteoController extends Controller
                 'validator_email' => $validatorEmail,
             ]);
 
+            $this->emitTelemetry('BOLETO_FIRMA_INVALIDA', 'ERROR', "Rechazo de boleto #{$ticketId}: firma criptográfica ilegítima", [
+                'ticketId' => $ticketId,
+                'validator' => $validatorEmail,
+            ]);
+
             return response()->json([
                 'valid' => false,
                 'reason' => 'INVALID_SIGNATURE',
@@ -96,6 +101,13 @@ class BoleteoController extends Controller
                 'validator_email' => $validatorEmail,
             ]);
 
+            $this->emitTelemetry('BOLETO_VALIDADO', 'SUCCESS', "Boleto #{$ticketId} validado exitosamente en {$authResponse['hallName']}", [
+                'ticketId' => $ticketId,
+                'movieTitle' => $authResponse['movieTitle'],
+                'hallName' => $authResponse['hallName'],
+                'seatLabel' => $authResponse['seatLabel'],
+            ]);
+
             return response()->json([
                 'valid' => true,
                 'status' => 'USED',
@@ -117,6 +129,12 @@ class BoleteoController extends Controller
                 'scanned_at' => now(),
                 'result' => AccessScan::RESULT_ALREADY_USED,
                 'validator_email' => $validatorEmail,
+            ]);
+
+            $this->emitTelemetry('BOLETO_RECHAZADO_DUPLICADO', 'WARN', "Alerta: Boleto #{$ticketId} ya había sido canjeado previamente", [
+                'ticketId' => $ticketId,
+                'movieTitle' => $authResponse['movieTitle'],
+                'validator' => $validatorEmail,
             ]);
 
             return response()->json([
@@ -149,5 +167,26 @@ class BoleteoController extends Controller
             'scans' => $scans,
             'count' => $scans->count(),
         ]);
+    }
+
+    /**
+     * Emite telemetría asíncrona no bloqueante (fire-and-forget) a la Consola IA-MCP (RF-09.3, RB-02).
+     */
+    private function emitTelemetry(string $actionType, string $severity, string $summary, array $metadata = []): void
+    {
+        try {
+            $mcpUrl = rtrim((string) config('services.ia_mcp.url', 'http://localhost:8001'), '/');
+            Http::timeout(1)->async()->post("{$mcpUrl}/api/v1/logs/ingest", [
+                'sourceService' => 'ms-boleteo-validator',
+                'actorRole' => 'BOLETERO',
+                'actionType' => $actionType,
+                'severity' => $severity,
+                'summary' => $summary,
+                'metadata' => $metadata,
+            ]);
+        } catch (\Throwable $e) {
+            // No bloquear ni penalizar tiempos de respuesta de taquilla
+            Log::debug('Telemetría no entregada a ms-ia-mcp: ' . $e->getMessage());
+        }
     }
 }

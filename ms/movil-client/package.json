@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@apollo/client": "^3.9.11",
+    "@capacitor/android": "^5.7.8",
     "@capacitor/core": "^5.7.5",
     "@capacitor/geolocation": "^5.0.7",
     "dexie": "^3.2.7",

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Check, X, Sparkles } from 'lucide-react';
 import { pushSubscriptionService } from '../../services/push-subscription.service';
+import { notificationsInboxService } from '../../services/notifications-inbox.service';
 
 export const NotificationPermissionBanner: React.FC = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
@@ -8,13 +9,15 @@ export const NotificationPermissionBanner: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Verificar si el soporte existe y el permiso está en default (no pedido aún)
+    // Solo mostrar si el navegador soporta Notification y está en estado 'default'
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'default') {
         const dismissed = sessionStorage.getItem('cine_push_banner_dismissed');
         if (!dismissed) {
           setIsVisible(true);
         }
+      } else {
+        setIsVisible(false);
       }
     }
   }, []);
@@ -26,23 +29,33 @@ export const NotificationPermissionBanner: React.FC = () => {
 
     if (result.success) {
       setSuccessMessage('¡Notificaciones de estrenos activadas exitosamente!');
+      notificationsInboxService.addNotification({
+        title: '🔔 ¡Alertas de Estrenos Activadas!',
+        body: 'Te notificaremos cuando nuevas películas y funciones se habiliten en cartelera.',
+        type: 'system',
+      });
       setTimeout(() => {
         setIsVisible(false);
-      }, 3000);
+      }, 2500);
     } else {
       setIsVisible(false);
     }
   };
 
   const handleDismiss = () => {
-    sessionStorage.setItem('cine_push_banner_dismissed', 'true');
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('cine_push_banner_dismissed', 'true');
+    }
     setIsVisible(false);
   };
 
   if (!isVisible) return null;
 
   return (
-    <div className="bg-gradient-to-r from-rose-950/90 via-slate-900/95 to-slate-950 border-b border-rose-500/30 px-4 py-3 text-white shadow-xl relative z-40 transition-all">
+    <div
+      data-testid="notification-permission-banner"
+      className="bg-gradient-to-r from-rose-950/90 via-slate-900/95 to-slate-950 border-b border-rose-500/30 px-4 py-3 text-white shadow-xl relative z-40 transition-all"
+    >
       <div className="max-w-md mx-auto flex items-start justify-between gap-3">
         <div className="flex items-start gap-2.5 flex-1">
           <div className="p-2 rounded-xl bg-rose-600/20 text-rose-400 border border-rose-500/30 shrink-0 mt-0.5">

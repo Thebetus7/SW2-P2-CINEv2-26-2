@@ -3,7 +3,7 @@ import { TicketPreview } from './TicketPreview';
 import { StripePaymentWrapper } from './StripePaymentWrapper';
 import { SeatMapComponent, SeatItem } from './SeatMapComponent';
 import { RealQrCode } from './RealQrCode';
-import { savePurchasedTicket } from '../services/ticket-storage.service';
+import { savePurchasedTicket, emitPurchaseTelemetry } from '../services/ticket-storage.service';
 
 export interface StepperPaymentProps {
   initialStep?: number;
@@ -72,6 +72,19 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
             clearInterval(timer);
             setIsExpired(true);
             setErrorMessage('¡Reserva Expirada! La butaca fue liberada automáticamente tras 60 segundos.');
+            try {
+              emitPurchaseTelemetry({
+                actionType: 'PROCESO_COMPRA_RESERVA_EXPIRADA',
+                severity: 'WARN',
+                summary: `Reserva de butaca(s) [${currentSeatLabel}] para '${movieTitle}' liberada por expiración (60s)`,
+                metadata: {
+                  movieTitle,
+                  hallName,
+                  seats: currentSeatLabel,
+                  totalPrice,
+                },
+              });
+            } catch {}
             return 0;
           }
           return prev - 1;
@@ -124,6 +137,21 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
     }
     setErrorMessage(null);
     setCurrentStep(2);
+
+    try {
+      emitPurchaseTelemetry({
+        actionType: 'PROCESO_COMPRA_BUTACAS_SELECCIONADAS',
+        severity: 'INFO',
+        summary: `Cliente seleccionó butaca(s) [${currentSeatLabel}] para '${movieTitle}' ($${totalPrice.toFixed(2)})`,
+        metadata: {
+          movieTitle,
+          hallName,
+          seats: currentSeatLabel,
+          totalPrice,
+          step: 2,
+        },
+      });
+    } catch {}
   };
 
   const handleNextToPayment = () => {
@@ -131,6 +159,22 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
     setSecondsRemaining(60);
     setIsExpired(false);
     setCurrentStep(3);
+
+    try {
+      emitPurchaseTelemetry({
+        actionType: 'PROCESO_COMPRA_CHECKOUT_INICIADO',
+        severity: 'INFO',
+        summary: `Cliente avanzó a pasarela de pago para '${movieTitle}' - Bloqueo de 60s activo`,
+        metadata: {
+          movieTitle,
+          hallName,
+          seats: currentSeatLabel,
+          totalPrice,
+          step: 3,
+          timeoutSeconds: 60,
+        },
+      });
+    } catch {}
   };
 
   const handlePaymentSuccess = (intentId: string) => {
@@ -162,6 +206,21 @@ export const StepperPayment: React.FC<StepperPaymentProps> = ({
   const handlePaymentError = (error: string) => {
     setErrorMessage(error);
     setIsPaused(true); // Pausar temporizador automáticamente para no perjudicar al usuario ante error de servidor/rechazo
+
+    try {
+      emitPurchaseTelemetry({
+        actionType: 'PROCESO_COMPRA_PAGO_RECHAZADO',
+        severity: 'WARN',
+        summary: `Rechazo de pago en compra para '${movieTitle}': ${error}`,
+        metadata: {
+          movieTitle,
+          hallName,
+          seats: currentSeatLabel,
+          totalPrice,
+          error,
+        },
+      });
+    } catch {}
   };
 
   const handleRetryPayment = () => {

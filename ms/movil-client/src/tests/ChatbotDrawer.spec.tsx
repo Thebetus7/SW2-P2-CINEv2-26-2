@@ -1,9 +1,41 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { ChatDrawer } from '../components/Chatbot/ChatDrawer';
 import { db } from '../services/offline-storage.service';
 
+const setupChatFetchMock = () => {
+  global.fetch = vi.fn().mockImplementation(async (url: string) => {
+    if (typeof url === 'string' && url.includes('client-chat')) {
+      const data = {
+        response: 'Te recomiendo "Dune: Parte 2" en Sala 2.',
+        suggestedAction: {
+          type: 'SELECT_SEAT',
+          movieId: 'mov-01',
+          movieTitle: 'Dune: Parte 2',
+          showtimeId: 'st-01',
+          roomName: 'Sala 2',
+          seatCode: 'C-8',
+          price: 45.0,
+        },
+      };
+      return {
+        ok: true,
+        text: async () => JSON.stringify(data),
+        json: async () => data,
+      };
+    }
+    return {
+      ok: false,
+      text: async () => '',
+      json: async () => ({}),
+    };
+  });
+};
+
 describe('ChatDrawerAnimation', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
   it('debe abrir y contraer el panel retráctil de izquierda a derecha al pulsar el botón flotante', () => {
     render(<ChatDrawer />);
 
@@ -28,6 +60,8 @@ describe('ChatDrawerAnimation', () => {
 
 describe('ChatbotPurchaseFlow', () => {
   beforeEach(async () => {
+    localStorage.clear();
+    setupChatFetchMock();
     await db.offlineTickets.clear();
   });
 
@@ -64,6 +98,8 @@ describe('ChatbotPurchaseFlow', () => {
 
 describe('Escenario 3: Interacción con el Chatbot Deslizable (SC-07.3.1)', () => {
   beforeEach(async () => {
+    localStorage.clear();
+    setupChatFetchMock();
     await db.offlineTickets.clear();
   });
 

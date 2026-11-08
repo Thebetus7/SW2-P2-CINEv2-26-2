@@ -12,13 +12,19 @@ import { DEFAULT_MOCK_MOVIES, DEFAULT_MOCK_SHOWTIMES, showtimesApiService } from
 import { offlineStorageService, OfflineTicketRecord } from './services/offline-storage.service';
 import { initiatePurchase, confirmPurchase } from './graphql/mutations';
 import { Movie, Showtime, Seat } from './types';
-import { Film, Ticket, Navigation, ArrowLeft } from 'lucide-react';
+import { Film, Ticket, Navigation, ArrowLeft, Bell } from 'lucide-react';
 import { NotificationPermissionBanner } from './components/Notifications/NotificationPermissionBanner';
+import { NotificationCenterModal } from './components/Notifications/NotificationCenterModal';
+import { notificationsInboxService } from './services/notifications-inbox.service';
 
 export const App: React.FC = () => {
   const [tab, setTab] = useState<'billboard' | 'tickets' | 'gps'>('billboard');
   const [movies, setMovies] = useState<Movie[]>(DEFAULT_MOCK_MOVIES);
   const [showtimes, setShowtimes] = useState<Showtime[]>(DEFAULT_MOCK_SHOWTIMES);
+
+  // Estados del Centro de Notificaciones
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
+  const [unreadCount, setUnreadCount] = useState<number>(() => notificationsInboxService.getUnreadCount());
 
   // Estados del Flujo de Compra
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
@@ -29,6 +35,13 @@ export const App: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [activeQrTicket, setActiveQrTicket] = useState<OfflineTicketRecord | null>(null);
   const [guidanceRoom, setGuidanceRoom] = useState<string>('Sala 1 - IMAX');
+
+  useEffect(() => {
+    const unsubscribe = notificationsInboxService.subscribe(() => {
+      setUnreadCount(notificationsInboxService.getUnreadCount());
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     showtimesApiService.getBillboard().then((billboard) => {
@@ -72,6 +85,27 @@ export const App: React.FC = () => {
       setPreviewUrl('preview-local');
       setPurchaseStep(2);
     }
+
+    // Telemetría de proceso de compra móvil (fire-and-forget)
+    try {
+      fetch('http://localhost:8001/api/v1/logs/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceService: 'movil-client',
+          actorRole: 'CLIENTE_MOVIL',
+          actionType: 'PROCESO_COMPRA_BUTACAS_SELECCIONADAS',
+          severity: 'INFO',
+          summary: `Cliente móvil seleccionó butaca [${seat.code}] para '${selectedShowtime.movieTitle}' (${selectedShowtime.roomName})`,
+          metadata: {
+            movieTitle: selectedShowtime.movieTitle,
+            roomName: selectedShowtime.roomName,
+            seatCode: seat.code,
+            showtimeId: selectedShowtime.id,
+          },
+        }),
+      }).catch(() => {});
+    } catch {}
   };
 
   const handlePaymentSuccess = async (paymentIntentId: string) => {
@@ -107,6 +141,29 @@ export const App: React.FC = () => {
       setActiveQrTicket(mockRecord);
     }
     setPurchaseStep(4);
+
+    // Telemetría de compra completada en cliente móvil (fire-and-forget)
+    try {
+      fetch('http://localhost:8001/api/v1/logs/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceService: 'movil-client',
+          actorRole: 'CLIENTE_MOVIL',
+          actionType: 'PROCESO_COMPRA_FINALIZADA',
+          severity: 'SUCCESS',
+          summary: `Compra móvil de boleto para '${selectedShowtime.movieTitle}' confirmada en IndexedDB`,
+          metadata: {
+            ticketId,
+            movieTitle: selectedShowtime.movieTitle,
+            roomName: selectedShowtime.roomName,
+            seatCode: selectedSeat.code,
+            amount: 45.0,
+            paymentIntentId,
+          },
+        }),
+      }).catch(() => {});
+    } catch {}
   };
 
   const handleResetFlow = () => {
@@ -137,12 +194,33 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        <a
-          href="http://localhost:5174"
-          className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
-        >
-          Portal Web (:5174)
-        </a>
+        <div className="flex items-center gap-2">
+          {/* Botón Campana Centro de Notificaciones */}
+          <button
+            type="button"
+            data-testid="notifications-bell-btn"
+            onClick={() => setIsNotificationModalOpen(true)}
+            className="relative p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+            title="Centro de Notificaciones"
+          >
+            <Bell className="w-4 h-4 text-rose-400" />
+            {unreadCount > 0 && (
+              <span
+                data-testid="notifications-badge-count"
+                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-rose-600 text-[10px] font-extrabold text-white rounded-full flex items-center justify-center border-2 border-slate-900 shadow-sm animate-pulse"
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          <a
+            href="http://localhost:5174"
+            className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+          >
+            Portal Web (:5174)
+          </a>
+        </div>
       </header>
 
       {/* Banner de Permiso y Suscripción Push Web VAPID (T4.1) */}
@@ -311,6 +389,16 @@ export const App: React.FC = () => {
           <span>GPS Sala</span>
         </button>
       </nav>
+
+      {/* Modal del Centro de Notificaciones */}
+      <NotificationCenterModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+        onNavigateToBillboard={() => {
+          setTab('billboard');
+          handleResetFlow();
+        }}
+      />
     </div>
   );
 };
