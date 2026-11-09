@@ -16,9 +16,31 @@ cd CINEv2
 
 ---
 
-## 2. Crear el Archivo de Configuración `.env`
+## 2. Crear y Configurar el Archivo `.env` (Paso Crucial)
 
-Crea el archivo `.env` en la raíz del proyecto:
+> [!WARNING]
+> **NO dejes `TU_ACCESS_KEY_ID_AQUI` ni `TU_SECRET_ACCESS_KEY_AQUI`:**  
+> Esos textos son marcadores de posición (*placeholders*). Si los dejas así, la API de multimedia fallará al intentar autenticarse contra AWS S3 arrojando el error `InvalidAccessKeyId: The AWS Access Key Id you provided does not exist in our records`.
+
+### 2.1 Cómo Obtener tus Credenciales Reales en AWS IAM (si aún no las tienes)
+
+Si no guardaste tus claves en el paso anterior, puedes generarlas en 1 minuto:
+1. En la consola web de AWS ([console.aws.amazon.com](https://console.aws.amazon.com)), busca **IAM** en la barra superior.
+2. En el menú izquierdo, haz clic en **Usuarios** (Users).
+3. Selecciona tu usuario (ej. `cinev2-s3-service-user`).
+   - *(Asegúrate de que en la pestaña "Permisos" tenga asignada la política `AmazonS3FullAccess`)*.
+4. Haz clic en la pestaña **"Credenciales de seguridad"** (Security credentials).
+5. Baja hasta la sección **Claves de acceso** (Access keys) y haz clic en **"Crear clave de acceso"** (Create access key).
+6. Selecciona el caso de uso **"Código local"** (Local code), marca la casilla de confirmación y haz clic en **Siguiente** $\rightarrow$ **Crear clave de acceso**.
+7. Verás dos cadenas de texto:
+   - **Clave de acceso (Access Key ID):** Empieza siempre con **`AKIA...`** (ejemplo: `AKIA4V2EXAMPLE123456`).
+   - **Clave de acceso secreta (Secret Access Key):** Una cadena larga de unos 40 caracteres (ejemplo: `vF7b+9KjL1mN2oP3qR4sT5uV6wX7yZ8aB9c0d1e2`).
+
+---
+
+### 2.2 Crear el Archivo `.env` en la Terminal de EC2
+
+Ejecuta el siguiente comando para generar la plantilla base en `/home/ec2-user/CINEv2/.env`:
 
 ```bash
 cat << 'EOF' > .env
@@ -32,8 +54,8 @@ CORE_API_URL=http://34.10.125.253:3000
 # 2. Bucket Real de AWS S3 y Credenciales IAM
 AWS_S3_BUCKET=cinev2-media-ticket
 AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=TU_ACCESS_KEY_ID_AQUI
-AWS_SECRET_ACCESS_KEY=TU_SECRET_ACCESS_KEY_AQUI
+AWS_ACCESS_KEY_ID=AKIA_PEGA_AQUI_TU_ACCESS_KEY
+AWS_SECRET_ACCESS_KEY=PEGA_AQUI_TU_SECRET_ACCESS_KEY
 
 # 3. Base NoSQL DynamoDB Local (para eventos de congestión)
 DYNAMODB_ENDPOINT=http://dynamodb-local:8000
@@ -43,7 +65,31 @@ TENSORFLOW_CONFIDENCE_THRESHOLD=0.60
 EOF
 ```
 
-*(Edita con `nano .env` para colocar tus credenciales reales de IAM generadas en el Paso 2).*
+### 2.3 Editar el `.env` con tus Claves Reales
+
+Abre el archivo con el editor `nano`:
+
+```bash
+nano .env
+```
+
+1. Usa las flechas del teclado para situarte en `AWS_ACCESS_KEY_ID=` y reemplaza con tu clave que empieza con `AKIA...`.
+2. Sitúate en `AWS_SECRET_ACCESS_KEY=` y reemplaza con tu clave secreta de IAM.
+3. Guarda los cambios: presiona `Ctrl + O`, luego la tecla `Enter`, y sal del editor con `Ctrl + X`.
+
+### 2.4 Ejemplo Visual de un `.env` Correcto
+
+Tu archivo `.env` terminado debe lucir similar a esto (sin comillas y con tus valores reales):
+
+```env
+CORE_API_URL=http://34.10.125.253:3000
+AWS_S3_BUCKET=cinev2-media-ticket
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIA3X7N8PQ2ABCDEF12
+AWS_SECRET_ACCESS_KEY=u8YxZ+3mK9jL1nB4vC7wQ2eR5tY8uI0oP3aS6d9F
+DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+TENSORFLOW_CONFIDENCE_THRESHOLD=0.60
+```
 
 ---
 
