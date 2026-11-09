@@ -52,7 +52,7 @@ export class QRReaderService {
       this.scannerControls = await this.codeReader.decodeFromConstraints(
         constraints,
         videoElement,
-        (result, error, _controls) => {
+        (result, _error, _controls) => {
           if (result) {
             const text = result.getText();
             let parsed: QRPayload | null = null;
