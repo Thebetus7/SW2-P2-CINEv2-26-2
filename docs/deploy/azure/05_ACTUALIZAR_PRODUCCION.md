@@ -1,92 +1,97 @@
-# Despliegue en Microsoft Azure — 05. Actualizar Producción
+# Despliegue en Microsoft Azure — 05. Actualizar Producción y Variables .env
 
-Este documento establece el procedimiento estándar para realizar despliegues continuos, actualizaciones de versión y rollbacks de emergencia en la máquina virtual Azure de producción.
-
----
-
-## 1. Copia de Seguridad Preventiva (Pre-Deployment Backup)
-
-Antes de cualquier despliegue de código o actualización de esquemas, genere un volcado de las bases de datos PostgreSQL:
-
-```bash
-# 1. Crear directorio con fecha y hora
-FECHA=$(date +%Y%m%d_%H%M%S)
-mkdir -p /home/ubuntu/backups/$FECHA
-
-# 2. Respaldar base de datos de Auth (Postgres 5434)
-docker exec SW2-P2-CINEv2-postgres-auth pg_dump -U postgres cine_auth_db > /home/ubuntu/backups/$FECHA/cine_auth_db.sql
-
-# 3. Respaldar base de datos de Core (Postgres 5433)
-docker exec SW2-P2-CINEv2-postgres-core pg_dump -U postgres cine_core_db > /home/ubuntu/backups/$FECHA/cine_core_db.sql
-
-# 4. Comprimir el volcado
-tar -czvf /home/ubuntu/backups/backup_$FECHA.tar.gz -C /home/ubuntu/backups/$FECHA .
-rm -rf /home/ubuntu/backups/$FECHA
-
-echo "Copia de seguridad completada: /home/ubuntu/backups/backup_$FECHA.tar.gz"
-```
+Este documento establece el procedimiento estándar para actualizar variables de entorno en `.env`, desplegar nuevo código y realizar rollbacks en el servidor de **Microsoft Azure** (IP: `20.102.51.189`).
 
 ---
 
-## 2. Actualización de Código y Reconstrucción de Contenedores
+## 1. ¿Cómo Editar el Archivo `.env` y Reiniciar los Servicios en Azure?
+
+> [!IMPORTANT]
+> **En Docker, editar `.env` NO surte efecto automáticamente en contenedores activos:**  
+> Las variables de entorno se inyectan en el momento de crear el contenedor. Si solo modificas el archivo con `nano .env`, los contenedores continuarán ejecutándose con los valores antiguos en memoria. Debes aplicar los cambios con `docker compose -f docker-compose.azure.yml up -d`.
+
+### Paso a Paso para Actualizar `.env`:
 
 ```bash
 cd /home/ubuntu/CINEv2
 
-# 1. Descargar las últimas confirmaciones (commits) de la rama principal
+# 1. Abrir el archivo .env para modificar variables (IPs de GCP/AWS, API keys, etc.)
+nano .env
+
+# (Edita las variables deseadas, guarda con Ctrl + O, presiona Enter y sal con Ctrl + X)
+
+# 2. Reiniciar e inyectar las nuevas variables en los contenedores
+docker compose -f docker-compose.azure.yml up -d
+
+# 3. Comprobar que los contenedores se hayan actualizado (verás "Up less than a minute")
+docker compose -f docker-compose.azure.yml ps
+
+# 4. Inspeccionar los logs del backend para confirmar arranque limpio
+docker compose -f docker-compose.azure.yml logs --tail=40 ms-ticket-auth-backend
+```
+
+---
+
+## 2. Actualización de Código desde Git (Nuevo Commit)
+
+Cuando se suben mejoras o correcciones al repositorio en GitHub:
+
+```bash
+cd /home/ubuntu/CINEv2
+
+# 1. Descargar los últimos cambios
 git checkout main
 git pull origin main
 
-# 2. Si la actualización afecta a un único servicio (por ejemplo, Boleteo):
-docker compose build ms-boleteo-validator-frontend ms-boleteo-validator-backend
-docker compose up -d --no-deps ms-boleteo-validator-frontend ms-boleteo-validator-backend
+# 2. Reconstruir y levantar únicamente el stack de Azure
+docker compose -f docker-compose.azure.yml build
+docker compose -f docker-compose.azure.yml up -d --remove-orphans
 
-# 3. Si la actualización es integral para todo el ecosistema:
-docker compose build --parallel
-docker compose up -d
+# 3. Limpiar imágenes intermedias huérfanas para optimizar disco
+docker image prune -f
 ```
+
+### Actualizar solo un microservicio específico:
+- **Solo el Frontend de Tickets/Portal Clientes (:5174):**
+  ```bash
+  docker compose -f docker-compose.azure.yml up -d --build ms-ticket-auth-frontend
+  ```
+- **Solo el Backend Spring Boot (:8081):**
+  ```bash
+  docker compose -f docker-compose.azure.yml up -d --build ms-ticket-auth-backend
+  ```
+- **Solo el Backend de IA GrokCloud (:8001):**
+  ```bash
+  docker compose -f docker-compose.azure.yml up -d --build ms-ia-mcp-backend
+  ```
 
 ---
 
 ## 3. Verificación Post-Despliegue
 
 ```bash
-# 1. Verificar estado de los servicios
-docker compose ps
+# 1. Estado de los contenedores
+docker compose -f docker-compose.azure.yml ps
 
-# 2. Examinar logs del servicio actualizado
-docker compose logs -f --tail=50 ms-boleteo-validator-frontend
+# 2. Ver logs en tiempo real
+docker compose -f docker-compose.azure.yml logs -f --tail=30 ms-ticket-auth-backend
 
-# 3. Recargar Nginx si hubo modificaciones en las rutas virtuales
+# 3. Verificar estado de Nginx Reverse Proxy
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ---
 
-## 4. Procedimiento de Rollback (Plan de Contingencia)
+## 4. Procedimiento de Rollback Rápido
 
-En caso de fallos inesperados o incompatibilidades:
+Si la última versión presenta fallos funcionales:
 
-### Paso 1: Regresar el código fuente a la versión previa
 ```bash
 cd /home/ubuntu/CINEv2
-git log --oneline -n 5
-git checkout <HASH_COMMIT_ESTABLE_ANTERIOR>
-docker compose up -d --build
+
+# 1. Regresar al commit anterior en Git
+git checkout HEAD~1
+
+# 2. Reconstruir y reiniciar servicios con la versión estable previa
+docker compose -f docker-compose.azure.yml up -d --build
 ```
-
-### Paso 2: Restaurar base de datos si se aplicaron migraciones fallidas
-```bash
-# Descomprimir volcado previo
-tar -xzvf /home/ubuntu/backups/backup_<FECHA>.tar.gz -C /tmp/
-
-# Restaurar BD Auth
-docker exec -i SW2-P2-CINEv2-postgres-auth psql -U postgres -d cine_auth_db < /tmp/cine_auth_db.sql
-
-# Restaurar BD Core
-docker exec -i SW2-P2-CINEv2-postgres-core psql -U postgres -d cine_core_db < /tmp/cine_core_db.sql
-
-# Limpiar archivos temporales
-rm -f /tmp/cine_auth_db.sql /tmp/cine_core_db.sql
-```
-

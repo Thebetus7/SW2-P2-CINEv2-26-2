@@ -1,68 +1,98 @@
-# Despliegue en Google Cloud Platform (GCP) — 05. Actualizar Producción (Servidor de Examen)
+# Despliegue en Google Cloud Platform (GCP) — 05. Actualizar Producción y Variables .env
 
-Este documento detalla el procedimiento para actualizar el código en el servidor de Google Cloud sin perder los datos de salas, cartelera o boletos sembrados.
+Este documento detalla el procedimiento para modificar variables de entorno en `.env`, actualizar código y reiniciar los servicios en el servidor de **Google Cloud Platform** (IP: `34.10.125.253`).
 
 ---
 
-## 1. Copia de Seguridad Rápida de Bases de Datos
+## 1. ¿Cómo Editar el Archivo `.env` y Reiniciar los Servicios en GCP?
 
-Antes de subir cambios, guarde un volcado rápido de las bases de datos:
+> [!IMPORTANT]
+> **En Docker, editar `.env` NO surte efecto automáticamente en contenedores activos:**  
+> Las variables de entorno se inyectan en el momento de crear el contenedor. Si solo modificas el archivo con `nano .env`, los contenedores continuarán ejecutándose con los valores antiguos en memoria. Debes aplicar los cambios con `docker compose -f docker-compose.gcp.yml up -d`.
+
+### Paso a Paso para Actualizar `.env`:
 
 ```bash
-# 1. Crear carpeta de respaldo con fecha
-FECHA=$(date +%Y%m%d_%H%M%S)
-mkdir -p /home/ubuntu/backups/$FECHA
+cd ~/CINEv2
 
-# 2. Respaldar base de datos de Auth (5434) y Core (5433)
-docker exec SW2-P2-CINEv2-postgres-auth pg_dump -U postgres cine_auth_db > /home/ubuntu/backups/$FECHA/cine_auth_db.sql
-docker exec SW2-P2-CINEv2-postgres-core pg_dump -U postgres cine_core_db > /home/ubuntu/backups/$FECHA/cine_core_db.sql
+# 1. Abrir el archivo .env para modificar variables (IPs de Azure/AWS, contraseñas, etc.)
+nano .env
 
-# 3. Comprimir el volcado
-tar -czvf /home/ubuntu/backups/backup_$FECHA.tar.gz -C /home/ubuntu/backups/$FECHA .
-rm -rf /home/ubuntu/backups/$FECHA
+# (Edita las variables deseadas, guarda con Ctrl + O, presiona Enter y sal con Ctrl + X)
 
-echo "Respaldo listo en: /home/ubuntu/backups/backup_$FECHA.tar.gz"
+# 2. Reiniciar e inyectar las nuevas variables en los contenedores
+docker compose -f docker-compose.gcp.yml up -d
+
+# 3. Comprobar que los contenedores se hayan actualizado (verás "Up less than a minute")
+docker compose -f docker-compose.gcp.yml ps
+
+# 4. Inspeccionar los logs del backend para confirmar arranque limpio
+docker compose -f docker-compose.gcp.yml logs --tail=40 ms-cinema-core-backend
 ```
 
 ---
 
-## 2. Descargar Cambios y Reconstruir Contenedores
+## 2. Actualización de Código desde Git (Nuevo Commit)
+
+Cuando se suben mejoras o correcciones al repositorio en GitHub:
 
 ```bash
-cd /home/ubuntu/CINEv2
+cd ~/CINEv2
 
-# 1. Descargar las últimas confirmaciones del repositorio
+# 1. Descargar los últimos cambios
 git checkout main
 git pull origin main
 
-# 2. Reconstruir los contenedores modificados
-docker compose build --parallel
+# 2. Reconstruir y levantar únicamente el stack de GCP
+docker compose -f docker-compose.gcp.yml build
+docker compose -f docker-compose.gcp.yml up -d --remove-orphans
 
-# 3. Levantar los cambios en segundo plano
-docker compose up -d
+# 3. Limpiar imágenes intermedias huérfanas para optimizar disco
+docker image prune -f
+```
+
+### Actualizar solo un microservicio específico:
+- **Solo el Frontend de Administración Angular (:4200):**
+  ```bash
+  docker compose -f docker-compose.gcp.yml up -d --build ms-cinema-core-frontend
+  ```
+- **Solo el Backend NestJS Cinema-Core (:3000):**
+  ```bash
+  docker compose -f docker-compose.gcp.yml up -d --build ms-cinema-core-backend
+  ```
+- **Solo el Frontend de Boleteo/QR (:5177):**
+  ```bash
+  docker compose -f docker-compose.gcp.yml up -d --build ms-boleteo-validator-frontend
+  ```
+- **Solo el Backend Laravel Boleteo (:8000):**
+  ```bash
+  docker compose -f docker-compose.gcp.yml up -d --build ms-boleteo-validator-backend
+  ```
+
+---
+
+## 3. Verificación Post-Despliegue
+
+```bash
+# 1. Estado de los contenedores
+docker compose -f docker-compose.gcp.yml ps
+
+# 2. Ver logs en tiempo real
+docker compose -f docker-compose.gcp.yml logs -f --tail=30 ms-cinema-core-backend
 ```
 
 ---
 
-## 3. Comprobar que los Servicios estén Corriendo
+## 4. Procedimiento de Rollback Rápido
+
+Si la última versión presenta fallos funcionales:
 
 ```bash
-# 1. Verificar estado de los 11 contenedores
-docker compose ps
+cd ~/CINEv2
 
-# 2. Ver logs en tiempo real para confirmar que no haya caídas
-docker compose logs -f --tail=30
-```
-
----
-
-## 4. Revertir Cambios (Rollback de Emergencia)
-
-Si una modificación rompe el código antes de la entrega:
-
-```bash
-cd /home/ubuntu/CINEv2
-# Regresar al commit anterior
+# 1. Regresar al commit anterior en Git
 git checkout HEAD~1
-docker compose up -d --build
+
+# 2. Reconstruir y reiniciar servicios con la versión estable previa
+docker compose -f docker-compose.gcp.yml up -d --build
 ```
