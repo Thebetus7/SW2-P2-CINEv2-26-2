@@ -1,5 +1,10 @@
 # Arquitectura Multi-Cloud Distribuida — Ecosistema CineV2
 
+> [!IMPORTANT]
+> **URL PRINCIPAL DE PRODUCCIÓN (ACCESO AL SISTEMA):**  
+> 👉 [**Cine Bolivia - Portal de Acceso y Boletos**](http://20.102.51.189:5174/) (`http://20.102.51.189:5174/`)  
+> Punto de entrada principal alojado en **Microsoft Azure** con federación Cross-Cloud hacia **GCP** (Administración y Boletero) y **AWS** (Multimedia y S3).
+
 Este documento define la arquitectura física, técnica y operativa del ecosistema **CineV2** distribuido entre tres proveedores de nube pública (**Google Cloud Platform**, **Microsoft Azure** y **Amazon Web Services**) para un proyecto de examen universitario de alta especialización.
 
 ---
