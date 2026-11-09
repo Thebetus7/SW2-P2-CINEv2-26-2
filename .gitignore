@@ -83,6 +83,8 @@ storage/logs/*
 # --- Logs y Bases de Datos Locales / Temporales ---
 *.log
 **/*.log
+*.xlsx
+**/*.xlsx
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

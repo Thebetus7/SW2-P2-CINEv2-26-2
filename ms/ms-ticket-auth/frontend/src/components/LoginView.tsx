@@ -252,7 +252,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       };
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1200);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       const response = await fetch(`http://${getApiHost()}:8081/graphql`, {
         method: 'POST',
@@ -263,10 +263,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       clearTimeout(timeoutId);
 
       let jwtToken = '';
+      let userName = regEmail.includes('@') ? regEmail.split('@')[0] : regEmail;
+      let userFullName = regFullName.trim();
+
       if (response && response.ok) {
         const json = await response.json();
         if (json.data && json.data.register) {
           jwtToken = json.data.register.token;
+          if (json.data.register.user) {
+            userFullName = json.data.register.user.fullName || userFullName;
+            userName = (json.data.register.user.email || regEmail).split('@')[0];
+          }
         } else if (json.errors && json.errors.length > 0) {
           throw new Error(json.errors[0].message || 'Error al registrar usuario');
         }
@@ -276,10 +283,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
 
       localStorage.setItem('jwt_token', jwtToken);
       localStorage.setItem('user_role', 'CLIENTE');
+      localStorage.setItem('user_name', userName);
+      localStorage.setItem('full_name', userFullName);
 
       setSuccessInfo({ role: 'CLIENTE', redirectUrl: 'Portal' });
       if (onLoginSuccess) {
-        onLoginSuccess(jwtToken, 'CLIENTE');
+        onLoginSuccess(jwtToken, 'CLIENTE', `http://${getApiHost()}:5174`);
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al procesar el registro');
