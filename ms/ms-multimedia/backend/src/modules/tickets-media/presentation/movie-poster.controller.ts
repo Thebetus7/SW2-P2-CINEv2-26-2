@@ -1,6 +1,10 @@
 import {
   Controller,
   Post,
+  Get,
+  Param,
+  Res,
+  NotFoundException,
   UseInterceptors,
   UploadedFiles,
   UploadedFile,
@@ -10,6 +14,9 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import * as fs from 'fs';
+import * as path from 'path';
+import { STORAGE_ROOT } from '../../../config/local-s3-server';
 import {
   AnalyzePosterService,
   AnalyzePosterResult,
@@ -77,5 +84,35 @@ export class MoviePosterController {
       uploadedFile.originalname,
       uploadedFile.mimetype,
     );
+  }
+
+  /**
+   * Sirve directamente la imagen del póster persistida en el storage local S3
+   * Permite visualización remota por el puerto 3001 sin depender del puerto 9000
+   */
+  @Get('posters/:filename')
+  public getPosterFile(
+    @Param('filename') filename: string,
+    @Res() res: any,
+  ) {
+    const cleanFilename = path.basename(filename);
+    const candidatePaths = [
+      path.resolve(STORAGE_ROOT, 'cine-posters/posters', cleanFilename),
+      path.resolve(process.cwd(), 'storage/s3_local/cine-posters/posters', cleanFilename),
+      path.resolve(process.cwd(), 'dist/storage/s3_local/cine-posters/posters', cleanFilename),
+      path.resolve(__dirname, '../../storage/s3_local/cine-posters/posters', cleanFilename),
+      path.resolve(__dirname, '../../../storage/s3_local/cine-posters/posters', cleanFilename),
+      path.resolve(__dirname, '../../../../storage/s3_local/cine-posters/posters', cleanFilename),
+    ];
+
+    const foundPath = candidatePaths.find((p) => fs.existsSync(p));
+    if (!foundPath) {
+      throw new NotFoundException(`Póster '${cleanFilename}' no encontrado en almacenamiento local.`);
+    }
+
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    fs.createReadStream(foundPath).pipe(res);
   }
 }

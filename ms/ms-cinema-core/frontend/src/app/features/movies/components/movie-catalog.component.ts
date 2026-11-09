@@ -139,21 +139,22 @@ import { MovieCreatorModalComponent } from './movie-creator-modal.component';
           *ngFor="let movie of filteredMovies"
           class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl hover:border-slate-700 transition flex flex-col group"
         >
-          <!-- Contenedor de Póster MinIO S3 -->
-          <div class="relative aspect-[2/3] w-full bg-slate-950 overflow-hidden">
+          <!-- Contenedor de Póster MinIO S3 / AWS Multimedia -->
+          <div class="relative aspect-[2/3] w-full bg-slate-950 overflow-hidden flex items-center justify-center">
             <img
-              *ngIf="movie.posterUrl"
-              [src]="movie.posterUrl"
+              *ngIf="movie.posterUrl && !failedPosterIds.has(movie.id)"
+              [src]="resolvePosterUrl(movie.posterUrl)"
               [alt]="movie.title"
-              (error)="onPosterError($event)"
+              (error)="onPosterError(movie.id)"
               class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
             />
             <div
-              *ngIf="!movie.posterUrl"
-              class="w-full h-full flex flex-col items-center justify-center text-slate-600 bg-slate-950"
+              *ngIf="!movie.posterUrl || failedPosterIds.has(movie.id)"
+              class="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-gradient-to-b from-slate-900 to-slate-950 p-4 text-center select-none"
             >
-              <span class="text-4xl">🎬</span>
-              <span class="text-[10px] mt-1 font-mono">Sin póster</span>
+              <span class="text-4xl mb-2 opacity-60">🎬</span>
+              <span class="text-xs font-bold text-slate-300 line-clamp-2 px-1">{{ movie.title }}</span>
+              <span class="text-[10px] text-slate-500 mt-1 font-mono uppercase">{{ movie.genre || 'Póster S3' }}</span>
             </div>
 
             <!-- Badge de Estado -->
@@ -234,6 +235,7 @@ export class MovieCatalogComponent implements OnInit {
   isArchivingId: string | null = null;
   searchTerm = '';
   selectedStatusFilter = 'TODAS';
+  readonly failedPosterIds = new Set<string>();
 
   notificationMessage: string | null = null;
   notificationType: 'success' | 'error' = 'success';
@@ -320,9 +322,14 @@ export class MovieCatalogComponent implements OnInit {
     });
   }
 
-  onPosterError(event: Event) {
-    const target = event.target as HTMLElement;
-    target.style.display = 'none';
+  resolvePosterUrl(url?: string): string {
+    return this.movieAdminService.resolvePosterUrl(url);
+  }
+
+  onPosterError(movieId?: string) {
+    if (movieId) {
+      this.failedPosterIds.add(movieId);
+    }
   }
 
   showNotification(message: string, type: 'success' | 'error' = 'success') {

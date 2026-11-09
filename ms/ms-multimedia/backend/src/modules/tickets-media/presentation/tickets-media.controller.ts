@@ -1,11 +1,18 @@
 import {
   Controller,
   Post,
+  Get,
+  Param,
+  Res,
+  NotFoundException,
   Body,
   HttpCode,
   HttpStatus,
   BadRequestException,
 } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+import { STORAGE_ROOT } from '../../../config/local-s3-server';
 import {
   GenerateTicketJpegUseCase,
   GenerateTicketJpegCommand,
@@ -60,5 +67,34 @@ export class TicketsMediaController {
       ticketImageUrl: result.ticketImageUrl,
       qrCodePayload: result.qrCodePayload,
     };
+  }
+
+  /**
+   * Sirve directamente la credencial gráfica del ticket persistida en MinIO S3 local
+   */
+  @Get('tickets/:filename')
+  public getTicketFile(
+    @Param('filename') filename: string,
+    @Res() res: any,
+  ) {
+    const cleanFilename = path.basename(filename);
+    const candidatePaths = [
+      path.resolve(STORAGE_ROOT, 'cine-tickets/tickets', cleanFilename),
+      path.resolve(process.cwd(), 'storage/s3_local/cine-tickets/tickets', cleanFilename),
+      path.resolve(process.cwd(), 'dist/storage/s3_local/cine-tickets/tickets', cleanFilename),
+      path.resolve(__dirname, '../../storage/s3_local/cine-tickets/tickets', cleanFilename),
+      path.resolve(__dirname, '../../../storage/s3_local/cine-tickets/tickets', cleanFilename),
+      path.resolve(__dirname, '../../../../storage/s3_local/cine-tickets/tickets', cleanFilename),
+    ];
+
+    const foundPath = candidatePaths.find((p) => fs.existsSync(p));
+    if (!foundPath) {
+      throw new NotFoundException(`Ticket '${cleanFilename}' no encontrado en almacenamiento local.`);
+    }
+
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    fs.createReadStream(foundPath).pipe(res);
   }
 }

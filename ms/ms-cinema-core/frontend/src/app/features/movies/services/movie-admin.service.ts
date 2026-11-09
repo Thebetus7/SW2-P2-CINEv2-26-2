@@ -49,6 +49,37 @@ export class MovieAdminService {
     return `http://${this.getMultimediaHost()}:3001/api/v1/multimedia/movies/analyze-poster`;
   }
 
+  /**
+   * Resuelve de forma transparente la URL pública del póster persistido en MinIO S3 / AWS Multimedia
+   * Convierte referencias 'localhost:9000' o relativas al endpoint remoto de streaming en el puerto 3001
+   */
+  public resolvePosterUrl(url?: string): string {
+    if (!url) return '';
+    if (url.startsWith('data:image') || url.startsWith('blob:')) {
+      return url;
+    }
+
+    const host = this.getMultimediaHost();
+
+    // 1. Si la URL apunta a localhost:9000 (MinIO S3 interno)
+    if (url.includes('localhost:9000') || url.includes('127.0.0.1:9000')) {
+      // Extraer nombre del póster si coincide con /cine-posters/posters/:filename
+      const match = url.match(/\/cine-posters\/posters\/([^?#]+)/);
+      if (match && match[1]) {
+        // Redirigir al streaming directo de MS MULTIMEDIA por puerto 3001 (abierto y verificado en AWS)
+        return `http://${host}:3001/api/v1/multimedia/movies/posters/${match[1]}`;
+      }
+      return url.replace(/localhost:9000|127\.0\.0\.1:9000/, `${host}:9000`);
+    }
+
+    // 2. Si la URL apunta a localhost:3001
+    if (url.includes('localhost:3001') || url.includes('127.0.0.1:3001')) {
+      return url.replace(/localhost:3001|127\.0\.0\.1:3001/, `${host}:3001`);
+    }
+
+    return url;
+  }
+
   constructor(private readonly http: HttpClient) {}
 
   /**

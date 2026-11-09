@@ -14,5 +14,5 @@ COPY package*.json ./
 RUN npm ci --only=production
 COPY --from=builder /app/dist ./dist
 COPY src/assets ./dist/src/assets
-EXPOSE 3001
+EXPOSE 3001 9000
 CMD ["sh", "-c", "if [ -f dist/main.js ]; then node dist/main.js; else node dist/src/main.js; fi"]

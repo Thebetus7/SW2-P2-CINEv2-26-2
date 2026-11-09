@@ -25,9 +25,11 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-mock_secret}
       # Integración DynamoDB
       DYNAMODB_ENDPOINT: ${DYNAMODB_ENDPOINT:-http://dynamodb-local:8000}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://localhost:9000}
       NODE_OPTIONS: "--max-old-space-size=384"
     ports:
       - "3001:3001"
+      - "9000:9000"
     networks:
       - cinev2-aws-network
     restart: unless-stopped

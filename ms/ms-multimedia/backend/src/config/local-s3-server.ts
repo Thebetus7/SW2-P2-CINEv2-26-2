@@ -9,8 +9,8 @@ import * as net from 'net';
  * Permite ejecutar ms-multimedia y la carga de pósters sin depender de Docker.
  */
 
-const STORAGE_ROOT = path.resolve(__dirname, '../../storage/s3_local');
-const DEFAULT_PORT = parseInt(process.env.S3_PORT || '9000', 10);
+export const STORAGE_ROOT = path.resolve(__dirname, '../../storage/s3_local');
+export const DEFAULT_PORT = parseInt(process.env.S3_PORT || '9000', 10);
 
 /**
  * Inicializa la estructura física de almacenamiento de buckets
