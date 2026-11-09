@@ -1,15 +1,15 @@
 # Despliegue en Amazon Web Services (AWS) — 04. Desplegar y Verificar (Nodo Multimedia + S3)
 
-Este documento guía paso a paso la puesta en marcha de los contenedores Docker en **AWS EC2** (`ms-multimedia` y `dynamodb-local`) y la comprobación de la integración con el bucket real de **AWS S3**.
+Este documento guía paso a paso la puesta en marcha de los contenedores Docker en **Amazon Linux 2023** (`ms-multimedia` y `dynamodb-local`) y la comprobación de la integración con el bucket real de **AWS S3** (`cinev2-media-ticket`).
 
 ---
 
 ## 1. Clonar el Repositorio en la Instancia EC2
 
-Estando dentro de la terminal de tu servidor de AWS:
+Estando dentro de la terminal de tu servidor de AWS como `ec2-user`:
 
 ```bash
-cd /home/ubuntu
+cd /home/ec2-user
 git clone https://github.com/Thebetus7/SW2-P2-CINEv2-26-2.git CINEv2
 cd CINEv2
 ```
@@ -21,12 +21,7 @@ cd CINEv2
 Crea el archivo `.env` en la raíz del proyecto:
 
 ```bash
-nano .env
-```
-
-Pega el siguiente contenido (asegúrate de colocar el nombre real de tu bucket y tus credenciales IAM de AWS):
-
-```env
+cat << 'EOF' > .env
 # ===================================================================
 # CONFIGURACIÓN DEL NODO AWS (MULTIMEDIA + AWS S3 BUCKET)
 # ===================================================================
@@ -35,28 +30,24 @@ Pega el siguiente contenido (asegúrate de colocar el nombre real de tu bucket y
 CORE_API_URL=http://34.10.125.253:3000
 
 # 2. Bucket Real de AWS S3 y Credenciales IAM
-AWS_S3_BUCKET=cinev2-media-bucket-prod-tu-nombre
+AWS_S3_BUCKET=cinev2-media-ticket
 AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+AWS_ACCESS_KEY_ID=TU_ACCESS_KEY_ID_AQUI
+AWS_SECRET_ACCESS_KEY=TU_SECRET_ACCESS_KEY_AQUI
 
 # 3. Base NoSQL DynamoDB Local (para eventos de congestión)
 DYNAMODB_ENDPOINT=http://dynamodb-local:8000
 
 # 4. Umbral de Detección de Personas con TensorFlow
 TENSORFLOW_CONFIDENCE_THRESHOLD=0.60
+EOF
 ```
 
-Guarda con `Ctrl + O`, presiona `Enter` y sal con `Ctrl + X`.
+*(Edita con `nano .env` para colocar tus credenciales reales de IAM generadas en el Paso 2).*
 
 ---
 
 ## 3. Construir y Levantar los Contenedores con Docker Compose
-
-El manifiesto `docker-compose.aws.yml` compila únicamente los microservicios asignados a AWS:
-- `ms-multimedia-backend` (NestJS con TensorFlow COCO-SSD en el puerto `3001`).
-- `ms-multimedia-frontend` (React + Vite Simulador en el puerto `5175`).
-- `dynamodb-local` (Motor NoSQL en el puerto `8002`).
 
 Ejecuta:
 
@@ -83,23 +74,15 @@ SW2-P2-CINEv2-ms-multimedia-frontend   "/docker-entrypoint.…"   ms-multimedia-
 
 ## 4. Verificar la Conexión con el Bucket de AWS S3
 
-Para comprobar que tu servidor puede comunicarse con tu bucket de AWS S3, puedes instalar `awscli` en Ubuntu y hacer una prueba rápida:
+Para comprobar que tu servidor puede comunicarse con tu bucket `cinev2-media-ticket`:
 
 ```bash
-# 1. Instalar AWS CLI si no está instalado
-sudo apt install -y awscli
-
-# 2. Configurar temporalmente tus credenciales (si no lo has hecho)
-aws configure set aws_access_key_id <TU_AWS_ACCESS_KEY_ID>
-aws configure set aws_secret_access_key <TU_AWS_SECRET_ACCESS_KEY>
-aws configure set default.region us-east-1
-
-# 3. Subir un archivo de prueba al bucket
+# 1. Subir un archivo de prueba al bucket
 echo "Prueba de subida desde EC2 - CineV2 Multimedia" > /tmp/prueba-s3.txt
-aws s3 cp /tmp/prueba-s3.txt s3://TU_NOMBRE_DE_BUCKET/posters/prueba.txt
+aws s3 cp /tmp/prueba-s3.txt s3://cinev2-media-ticket/posters/prueba.txt
 
-# 4. Listar el contenido del bucket para confirmar que se subió
-aws s3 ls s3://TU_NOMBRE_DE_BUCKET/posters/
+# 2. Listar el contenido del bucket para confirmar que se subió
+aws s3 ls s3://cinev2-media-ticket/posters/
 ```
 
 **Resultado esperado:**  
@@ -113,14 +96,13 @@ Abre tu navegador (Edge, Chrome, etc.) e ingresa a las siguientes direcciones, r
 
 ### 1. Frontend Simulador Multimedia de Cámaras en Sala:
 👉 **`http://<IP_AWS>:5175`**
-- Verás la interfaz del simulador con los controles de reproducción de transmisiones de cámara.
-- Podrás observar la superposición de cajas de detección generadas por **TensorFlow COCO-SSD** identificando aforo y asientos ocupados.
+- Verás la interfaz del simulador con los controles de reproducción de transmisiones de cámara y el canvas de **TensorFlow COCO-SSD** detectando butacas ocupadas.
 
 ### 2. Backend Health Check de la API Multimedia:
 👉 **`http://<IP_AWS>:3001/health`**
 - Deberá responder un JSON indicando que el servicio está activo:
   ```json
-  {"status":"ok","timestamp":"2026-..."}
+  {"status":"ok"}
   ```
 
 ---
@@ -139,5 +121,3 @@ Una vez que tengas la IP pública de AWS funcionando:
    ```bash
    docker compose -f docker-compose.azure.yml up -d ms-ticket-auth-backend
    ```
-
-Con esto, los tres proveedores de nube (**Azure + GCP + AWS**) quedarán 100% interconectados y comunicándose entre sí en producción.

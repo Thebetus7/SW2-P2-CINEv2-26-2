@@ -1,12 +1,12 @@
-# Despliegue en Amazon Web Services (AWS) — 03. Instalar Herramientas (Swap, Docker y Compose)
+# Despliegue en Amazon Web Services (AWS) — 03. Instalar Herramientas (Amazon Linux 2023)
 
-Conéctate a tu servidor EC2 utilizando **EC2 Instance Connect** (directo en la web de AWS) o desde PowerShell con tu archivo `.pem`:
+Conéctate a tu servidor EC2 utilizando **EC2 Instance Connect** (en la web de AWS con usuario `ec2-user`) o desde PowerShell:
 
 ```bash
-ssh -i cinev2-aws-key.pem ubuntu@<IP_PUBLICA_AWS>
+ssh -i cinev2-aws-key.pem ec2-user@<IP_PUBLICA_AWS>
 ```
 
-Una vez dentro de la terminal de Ubuntu (verás `ubuntu@ip-xxx-xx-xx-xx:~$`), ejecuta los siguientes pasos:
+Una vez dentro de la terminal (verás `[ec2-user@ip-xxx-xx-xx-xx ~]$`), ejecuta los siguientes pasos adaptados a **Amazon Linux 2023**:
 
 ---
 
@@ -14,24 +14,23 @@ Una vez dentro de la terminal de Ubuntu (verás `ubuntu@ip-xxx-xx-xx-xx:~$`), ej
 
 > [!WARNING]
 > **¿Por qué este paso es OBLIGATORIO en AWS?**  
-> La instancia `t3.micro` o `t2.micro` de la capa gratuita tiene **1 GB de RAM física**. Al compilar el backend de NestJS y descargar los pesos del modelo de visión artificial **TensorFlow COCO-SSD**, el servidor se quedaría sin memoria y el sistema operativo congelaría o apagaría el proceso (*Out Of Memory Killer*).  
-> Al crear **4 GB de Swap** en el disco SSD de 30 GB, le damos al servidor un colchón de **5 GB de memoria total** para compilar y funcionar con total fluidez.
+> La instancia `t3.micro` o `t2.micro` de la capa gratuita tiene **1 GB de RAM física**. Al compilar el backend de NestJS y descargar los pesos de **TensorFlow COCO-SSD**, el servidor se quedaría sin memoria física (*Out Of Memory*). Con **4 GB de Swap** en el disco de 30 GB, el servidor alcanza **5 GB de memoria efectiva**.
 
-Copia y pega este bloque completo en la terminal y presiona `Enter`:
+En Amazon Linux 2023, creamos el swap con `dd` para compatibilidad completa con el sistema de archivos:
 
 ```bash
-# 1. Crear el archivo de 4 GB en el disco
-sudo fallocate -l 4G /swapfile
+# 1. Crear archivo swap de 4 GB
+sudo dd if=/dev/zero of=/swapfile bs=128M count=32
 sudo chmod 600 /swapfile
 
 # 2. Formatear y activar la memoria Swap
 sudo mkswap /swapfile
 sudo swapon /swapfile
 
-# 3. Hacer que el Swap se mantenga activo si el servidor se reinicia
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+# 3. Hacer permanente el swap tras reinicios en fstab
+echo '/swapfile swap swap defaults 0 0' | sudo tee -a /etc/fstab
 
-# 4. Optimizar el uso de Swap (swappiness=20)
+# 4. Ajustar agresividad a swappiness=20
 sudo sysctl vm.swappiness=20
 echo 'vm.swappiness=20' | sudo tee -a /etc/sysctl.conf
 
@@ -40,47 +39,66 @@ free -h
 ```
 
 **Resultado esperado:**  
-En la fila `Swap:` verás `Total: 4.0Gi`, indicando que tu servidor ya tiene 5 GB de memoria efectiva.
+En la fila `Swap:` verás `total: 4.0Gi`, indicando que tu servidor ya cuenta con el respaldo de memoria necesario.
 
 ---
 
-## 2. Actualizar el Sistema Operativo y Paquetes Base
+## 2. Actualización del Sistema y Paquetes Base (DNF)
+
+Amazon Linux 2023 utiliza el gestor de paquetes **`dnf`**:
 
 ```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl wget git unzip htop ca-certificates gnupg lsb-release
+sudo dnf update -y
+sudo dnf install -y git tar gzip curl htop
 ```
 
 ---
 
-## 3. Instalar Docker y Docker Compose V2
+## 3. Instalar Docker Engine y Habilitar el Servicio
 
-Instalaremos la versión oficial de Docker para Ubuntu:
+En Amazon Linux 2023, Docker se instala directamente desde los repositorios optimizados de AWS:
 
 ```bash
-# 1. Agregar la clave oficial de seguridad de Docker
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+# 1. Instalar Docker
+sudo dnf install -y docker
 
-# 2. Agregar el repositorio de Docker a las fuentes de Ubuntu
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+# 2. Habilitar e iniciar el servicio de Docker
+sudo systemctl enable --now docker
 
-# 3. Instalar Docker Engine y Docker Compose Plugin
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+# 3. Permitir que el usuario ec2-user ejecute Docker sin sudo
+sudo usermod -aG docker ec2-user
+```
 
-# 4. Permitir que el usuario 'ubuntu' ejecute Docker sin escribir 'sudo'
-sudo usermod -aG docker $USER
+---
+
+## 4. Instalar Docker Compose V2 Oficial
+
+```bash
+# 1. Crear el directorio de plugins CLI para Docker
+sudo mkdir -p /usr/local/lib/docker/cli-plugins
+
+# 2. Descargar la versión oficial de Docker Compose v2 para Linux x86_64
+sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+
+# 3. Dar permisos de ejecución
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+# 4. Crear enlace simbólico para que funcione tanto 'docker compose' como 'docker-compose'
+sudo ln -sf /usr/local/lib/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+```
+
+---
+
+## 5. Aplicar Permisos y Verificar Versiones
+
+Aplica los permisos de grupo Docker sin tener que cerrar sesión:
+
+```bash
 newgrp docker
 ```
 
----
-
-## 4. Verificar que las Herramientas Están Listas
-
-Comprueba las versiones instaladas:
+Verifica que ambas herramientas respondan correctamente:
 
 ```bash
 docker --version
@@ -88,7 +106,7 @@ docker compose version
 ```
 
 **Resultado esperado:**
-- `Docker version 24.x` o `27.x`
+- `Docker version 25.x` o superior
 - `Docker Compose version v2.x`
 
-¡Excelente! Tu servidor EC2 de AWS ya tiene toda la infraestructura lista. Continúa con [04_DESPLEGAR_Y_VERIFICAR.md](file:///docs/deploy/aws/04_DESPLEGAR_Y_VERIFICAR.md) para clonar el proyecto y poner en marcha los contenedores.
+¡Tu servidor en Amazon Linux 2023 está 100% configurado! Continúa con [04_DESPLEGAR_Y_VERIFICAR.md](file:///docs/deploy/aws/04_DESPLEGAR_Y_VERIFICAR.md) para clonar el repositorio y desplegar los contenedores.
