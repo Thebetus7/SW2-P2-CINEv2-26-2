@@ -21,7 +21,7 @@ describe('App - Redirección Estricta por Rol e Inexistencia de Botones Superflu
     expect(screen.queryByText(/⚙️/i)).toBeNull();
   });
 
-  it('debe activar la redirección inmediata al montar App si el rol almacenado es ADMIN', () => {
+  it('al ingresar a la URL principal con sesión previa de ADMIN, debe mantener al usuario en el portal sin forzar redirección a localhost', () => {
     localStorage.setItem('jwt_token', 'mock_token_admin');
     localStorage.setItem('user_role', 'ADMIN');
 
@@ -34,15 +34,14 @@ describe('App - Redirección Estricta por Rol e Inexistencia de Botones Superflu
 
     render(<App />);
 
-    expect(assignMock).toHaveBeenCalledWith(
-      expect.stringContaining('http://localhost:4200/?token=mock_token_admin&role=admin')
-    );
+    // El portal principal no debe auto-expulsar al usuario
+    expect(assignMock).not.toHaveBeenCalled();
 
     // Restaurar window.location
     (window as any).location = originalLocation;
   });
 
-  it('debe activar la redirección inmediata al montar App si el rol almacenado es BOLETERO', () => {
+  it('al ingresar a la URL principal con sesión previa de BOLETERO, debe mantener al usuario en el portal sin forzar redirección a localhost', () => {
     localStorage.setItem('jwt_token', 'mock_token_boletero');
     localStorage.setItem('user_role', 'BOLETERO');
 
@@ -55,9 +54,7 @@ describe('App - Redirección Estricta por Rol e Inexistencia de Botones Superflu
 
     render(<App />);
 
-    expect(assignMock).toHaveBeenCalledWith(
-      expect.stringContaining('http://localhost:5177/?token=mock_token_boletero&role=boletero')
-    );
+    expect(assignMock).not.toHaveBeenCalled();
 
     // Restaurar window.location
     (window as any).location = originalLocation;

@@ -271,6 +271,17 @@ export const DEFAULT_USER_TICKETS_SEED = [
   },
 ];
 
+const getApiHost = () => (typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : 'localhost');
+
+const getGcpHost = () => {
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hostParam = urlParams.get('gcp_host') || localStorage.getItem('gcp_host');
+    if (hostParam) return hostParam;
+  }
+  return getApiHost();
+};
+
 export const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
@@ -322,9 +333,8 @@ export const App: React.FC = () => {
     price: number;
   } | null>(null);
 
-  // Redirección estricta e inmediata si se detecta sesión de ADMIN o BOLETERO en el portal cliente
+  // Manejo de acciones globales de navegación (ej: logout directo por parámetro URL)
   useEffect(() => {
-    // 1. Manejo prioritario de acción logout global entre dominios/puertos
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('action') === 'logout' || urlParams.get('logout') === 'true') {
@@ -340,36 +350,6 @@ export const App: React.FC = () => {
         setFullName('Cliente Frecuente');
         setView('billboard');
         setShowAuthModal(false);
-        return; // Detener cualquier redirección posterior
-      }
-    }
-
-    const storedToken = localStorage.getItem('jwt_token');
-    const storedRole = localStorage.getItem('user_role');
-    const storedUser = localStorage.getItem('user_name') || 'admin';
-    const storedFullName = localStorage.getItem('full_name') || 'Administrador General';
-
-    if (storedToken && storedRole === 'ADMIN') {
-      const target = `http://localhost:4200/?token=${encodeURIComponent(storedToken)}&role=admin&user=${encodeURIComponent(storedUser)}&name=${encodeURIComponent(storedFullName)}`;
-      try {
-        if (typeof window !== 'undefined' && window.location && typeof window.location.assign === 'function') {
-          window.location.assign(target);
-        } else {
-          window.location.href = target;
-        }
-      } catch {
-        // Entorno de prueba
-      }
-    } else if (storedToken && storedRole === 'BOLETERO') {
-      const target = `http://localhost:5177/?token=${encodeURIComponent(storedToken)}&role=boletero&user=${encodeURIComponent(storedUser)}&name=${encodeURIComponent(storedFullName)}`;
-      try {
-        if (typeof window !== 'undefined' && window.location && typeof window.location.assign === 'function') {
-          window.location.assign(target);
-        } else {
-          window.location.href = target;
-        }
-      } catch {
-        // Entorno de prueba
       }
     }
   }, []);
@@ -394,9 +374,8 @@ export const App: React.FC = () => {
     setShowAuthModal(false);
 
     if (userRole === 'ADMIN') {
-      const target = redirectUrl && redirectUrl.includes('?')
-        ? redirectUrl
-        : `http://localhost:4200/?token=${encodeURIComponent(jwt)}&role=admin&user=${encodeURIComponent(uName)}&name=${encodeURIComponent(fName)}`;
+      const baseUrl = redirectUrl && redirectUrl.trim() !== '' ? redirectUrl.split('?')[0] : `http://${getGcpHost()}:4200`;
+      const target = `${baseUrl}/?token=${encodeURIComponent(jwt)}&role=admin&user=${encodeURIComponent(uName)}&name=${encodeURIComponent(fName)}`;
       try {
         if (typeof window !== 'undefined' && window.location && typeof window.location.assign === 'function') {
           window.location.assign(target);
@@ -410,9 +389,8 @@ export const App: React.FC = () => {
     }
 
     if (userRole === 'BOLETERO') {
-      const target = redirectUrl && redirectUrl.includes('?')
-        ? redirectUrl
-        : `http://localhost:5177/?token=${encodeURIComponent(jwt)}&role=boletero&user=${encodeURIComponent(uName)}&name=${encodeURIComponent(fName)}`;
+      const baseUrl = redirectUrl && redirectUrl.trim() !== '' ? redirectUrl.split('?')[0] : `http://${getGcpHost()}:5177`;
+      const target = `${baseUrl}/?token=${encodeURIComponent(jwt)}&role=boletero&user=${encodeURIComponent(uName)}&name=${encodeURIComponent(fName)}`;
       try {
         if (typeof window !== 'undefined' && window.location && typeof window.location.assign === 'function') {
           window.location.assign(target);
