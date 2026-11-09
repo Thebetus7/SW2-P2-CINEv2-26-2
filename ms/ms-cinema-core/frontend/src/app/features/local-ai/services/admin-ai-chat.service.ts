@@ -48,7 +48,34 @@ export interface AdminChatResponse {
   providedIn: 'root',
 })
 export class AdminAiChatService {
-  private readonly baseUrl = 'http://localhost:8001/api/v1';
+  private getIaHost(): string {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hostParam =
+        urlParams.get('ia_host') ||
+        urlParams.get('auth_host') ||
+        localStorage.getItem('ia_host') ||
+        localStorage.getItem('auth_host');
+      if (hostParam) {
+        try {
+          localStorage.setItem('ia_host', hostParam);
+        } catch {}
+        return hostParam;
+      }
+      if (
+        window.location.hostname &&
+        window.location.hostname !== 'localhost' &&
+        window.location.hostname !== '127.0.0.1'
+      ) {
+        return '20.102.51.189';
+      }
+    }
+    return 'localhost';
+  }
+
+  get baseUrl(): string {
+    return `http://${this.getIaHost()}:8001/api/v1`;
+  }
 
   constructor(private http: HttpClient) {}
 
@@ -56,19 +83,31 @@ export class AdminAiChatService {
    * Consulta al asistente ejecutivo de GrokCloud + MCP Tools en el puerto 8001
    */
   sendMessage(req: AdminChatRequest): Observable<AdminChatResponse> {
-    return this.http.post<AdminChatResponse>(`${this.baseUrl}/admin/chat`, {
-      message: req.message,
-      userId: req.userId || 'admin',
-      requestExcel: !!req.requestExcel,
-      history: req.history || [],
-    });
+    return this.http
+      .post<AdminChatResponse>(`${this.baseUrl}/admin/chat`, {
+        message: req.message,
+        userId: req.userId || 'admin',
+        requestExcel: !!req.requestExcel,
+        history: req.history || [],
+      })
+      .pipe(
+        map((res) => {
+          if (res?.excelReport?.downloadUrl && this.getIaHost() !== 'localhost') {
+            res.excelReport.downloadUrl = res.excelReport.downloadUrl.replace(
+              'localhost:8001',
+              `${this.getIaHost()}:8001`
+            );
+          }
+          return res;
+        })
+      );
   }
 
   /**
    * Comprueba disponibilidad del microservicio MS IA-MCP
    */
   checkHealth(): Observable<boolean> {
-    return this.http.get<{ status: string }>('http://localhost:8001/health').pipe(
+    return this.http.get<{ status: string }>(`http://${this.getIaHost()}:8001/health`).pipe(
       timeout(2500),
       map((res) => res.status === 'ok'),
       catchError(() => of(false))
