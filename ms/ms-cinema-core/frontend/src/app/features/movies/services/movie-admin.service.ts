@@ -33,6 +33,10 @@ export class MovieAdminService {
         } catch {}
         return hostParam;
       }
+      // En entorno de producción remoto, el nodo AWS por defecto es 3.89.228.24
+      if (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return '3.89.228.24';
+      }
     }
     return this.getApiHost();
   }
