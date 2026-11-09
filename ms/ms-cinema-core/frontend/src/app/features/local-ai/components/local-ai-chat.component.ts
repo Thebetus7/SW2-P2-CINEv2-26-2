@@ -493,18 +493,18 @@ export interface CapabilityItem {
                       <div>
                         <div class="flex justify-between text-[9px] text-slate-500 mb-0.5">
                           <span>Actual</span>
-                          <span class="text-indigo-300 font-mono">{{ msg.predictiveMetrics.projectedFinalOccupancy - (msg.predictiveMetrics.projectedOccupancyBoost ?? 0) }}%</span>
+                          <span class="text-indigo-300 font-mono">{{ msg.predictiveMetrics.projectedFinalOccupancy - msg.predictiveMetrics.projectedOccupancyBoost }}%</span>
                         </div>
                         <svg viewBox="0 0 100 8" class="w-full h-2">
                           <rect x="0" y="0" width="100" height="8" rx="4" fill="#1e293b"/>
                           <rect x="0" y="0"
-                                [attr.width]="(msg.predictiveMetrics.projectedFinalOccupancy - (msg.predictiveMetrics.projectedOccupancyBoost ?? 0))"
+                                [attr.width]="(msg.predictiveMetrics.projectedFinalOccupancy - msg.predictiveMetrics.projectedOccupancyBoost)"
                                 height="8" rx="4" fill="#6366f1" class="proj-bar-anim"/>
                           <!-- Marcador actual -->
                           <line
-                            [attr.x1]="(msg.predictiveMetrics.projectedFinalOccupancy - (msg.predictiveMetrics.projectedOccupancyBoost ?? 0))"
+                            [attr.x1]="(msg.predictiveMetrics.projectedFinalOccupancy - msg.predictiveMetrics.projectedOccupancyBoost)"
                             y1="0"
-                            [attr.x2]="(msg.predictiveMetrics.projectedFinalOccupancy - (msg.predictiveMetrics.projectedOccupancyBoost ?? 0))"
+                            [attr.x2]="(msg.predictiveMetrics.projectedFinalOccupancy - msg.predictiveMetrics.projectedOccupancyBoost)"
                             y2="8"
                             stroke="white" stroke-width="1.5"/>
                         </svg>

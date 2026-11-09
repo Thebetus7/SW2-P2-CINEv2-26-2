@@ -142,14 +142,14 @@ import { MovieCreatorModalComponent } from './movie-creator-modal.component';
           <!-- Contenedor de Póster MinIO S3 / AWS Multimedia -->
           <div class="relative aspect-[2/3] w-full bg-slate-950 overflow-hidden flex items-center justify-center">
             <img
-              *ngIf="movie.posterUrl && !failedPosterIds.has(movie.id)"
+              *ngIf="movie.posterUrl && !hasFailedPoster(movie.id)"
               [src]="resolvePosterUrl(movie.posterUrl)"
               [alt]="movie.title"
               (error)="onPosterError(movie.id)"
               class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
             />
             <div
-              *ngIf="!movie.posterUrl || failedPosterIds.has(movie.id)"
+              *ngIf="!movie.posterUrl || hasFailedPoster(movie.id)"
               class="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-gradient-to-b from-slate-900 to-slate-950 p-4 text-center select-none"
             >
               <span class="text-4xl mb-2 opacity-60">🎬</span>
@@ -324,6 +324,10 @@ export class MovieCatalogComponent implements OnInit {
 
   resolvePosterUrl(url?: string): string {
     return this.movieAdminService.resolvePosterUrl(url);
+  }
+
+  hasFailedPoster(movieId?: string): boolean {
+    return !!movieId && this.failedPosterIds.has(movieId);
   }
 
   onPosterError(movieId?: string) {
