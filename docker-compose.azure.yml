@@ -42,6 +42,8 @@ services:
       # Conexión Cross-Cloud hacia GCP (Cinema Core) y AWS (Multimedia)
       CINEMA_CORE_URL: ${CORE_API_URL:-http://localhost:3000}
       MULTIMEDIA_URL: ${MULTIMEDIA_URL:-http://localhost:3001}
+      JWT_SECRET: ${JWT_SECRET:-supersecretjwtkeyforcinemav2production2026hexformat001122334455667788}
+      HMAC_SECRET_KEY: ${HMAC_SECRET_KEY:-clave_secreta_para_firmar_boletos_qr_hmac_sha256_cinev2_universidad_2026}
       JAVA_OPTS: "-Xms128m -Xmx384m -XX:+UseG1GC"
     ports:
       - "8081:8081"
@@ -68,9 +70,14 @@ services:
       dockerfile: Dockerfile
     container_name: SW2-P2-CINEv2-ms-ia-mcp-backend
     environment:
+      CINEMA_CORE_URL: ${CORE_API_URL:-http://localhost:3000}
       CORE_API_URL: ${CORE_API_URL:-http://localhost:3000}
+      MULTIMEDIA_URL: ${MULTIMEDIA_URL:-http://localhost:3001}
       MULTIMEDIA_API_URL: ${MULTIMEDIA_URL:-http://localhost:3001}
-      GROK_API_KEY: ${GROK_API_KEY:-xai-mock-or-real-api-key}
+      GROQ_API_KEY: ${GROQ_API_KEY:-${GROK_API_KEY:-mock_groq_api_key_cinev2}}
+      GROK_API_KEY: ${GROK_API_KEY:-${GROQ_API_KEY:-mock_groq_api_key_cinev2}}
+      GROK_MODEL: ${GROK_MODEL:-qwen/qwen3.8-27b}
+      GROK_BASE_URL: ${GROK_BASE_URL:-https://api.groq.com/openai/v1}
     ports:
       - "8001:8001"
     networks:

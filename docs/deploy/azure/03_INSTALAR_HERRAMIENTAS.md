@@ -6,17 +6,17 @@ Este documento describe la preparación del sistema operativo Ubuntu 22.04 LTS e
 
 ## 1. Conexión SSH a la Instancia Azure
 
-Conéctese a la máquina virtual utilizando la IP pública obtenida en el paso anterior:
+Conéctese a la máquina virtual utilizando la IP pública obtenida en el paso anterior (ingrese la contraseña configurada en el portal):
 
 ```bash
-ssh -i ~/.ssh/id_rsa ubuntu@<TU_IP_PUBLICA_AZURE>
+ssh ubuntu@<TU_IP_PUBLICA_AZURE>
 ```
 
 ---
 
 ## 2. Configuración Obligatoria de Memoria Swap (4 GB)
 
-La instancia `Standard_B1s` dispone de 1 GB de memoria RAM física. Para permitir la ejecución simultánea de los 11 contenedores y la compilación sin bloqueos de memoria (OOM), creamos un archivo Swap de 4 GB:
+La instancia `Standard_B1s` dispone de 1 GB de memoria RAM física. Para permitir la compilación y ejecución holgada de los 5 contenedores de este nodo (`postgres-auth`, `ms-ticket-auth-backend`, `ms-ticket-auth-frontend`, `ms-ia-mcp-backend`, `ms-ia-mcp-frontend`) sin bloqueos de memoria (OOM), creamos un archivo Swap de 4 GB:
 
 ```bash
 # 1. Comprobar memoria actual

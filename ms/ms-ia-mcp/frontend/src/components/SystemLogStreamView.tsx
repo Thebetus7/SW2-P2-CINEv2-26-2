@@ -45,10 +45,18 @@ const AVAILABLE_SEVERITIES: { id: LogSeverity; label: string; color: string }[] 
   { id: 'ERROR', label: 'Error', color: 'text-rose-400 border-rose-500/40 bg-rose-500/10' },
 ]
 
+const getApiHost = () => {
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    return window.location.hostname;
+  }
+  return 'localhost';
+};
+
 export const SystemLogStreamView: React.FC<SystemLogStreamViewProps> = ({
-  streamUrl = 'http://localhost:8001/api/v1/logs/stream',
+  streamUrl,
   initialEvents = [],
 }) => {
+  const effectiveStreamUrl = streamUrl || `http://${getApiHost()}:8001/api/v1/logs/stream`
   const [events, setEvents] = useState<SystemLogEvent[]>(initialEvents)
   const [pendingQueue, setPendingQueue] = useState<SystemLogEvent[]>([])
   const [isFrozen, setIsFrozen] = useState<boolean>(false)
@@ -72,7 +80,7 @@ export const SystemLogStreamView: React.FC<SystemLogStreamViewProps> = ({
 
     try {
       if (typeof EventSource !== 'undefined') {
-        eventSource = new EventSource(streamUrl)
+        eventSource = new EventSource(effectiveStreamUrl)
 
         eventSource.onopen = () => {
           setIsConnected(true)
@@ -100,7 +108,7 @@ export const SystemLogStreamView: React.FC<SystemLogStreamViewProps> = ({
         eventSource.close()
       }
     }
-  }, [streamUrl])
+  }, [effectiveStreamUrl])
 
   const handleIncomingEvent = (newEvent: SystemLogEvent) => {
     if (isFrozenRef.current) {

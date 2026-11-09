@@ -16,10 +16,18 @@ interface QueueSimulatorViewProps {
   onSimulationComplete?: (data: QueueAnalyticsData) => void;
 }
 
+const getApiHost = () => {
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    return window.location.hostname;
+  }
+  return 'localhost';
+};
+
 export const QueueSimulatorView: React.FC<QueueSimulatorViewProps> = ({
-  apiBaseUrl = 'http://localhost:3001',
+  apiBaseUrl,
   onSimulationComplete,
 }) => {
+  const effectiveBaseUrl = apiBaseUrl || `http://${getApiHost()}:3001`;
   const [analytics, setAnalytics] = useState<QueueAnalyticsData>({
     cameraZoneId: 'TAQUILLA_PRINCIPAL',
     personCount: 0,
@@ -56,7 +64,7 @@ export const QueueSimulatorView: React.FC<QueueSimulatorViewProps> = ({
       const dummySvg = `<svg width="10" height="10"><rect width="10" height="10" fill="gray"/></svg>`;
       const base64Sample = btoa(dummySvg);
 
-      const response = await fetch(`${apiBaseUrl}/api/v1/analytics/detect-queue`, {
+      const response = await fetch(`${effectiveBaseUrl}/api/v1/analytics/detect-queue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -94,7 +102,7 @@ export const QueueSimulatorView: React.FC<QueueSimulatorViewProps> = ({
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/v1/analytics/line-congestion`, {
+      const response = await fetch(`${effectiveBaseUrl}/api/v1/analytics/line-congestion`, {
         headers: { 'X-Internal-Service': 'ms-ia-mcp' },
       });
       if (response.ok) {

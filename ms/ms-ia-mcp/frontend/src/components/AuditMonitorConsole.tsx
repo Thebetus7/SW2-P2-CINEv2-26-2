@@ -48,6 +48,13 @@ interface ChatMessage {
   showtimes?: ShowtimeCard[]
 }
 
+const getApiHost = () => {
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    return window.location.hostname;
+  }
+  return 'localhost';
+};
+
 export const AuditMonitorConsole: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'audit' | 'chatbot' | 'logs'>('audit')
   const [isAuditing, setIsAuditing] = useState(false)
@@ -78,7 +85,7 @@ export const AuditMonitorConsole: React.FC = () => {
         }
       }
 
-      const res = await fetch('http://localhost:8001/api/v1/audit/trigger-now', {
+      const res = await fetch(`http://${getApiHost()}:8001/api/v1/audit/trigger-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -139,7 +146,7 @@ export const AuditMonitorConsole: React.FC = () => {
     setIsChatLoading(true)
 
     try {
-      const res = await fetch('http://localhost:8001/api/v1/chat', {
+      const res = await fetch(`http://${getApiHost()}:8001/api/v1/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 'demo-user-web', message: promptText }),
@@ -324,7 +331,7 @@ export const AuditMonitorConsole: React.FC = () => {
                             </div>
                           </div>
                           <a
-                            href="http://localhost:8001/api/v1/audit/reports/latest.xlsx"
+                            href={`http://${getApiHost()}:8001/api/v1/audit/reports/latest.xlsx`}
                             target="_blank"
                             rel="noreferrer"
                             className="flex items-center gap-2 px-3 py-1.5 bg-amber-500 text-slate-950 font-semibold text-xs rounded-md hover:bg-amber-400 transition"

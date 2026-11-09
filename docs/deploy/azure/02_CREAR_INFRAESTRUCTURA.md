@@ -99,12 +99,26 @@ Tus microservicios en Azure escuchan en los puertos `5174`, `8081`, `5176` y `80
 2. En el **menú vertical de la izquierda**, busca la categoría **Configuración** y haz clic en **"Redes"** (Networking).
 3. En la parte derecha verás una tabla con las reglas de firewall. Haz clic en el botón **"+ Agregar regla de puerto de entrada"** (Add inbound port rule).
 4. En el panel lateral que se abre a la derecha, configura:
-   - **Intervalos de puertos de destino:** Escribe `5174,8081,5176,8001`
+   - **Origen:** Dejar en **Any** (Cualquiera).
+   - **Intervalos de puertos de origen:** Dejar en `*` (¡IMPORTANTE: no pongas los números de puerto aquí!).
+   - **Destino:** Dejar en **Any**.
+   - **Servicio:** Dejar en **Custom**.
+   - **Intervalos de puertos de destino:** Escribe exactamente `5174,8081,5176,8001`
    - **Protocolo:** Selecciona **TCP**.
    - **Acción:** Asegúrate de que esté en **Permitir** (Allow).
-   - **Prioridad:** Déjalo en el número que sugiere (ej: `1010` o `310`).
+   - **Prioridad:** Déjalo en el número sugerido (ej: `1010` o `310`).
    - **Nombre:** Escribe `AllowCineV2Auth`
 5. Haz clic en el botón azul **"Agregar"** (Add) al fondo.
+
+> [!WARNING]
+> **Error Común en Azure:** No confundas el *puerto de origen* con el *puerto de destino*. El tráfico que llega desde internet sale de cualquier puerto aleatorio del cliente (`*`), pero debe ingresar a los puertos de tu servidor: `5174,8081,5176,8001` (puertos de destino).
+
+> [!TIP]
+> **Si SSH te dice `Permission denied (publickey)`:**
+> Si por descuido seleccionaste "Clave pública SSH" al crear la máquina en vez de "Contraseña", no necesitas borrar la máquina:
+> 1. En el portal de Azure, ve a tu máquina virtual `vm-cinev2-auth-node`.
+> 2. En el menú izquierdo, baja hasta la sección **Ayuda** y haz clic en **"Restablecer contraseña"** (Reset password).
+> 3. En modo selecciona *"Restablecer contraseña"*, usuario `ubuntu`, escribe una nueva contraseña y haz clic en **Actualizar**. En 30 segundos podrás entrar con `ssh ubuntu@<TU_IP>`.
 
 ---
 

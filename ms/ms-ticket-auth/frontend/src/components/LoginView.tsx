@@ -58,6 +58,17 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   },
 ];
 
+const getApiHost = () => (typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : 'localhost');
+
+const getGcpHost = () => {
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hostParam = urlParams.get('gcp_host') || localStorage.getItem('gcp_host');
+    if (hostParam) return hostParam;
+  }
+  return getApiHost();
+};
+
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, isModal, contextualPurchase }) => {
   const [activeTab, setActiveTab] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
 
@@ -107,7 +118,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1200);
 
-      const response = await fetch('http://localhost:8081/graphql', {
+      const response = await fetch(`http://${getApiHost()}:8081/graphql`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(graphqlQuery),
@@ -119,7 +130,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       let userRole: 'ADMIN' | 'CLIENTE' | 'BOLETERO' = roleOverride || 'CLIENTE';
       let userName = targetEmail.split('@')[0] || 'usuario';
       let userFullName = 'Usuario CineV2';
-      let redirectUrl = 'http://localhost:5174';
+      let redirectUrl = `http://${getApiHost()}:5174`;
 
       if (response && response.ok) {
         const json = await response.json();
@@ -151,11 +162,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       }
 
       if (userRole === 'ADMIN') {
-        redirectUrl = 'http://localhost:4200';
+        redirectUrl = `http://${getGcpHost()}:4200`;
       } else if (userRole === 'BOLETERO') {
-        redirectUrl = 'http://localhost:5177';
+        redirectUrl = `http://${getGcpHost()}:5177`;
       } else {
-        redirectUrl = 'http://localhost:5174';
+        redirectUrl = `http://${getApiHost()}:5174`;
       }
 
       // Persistir token, rol y datos de identidad
@@ -243,7 +254,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1200);
 
-      const response = await fetch('http://localhost:8081/graphql', {
+      const response = await fetch(`http://${getApiHost()}:8081/graphql`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(graphqlQuery),

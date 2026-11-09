@@ -74,6 +74,8 @@ services:
       TICKET_AUTH_URL: ${AUTH_API_URL:-http://localhost:8081}
       # Conexión local interna en GCP (Cinema Core)
       CINEMA_CORE_URL: http://ms-cinema-core-backend:3000
+      HMAC_SECRET_KEY: ${HMAC_SECRET_KEY:-clave_secreta_para_firmar_boletos_qr_hmac_sha256_cinev2_universidad_2026}
+      APP_KEY: ${BOLETEO_APP_KEY:-base64:s7V1u2XyZ3aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456=}
     ports:
       - "8000:8000"
     networks:

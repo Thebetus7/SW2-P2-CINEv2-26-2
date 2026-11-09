@@ -1,8 +1,10 @@
 import { ClientChatMessage, ShowtimeCard, RecommendedSeat, PurchaseSummary, ChatFlowState, EmptyStateInfo } from '../types/client-chat.types';
 
+const getApiHost = () => (typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : 'localhost');
+
 const CLIENT_CHAT_API_URL =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_CLIENT_CHAT_API_URL) ||
-  'http://localhost:8001/api/v1/client-chat';
+  `http://${getApiHost()}:8001/api/v1/client-chat`;
 
 export interface SendMessagePayload {
   message: string;
