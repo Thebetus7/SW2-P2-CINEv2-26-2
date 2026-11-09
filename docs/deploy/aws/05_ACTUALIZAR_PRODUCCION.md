@@ -1,26 +1,12 @@
 # Despliegue en Amazon Web Services (AWS) — 05. Actualizar Producción
 
-## 1. Procedimiento de Backup Previo a la Actualización
-
-Antes de desplegar cualquier nueva versión de código o migración de esquema, el rol **DevOps** debe ejecutar el volcado de las bases de datos de producción:
-
-```bash
-# 1. Crear directorio de backups con fecha
-FECHA=$(date +%Y%m%d_%H%M%S)
-mkdir -p /home/ubuntu/backups/$FECHA
-
-# 2. Volcado de db_tickets_auth
-docker exec SW2-P2-CINEv2-postgres-auth pg_dump -U postgres db_tickets_auth > /home/ubuntu/backups/$FECHA/db_tickets_auth.sql
-
-# 3. Volcado de db_cinema_core
-docker exec SW2-P2-CINEv2-postgres-core pg_dump -U postgres db_cinema_core > /home/ubuntu/backups/$FECHA/db_cinema_core.sql
-
-echo "Backups creados exitosamente en /home/ubuntu/backups/$FECHA"
-```
+Este documento detalla el procedimiento para actualizar el código y reconstruir los servicios del nodo **AWS** (`ms-multimedia` y `dynamodb-local`) sin alterar el funcionamiento del resto del ecosistema.
 
 ---
 
-## 2. Actualización de Código y Reconstrucción de Imágenes
+## 1. Actualización de Código y Reconstrucción de Imágenes
+
+Conéctate a tu servidor EC2 de AWS mediante SSH o EC2 Instance Connect:
 
 ```bash
 cd /home/ubuntu/CINEv2
@@ -28,31 +14,44 @@ cd /home/ubuntu/CINEv2
 # 1. Descargar los últimos cambios del repositorio
 git pull origin main
 
-# 2. Reconstruir únicamente los contenedores con cambios de código
-docker compose build
+# 2. Reconstruir únicamente los contenedores del nodo AWS
+docker compose -f docker-compose.aws.yml build
 
-# 3. Desplegar los nuevos contenedores sin tiempo de inactividad prolongado
-docker compose up -d --remove-orphans
+# 3. Levantar los nuevos contenedores en segundo plano
+docker compose -f docker-compose.aws.yml up -d --remove-orphans
 
-# 4. Limpiar imágenes huérfanas para ahorrar espacio en disco EBS
+# 4. Limpiar imágenes huérfanas intermedias para no consumir espacio en disco
 docker image prune -f
 ```
 
 ---
 
-## 3. Procedimiento de Rollback Inmediato
+## 2. Actualizar solo un Servicio Específico
 
-Si una actualización presenta anomalías o fallos funcionales, ejecute la reversión al estado previo:
+Si únicamente hiciste cambios en el frontend simulador o en el backend de multimedia:
+
+- **Para actualizar solo el Frontend Simulador (puerto :5175):**
+  ```bash
+  docker compose -f docker-compose.aws.yml up -d --build ms-multimedia-frontend
+  ```
+
+- **Para actualizar solo el Backend de Visión Artificial (puerto :3001):**
+  ```bash
+  docker compose -f docker-compose.aws.yml up -d --build ms-multimedia-backend
+  ```
+
+---
+
+## 3. Procedimiento de Rollback Rápido
+
+Si la última versión presenta fallos funcionales, puedes regresar de inmediato al commit anterior:
 
 ```bash
+cd /home/ubuntu/CINEv2
+
 # 1. Regresar al commit anterior en Git
 git checkout HEAD~1
 
-# 2. Reconstruir y reiniciar servicios
-docker compose up -d --build
-
-# 3. Restaurar bases de datos si hubo migraciones destructivas
-docker exec -i SW2-P2-CINEv2-postgres-auth psql -U postgres -d db_tickets_auth < /home/ubuntu/backups/<FECHA>/db_tickets_auth.sql
-docker exec -i SW2-P2-CINEv2-postgres-core psql -U postgres -d db_cinema_core < /home/ubuntu/backups/<FECHA>/db_cinema_core.sql
+# 2. Reconstruir y reiniciar servicios con la versión anterior estable
+docker compose -f docker-compose.aws.yml up -d --build
 ```
-

@@ -1,85 +1,94 @@
-# Despliegue en Amazon Web Services (AWS) — 03. Instalar Herramientas
+# Despliegue en Amazon Web Services (AWS) — 03. Instalar Herramientas (Swap, Docker y Compose)
 
-Conéctese a la instancia EC2 mediante SSH como el usuario `ubuntu`:
+Conéctate a tu servidor EC2 utilizando **EC2 Instance Connect** (directo en la web de AWS) o desde PowerShell con tu archivo `.pem`:
+
 ```bash
-ssh -i cinev2-key.pem ubuntu@<TU_IP_PUBLICA>
+ssh -i cinev2-aws-key.pem ubuntu@<IP_PUBLICA_AWS>
 ```
+
+Una vez dentro de la terminal de Ubuntu (verás `ubuntu@ip-xxx-xx-xx-xx:~$`), ejecuta los siguientes pasos:
 
 ---
 
-## 1. Configuración Obligatoria de 4 GB de Swap
+## 1. Configuración Obligatoria de 4 GB de Memoria Swap
 
-Dado que una instancia `t3.micro` cuenta con 1 GB de RAM física y el ecosistema alberga Spring Boot 3 (Java 21), NestJS, Laravel y TensorFlow, es **mandatorio** crear 4 GB de memoria de intercambio (Swap) en el disco EBS gp3 para evitar que el kernel ejecute el *OOM Killer*:
+> [!WARNING]
+> **¿Por qué este paso es OBLIGATORIO en AWS?**  
+> La instancia `t3.micro` o `t2.micro` de la capa gratuita tiene **1 GB de RAM física**. Al compilar el backend de NestJS y descargar los pesos del modelo de visión artificial **TensorFlow COCO-SSD**, el servidor se quedaría sin memoria y el sistema operativo congelaría o apagaría el proceso (*Out Of Memory Killer*).  
+> Al crear **4 GB de Swap** en el disco SSD de 30 GB, le damos al servidor un colchón de **5 GB de memoria total** para compilar y funcionar con total fluidez.
+
+Copia y pega este bloque completo en la terminal y presiona `Enter`:
 
 ```bash
-# 1. Crear archivo swap de 4 Gigabytes
+# 1. Crear el archivo de 4 GB en el disco
 sudo fallocate -l 4G /swapfile
 sudo chmod 600 /swapfile
 
-# 2. Formatear y activar swap
+# 2. Formatear y activar la memoria Swap
 sudo mkswap /swapfile
 sudo swapon /swapfile
 
-# 3. Hacer permanente el swap tras reinicios
+# 3. Hacer que el Swap se mantenga activo si el servidor se reinicia
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
-# 4. Ajustar agresividad de swap (swappiness=10) para optimizar rendimiento de RAM
-sudo sysctl vm.swappiness=10
-echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
+# 4. Optimizar el uso de Swap (swappiness=20)
+sudo sysctl vm.swappiness=20
+echo 'vm.swappiness=20' | sudo tee -a /etc/sysctl.conf
 
-# 5. Comprobar que el espacio Swap esté activo
+# 5. Comprobar que esté activo
 free -h
 ```
-Resultado observable esperado: `Swap: Total: 4.0Gi, Used: 0B, Free: 4.0Gi`.
+
+**Resultado esperado:**  
+En la fila `Swap:` verás `Total: 4.0Gi`, indicando que tu servidor ya tiene 5 GB de memoria efectiva.
 
 ---
 
-## 2. Actualización del Sistema Operativo
+## 2. Actualizar el Sistema Operativo y Paquetes Base
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl wget git unzip htop ufw ca-certificates gnupg lsb-release
+sudo apt install -y curl wget git unzip htop ca-certificates gnupg lsb-release
 ```
 
 ---
 
-## 3. Instalación Oficial de Docker y Docker Compose v2
+## 3. Instalar Docker y Docker Compose V2
+
+Instalaremos la versión oficial de Docker para Ubuntu:
 
 ```bash
-# 1. Agregar la llave GPG oficial de Docker
+# 1. Agregar la clave oficial de seguridad de Docker
 sudo mkdir -p /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
-# 2. Configurar el repositorio estable
+# 2. Agregar el repositorio de Docker a las fuentes de Ubuntu
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-# 3. Instalar Docker Engine y el plugin Docker Compose
+# 3. Instalar Docker Engine y Docker Compose Plugin
 sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# 4. Habilitar ejecución de Docker sin sudo para el usuario ubuntu
+# 4. Permitir que el usuario 'ubuntu' ejecute Docker sin escribir 'sudo'
 sudo usermod -aG docker $USER
 newgrp docker
-
-# 5. Verificar versiones instaladas
-docker --version
-docker compose version
 ```
-Resultado observable esperado: `Docker version 24.x o superior` y `Docker Compose version v2.x`.
 
 ---
 
-## 4. Instalación de Nginx y Certbot (Let's Encrypt)
+## 4. Verificar que las Herramientas Están Listas
 
-Nginx actuará como el Reverse Proxy frontal del servidor, gestionando la terminación SSL y enrutando cada subdominio hacia el contenedor Docker correspondiente:
+Comprueba las versiones instaladas:
 
 ```bash
-sudo apt install -y nginx certbot python3-certbot-nginx
-sudo systemctl enable nginx
-sudo systemctl start nginx
-sudo systemctl status nginx --no-pager
+docker --version
+docker compose version
 ```
-Resultado observable esperado: `Active: active (running)`.
 
+**Resultado esperado:**
+- `Docker version 24.x` o `27.x`
+- `Docker Compose version v2.x`
+
+¡Excelente! Tu servidor EC2 de AWS ya tiene toda la infraestructura lista. Continúa con [04_DESPLEGAR_Y_VERIFICAR.md](file:///docs/deploy/aws/04_DESPLEGAR_Y_VERIFICAR.md) para clonar el proyecto y poner en marcha los contenedores.
