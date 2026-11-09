@@ -19,8 +19,31 @@ export type { Movie, CreateMovieDto, AnalyzePosterResponse, AnalyzePosterResult 
   providedIn: 'root',
 })
 export class MovieAdminService {
-  private readonly cinemaCoreUrl = 'http://localhost:3000/api/v1/movies';
-  private readonly multimediaUrl = 'http://localhost:3001/api/v1/multimedia/movies/analyze-poster';
+  private getApiHost(): string {
+    return typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : 'localhost';
+  }
+
+  private getMultimediaHost(): string {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hostParam = urlParams.get('aws_host') || localStorage.getItem('aws_host') || localStorage.getItem('multimedia_host');
+      if (hostParam) {
+        try {
+          localStorage.setItem('aws_host', hostParam);
+        } catch {}
+        return hostParam;
+      }
+    }
+    return this.getApiHost();
+  }
+
+  get cinemaCoreUrl(): string {
+    return `http://${this.getApiHost()}:3000/api/v1/movies`;
+  }
+
+  get multimediaUrl(): string {
+    return `http://${this.getMultimediaHost()}:3001/api/v1/multimedia/movies/analyze-poster`;
+  }
 
   constructor(private readonly http: HttpClient) {}
 

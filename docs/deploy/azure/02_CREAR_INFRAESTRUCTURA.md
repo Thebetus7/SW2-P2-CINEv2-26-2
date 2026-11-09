@@ -126,7 +126,7 @@ Tus microservicios en Azure escuchan en los puertos `5174`, `8081`, `5176` y `80
 
 1. En el menú de la izquierda de tu máquina virtual, haz clic arriba en **"Información general"** (Overview).
 2. En el panel central derecho verás un campo que dice:  
-   👉 **Dirección IP pública:** (Por ejemplo: `20.120.45.89`).  
+   👉 **Dirección IP pública:** (Por ejemplo: `20.102.51.189`).  
    ¡Esta es la IP de tu servidor en Azure!
 3. **Para conectarte por terminal:**
    - Abre la terminal de tu computadora (PowerShell, CMD o Git Bash) y escribe:

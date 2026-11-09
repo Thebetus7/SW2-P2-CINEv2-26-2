@@ -10,9 +10,13 @@ export const adminAuthGuard: CanActivateFn = (route, state) => {
     const qUser = urlParams.get('user');
     const qName = urlParams.get('name');
     const qAuthHost = urlParams.get('auth_host');
+    const qAwsHost = urlParams.get('aws_host');
 
     if (qAuthHost) {
       localStorage.setItem('auth_host', qAuthHost);
+    }
+    if (qAwsHost) {
+      localStorage.setItem('aws_host', qAwsHost);
     }
 
     if (qToken) {

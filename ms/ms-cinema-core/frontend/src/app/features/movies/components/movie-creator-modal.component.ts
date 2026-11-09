@@ -331,6 +331,9 @@ export class MovieCreatorModalComponent {
       },
       error: (err) => {
         this.isAnalyzingPoster = false;
+        this.aiAnalyzed = false;
+        // Si el microservicio multimedia en AWS falla o no está disponible, mantenemos la previsualización local para permitir guardar
+        this.posterUrl = this.posterPreview || '';
         this.errorMessage =
           err?.error?.message || 'Error al procesar el póster con Deep Learning.';
       },
