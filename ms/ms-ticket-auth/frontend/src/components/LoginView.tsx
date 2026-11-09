@@ -63,8 +63,20 @@ const getApiHost = () => (typeof window !== 'undefined' && window.location.hostn
 const getGcpHost = () => {
   if (typeof window !== 'undefined') {
     const urlParams = new URLSearchParams(window.location.search);
-    const hostParam = urlParams.get('gcp_host') || localStorage.getItem('gcp_host');
-    if (hostParam) return hostParam;
+    const hostParam = urlParams.get('gcp_host') || localStorage.getItem('gcp_host') || (import.meta as any).env?.VITE_GCP_HOST;
+    if (hostParam) {
+      try {
+        localStorage.setItem('gcp_host', hostParam);
+      } catch {
+        // Ignorado
+      }
+      return hostParam;
+    }
+
+    // Si estamos en un host remoto (ej: Azure 20.102.51.189), por defecto el nodo GCP es 34.10.125.253
+    if (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return '34.10.125.253';
+    }
   }
   return getApiHost();
 };
@@ -183,7 +195,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onClose, i
 
       // En el entorno del navegador real, ejecutar la redirección inmediata con soporte SSO por token y usuario
       if (typeof window !== 'undefined' && (userRole === 'ADMIN' || userRole === 'BOLETERO')) {
-        const targetWithToken = `${redirectUrl}/?token=${encodeURIComponent(jwtToken)}&role=${userRole.toLowerCase()}&user=${encodeURIComponent(userName)}&name=${encodeURIComponent(userFullName)}`;
+        const currentHost = window.location.hostname || 'localhost';
+        const targetWithToken = `${redirectUrl}/?token=${encodeURIComponent(jwtToken)}&role=${userRole.toLowerCase()}&user=${encodeURIComponent(userName)}&name=${encodeURIComponent(userFullName)}&auth_host=${encodeURIComponent(currentHost)}`;
         try {
           if (window.location && typeof window.location.assign === 'function') {
             window.location.assign(targetWithToken);

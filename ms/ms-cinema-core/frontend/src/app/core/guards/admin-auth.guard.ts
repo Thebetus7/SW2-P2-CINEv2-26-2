@@ -9,6 +9,11 @@ export const adminAuthGuard: CanActivateFn = (route, state) => {
     const qRole = urlParams.get('role');
     const qUser = urlParams.get('user');
     const qName = urlParams.get('name');
+    const qAuthHost = urlParams.get('auth_host');
+
+    if (qAuthHost) {
+      localStorage.setItem('auth_host', qAuthHost);
+    }
 
     if (qToken) {
       localStorage.setItem('token', qToken);
@@ -30,6 +35,8 @@ export const adminAuthGuard: CanActivateFn = (route, state) => {
   }
 
   // Redirección al portal principal de autenticación si no está autenticado como admin
-  window.location.href = 'http://localhost:5174';
+  const isRemote = typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+  const authHost = (typeof window !== 'undefined' && (localStorage.getItem('auth_host') || new URLSearchParams(window.location.search).get('auth_host'))) || (isRemote ? '20.102.51.189' : 'localhost');
+  window.location.href = `http://${authHost}:5174`;
   return false;
 };
