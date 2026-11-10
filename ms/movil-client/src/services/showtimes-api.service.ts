@@ -5,10 +5,12 @@ const getCoreBaseUrl = (): string => {
   if (metaEnv?.VITE_CORE_API_URL) {
     return metaEnv.VITE_CORE_API_URL;
   }
-  if (typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return 'http://34.10.125.253:3000/api/v1';
+  // En desarrollo web puro en PC local (puerto 5173), permitir localhost
+  if (typeof window !== 'undefined' && window.location && window.location.port === '5173' && window.location.hostname === 'localhost') {
+    return 'http://localhost:3000/api/v1';
   }
-  return 'http://localhost:3000/api/v1';
+  // En aplicación móvil (Capacitor Android) y despliegue remoto, apuntar al nodo oficial GCP
+  return 'http://34.10.125.253:3000/api/v1';
 };
 
 const REST_BASE_URL = getCoreBaseUrl();

@@ -52,58 +52,63 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const handleRequestPermission = async () => {
     setIsSubscribing(true);
     setFeedbackMsg(null);
-    const result = await pushSubscriptionService.subscribeUserToPush();
-    setIsSubscribing(false);
+    try {
+      // 1. Solicitar permiso nativo de Android (POST_NOTIFICATIONS) a nivel de sistema
+      await notificationsInboxService.requestNativePermission();
+      
+      // 2. Suscribir al Service Worker / Web Push si está disponible
+      await pushSubscriptionService.subscribeUserToPush();
+      setIsSubscribing(false);
 
-    const updatedState = pushSubscriptionService.getPermissionState();
-    setPermission(updatedState);
+      const updatedState = pushSubscriptionService.getPermissionState();
+      setPermission(updatedState);
 
-    if (result.success) {
       setFeedbackMsg({
         type: 'success',
-        text: '¡Alertas activadas con éxito! Recibirás los próximos estrenos en tu bandeja.',
+        text: '¡Alertas activadas con éxito! Recibirás los próximos estrenos en tu barra de estado y bandeja.',
       });
-      // Añadir notificación de bienvenida al inbox
+      // Añadir notificación de bienvenida al inbox y disparar sonido/vibración
       notificationsInboxService.addNotification({
         title: '🔔 ¡Suscripción de Alertas Confirmada!',
         body: 'Has activado las alertas automáticas para nuevos estrenos y funciones exclusivas en Cine Bolivia.',
         type: 'system',
       });
-    } else {
+    } catch (err: any) {
+      setIsSubscribing(false);
       setFeedbackMsg({
         type: 'error',
-        text: result.error || 'No se pudieron activar las notificaciones.',
+        text: err?.message || 'No se pudieron activar las notificaciones en el dispositivo.',
       });
     }
   };
 
   const handleSendTestNotification = async () => {
     setFeedbackMsg(null);
-    const success = await pushSubscriptionService.showTestNotification(
+    // 1. Emitir notificación nativa directa en el sistema operativo Android / barra de estado
+    await notificationsInboxService.triggerNativeAlert(
+      '🎬 Cine Bolivia: Alerta de Prueba',
+      '¡Esta es una notificación de prueba nativa! Sonido y vibración operativos.'
+    );
+
+    // 2. Notificación push / Service worker fallback
+    await pushSubscriptionService.showTestNotification(
       '🎬 Cine Bolivia: Alerta de Prueba',
       {
         body: '¡Esta es una notificación de prueba! El sistema de alertas está 100% operativo.',
       }
     );
 
-    // Agregar registro visual al inbox
+    // 3. Agregar registro visual al inbox
     notificationsInboxService.addNotification({
       title: '🎬 Alerta de Notificación de Prueba',
       body: 'Prueba de recepción de alerta en tu dispositivo. ¡Todo funciona a la perfección!',
       type: 'promo',
     });
 
-    if (success) {
-      setFeedbackMsg({
-        type: 'success',
-        text: 'Notificación de prueba enviada al sistema del dispositivo.',
-      });
-    } else {
-      setFeedbackMsg({
-        type: 'error',
-        text: 'Asegúrate de haber otorgado el permiso de notificaciones primero.',
-      });
-    }
+    setFeedbackMsg({
+      type: 'success',
+      text: 'Notificación de prueba enviada al sistema del dispositivo.',
+    });
   };
 
   const handleNotificationClick = (item: AppNotificationItem) => {

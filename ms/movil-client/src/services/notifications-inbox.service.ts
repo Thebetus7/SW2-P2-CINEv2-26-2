@@ -4,6 +4,7 @@
  */
 
 import { resolvePosterUrl } from './showtimes-api.service';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 export interface AppNotificationItem {
   id: string;
@@ -135,6 +136,43 @@ class NotificationsInboxService {
     this.saveToStorage();
   }
 
+  async requestNativePermission(): Promise<boolean> {
+    try {
+      if (typeof window !== 'undefined' && LocalNotifications) {
+        const res = await LocalNotifications.requestPermissions();
+        return res.display === 'granted';
+      }
+    } catch (e) {
+      console.warn('[notificationsInboxService] Solicitud de permisos nativos:', e);
+    }
+    return false;
+  }
+
+  async triggerNativeAlert(title: string, body: string): Promise<boolean> {
+    try {
+      if (typeof window !== 'undefined' && LocalNotifications) {
+        // En entorno nativo Android/Capacitor o navegador con soporte
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title,
+              body,
+              id: Math.floor(Math.random() * 900000) + 100000,
+              schedule: { at: new Date(Date.now() + 300) },
+              sound: undefined,
+              actionTypeId: '',
+              extra: null,
+            },
+          ],
+        });
+        return true;
+      }
+    } catch (e) {
+      console.warn('[notificationsInboxService] LocalNotifications.schedule advertencia:', e);
+    }
+    return false;
+  }
+
   addNotification(
     data: Omit<AppNotificationItem, 'id' | 'timestamp' | 'read'>
   ): AppNotificationItem {
@@ -146,6 +184,8 @@ class NotificationsInboxService {
     };
     this.items = [newItem, ...this.items];
     this.saveToStorage();
+    // Emitir alerta nativa con sonido/vibración si el dispositivo lo permite
+    this.triggerNativeAlert(newItem.title, newItem.body).catch(() => {});
     return newItem;
   }
 
@@ -206,6 +246,10 @@ class NotificationsInboxService {
 
       if (addedCount > 0) {
         this.saveToStorage();
+        const latest = this.items[0];
+        if (latest) {
+          this.triggerNativeAlert(latest.title, latest.body).catch(() => {});
+        }
       }
       return addedCount;
     } catch (e) {

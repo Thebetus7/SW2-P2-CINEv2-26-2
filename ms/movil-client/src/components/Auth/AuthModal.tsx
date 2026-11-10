@@ -45,10 +45,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   if (!isOpen) return null;
 
   const getGraphQLUrl = (): string => {
-    return (
-      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GRAPHQL_URL) ||
-      'http://localhost:8081/graphql'
-    );
+    const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<string, string> }).env : undefined;
+    if (metaEnv?.VITE_GRAPHQL_URL) {
+      return metaEnv.VITE_CORE_API_URL || metaEnv.VITE_GRAPHQL_URL;
+    }
+    if (typeof window !== 'undefined' && window.location && window.location.port === '5173' && window.location.hostname === 'localhost') {
+      return 'http://localhost:8081/graphql';
+    }
+    return 'http://20.102.51.189:8081/graphql';
   };
 
   const handleDemoLogin = async () => {

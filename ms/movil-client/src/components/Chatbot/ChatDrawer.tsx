@@ -38,9 +38,18 @@ export interface ChatDrawerProps {
   onToggleExternal?: () => void;
 }
 
-const CHAT_API_URL =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CHAT_API_URL) ||
-  'http://localhost:8001/api/v1/client-chat';
+const getChatApiUrl = (): string => {
+  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<string, string> }).env : undefined;
+  if (metaEnv?.VITE_CHAT_API_URL) {
+    return metaEnv.VITE_CHAT_API_URL;
+  }
+  if (typeof window !== 'undefined' && window.location && window.location.port === '5173' && window.location.hostname === 'localhost') {
+    return 'http://localhost:8001/api/v1/client-chat';
+  }
+  return 'http://20.102.51.189:8001/api/v1/client-chat';
+};
+
+const CHAT_API_URL = getChatApiUrl();
 const CHAT_CACHE_KEY = 'cinema_client_chat_history_v1';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 

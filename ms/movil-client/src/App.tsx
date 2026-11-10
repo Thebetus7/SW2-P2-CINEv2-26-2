@@ -74,20 +74,30 @@ export const App: React.FC = () => {
     const unsubscribe = notificationsInboxService.subscribe(() => {
       setUnreadCount(notificationsInboxService.getUnreadCount());
     });
+    // Solicitar permisos de notificación nativos del sistema Android (POST_NOTIFICATIONS)
+    notificationsInboxService.requestNativePermission().catch(() => {});
     // Sincronizar estrenos reales creados por el admin en ms-cinema-core (GCP :3000)
     notificationsInboxService.syncBackendPremieres().catch(() => {});
     return () => unsubscribe();
   }, [currentUser]);
 
   useEffect(() => {
-    showtimesApiService.getBillboard().then((billboard) => {
-      if (billboard && billboard.movies && billboard.movies.length > 0) {
-        setMovies(billboard.movies);
-      }
-      if (billboard && billboard.showtimes && billboard.showtimes.length > 0) {
-        setShowtimes(billboard.showtimes);
-      }
-    }).catch(() => {});
+    const refreshData = () => {
+      showtimesApiService.getBillboard().then((billboard) => {
+        if (billboard && billboard.movies && billboard.movies.length > 0) {
+          setMovies(billboard.movies);
+        }
+        if (billboard && billboard.showtimes && billboard.showtimes.length > 0) {
+          setShowtimes(billboard.showtimes);
+        }
+      }).catch(() => {});
+      notificationsInboxService.syncBackendPremieres().catch(() => {});
+    };
+
+    refreshData();
+    // Sondeo reactivo cada 20 segundos para reflejar en vivo las películas creadas por el admin
+    const timer = setInterval(refreshData, 20000);
+    return () => clearInterval(timer);
   }, []);
 
   const handleSelectMovie = (movie: Movie) => {
