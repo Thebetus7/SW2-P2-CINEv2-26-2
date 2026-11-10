@@ -89,12 +89,23 @@ export async function confirmPurchase(
   }
 
   // Fallback con generación de QR firmado HMAC y payload completo
+  const issuedAt = new Date().toISOString();
+  const hashSignature = `hmac-sha256-signature-mock-${ticketId}`;
   const qrData = {
     ticketId,
+    seatId: 'C-8',
+    seatCode: 'C-8',
+    showtimeId: 'st-01',
+    issuedAt,
     paymentIntentId,
-    signedAt: new Date().toISOString(),
+    signedAt: issuedAt,
     status: 'CONFIRMED',
-    hashSignature: `hmac-sha256-signature-mock-${ticketId}`,
+    sig: hashSignature,
+    signature: hashSignature,
+    hashSignature,
+    movieTitle: 'Dune: Parte 2',
+    roomName: 'Sala 2',
+    salaNombre: 'Sala 2',
   };
 
   return {

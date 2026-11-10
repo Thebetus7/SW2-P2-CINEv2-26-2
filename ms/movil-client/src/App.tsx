@@ -12,10 +12,13 @@ import { DEFAULT_MOCK_MOVIES, DEFAULT_MOCK_SHOWTIMES, showtimesApiService } from
 import { offlineStorageService, OfflineTicketRecord } from './services/offline-storage.service';
 import { initiatePurchase, confirmPurchase } from './graphql/mutations';
 import { Movie, Showtime, Seat } from './types';
-import { Film, Ticket, Navigation, ArrowLeft, Bell } from 'lucide-react';
+import { Film, Ticket, Navigation, ArrowLeft, Bell, LogIn, Bot } from 'lucide-react';
 import { NotificationPermissionBanner } from './components/Notifications/NotificationPermissionBanner';
 import { NotificationCenterModal } from './components/Notifications/NotificationCenterModal';
 import { notificationsInboxService } from './services/notifications-inbox.service';
+import { AuthModal, AuthUser } from './components/Auth/AuthModal';
+import { clearAuthToken, getAuthToken } from './services/apollo-client';
+import { generateQrSignature } from './components/Tickets/RealQrCode';
 
 export const App: React.FC = () => {
   const [tab, setTab] = useState<'billboard' | 'tickets' | 'gps'>('billboard');
@@ -25,6 +28,37 @@ export const App: React.FC = () => {
   // Estados del Centro de Notificaciones
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
   const [unreadCount, setUnreadCount] = useState<number>(() => notificationsInboxService.getUnreadCount());
+
+  // Estados de Autenticación de Cliente (Login / Registro / Demo 1-Clic)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isChatDrawerOpen, setIsChatDrawerOpen] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    try {
+      const token = getAuthToken();
+      const email = localStorage.getItem('user_email');
+      const fullName = localStorage.getItem('full_name');
+      const role = localStorage.getItem('user_role');
+      if (token && email) {
+        return {
+          token,
+          email,
+          fullName: fullName || 'Cliente Frecuente',
+          role: role || 'CLIENTE',
+        };
+      }
+    } catch {}
+    return null;
+  });
+
+  const handleLogout = () => {
+    clearAuthToken();
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('user_name');
+    localStorage.removeItem('full_name');
+    localStorage.removeItem('user_role');
+    setCurrentUser(null);
+  };
 
   // Estados del Flujo de Compra
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
@@ -76,7 +110,8 @@ export const App: React.FC = () => {
     if (!selectedShowtime) return;
     setSelectedSeat(seat);
     try {
-      const initiated = await initiatePurchase(selectedShowtime.id, seat.id);
+      const activeUserId = currentUser?.email || 'cliente-demo-01';
+      const initiated = await initiatePurchase(selectedShowtime.id, seat.id, activeUserId);
       setTicketId(initiated.ticketId);
       setPreviewUrl(initiated.previewImageUrl);
       setPurchaseStep(2);
@@ -88,7 +123,10 @@ export const App: React.FC = () => {
 
     // Telemetría de proceso de compra móvil (fire-and-forget)
     try {
-      fetch('http://localhost:8001/api/v1/logs/ingest', {
+      const logsApiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CHAT_API_URL)
+        ? import.meta.env.VITE_CHAT_API_URL.replace('/client-chat', '/logs/ingest')
+        : 'http://localhost:8001/api/v1/logs/ingest';
+      fetch(logsApiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -126,6 +164,9 @@ export const App: React.FC = () => {
       await offlineStorageService.saveTicket(offlineRecord);
       setActiveQrTicket(offlineRecord);
     } catch {
+      const issuedAt = new Date().toISOString();
+      const canonical = `${ticketId}:${selectedSeat.code}:${selectedShowtime.id}:${issuedAt}`;
+      const sig = await generateQrSignature(canonical);
       const mockRecord: OfflineTicketRecord = {
         ticketId,
         showtimeId: selectedShowtime.id,
@@ -133,7 +174,18 @@ export const App: React.FC = () => {
         salaNombre: selectedShowtime.roomName,
         butacaCodigo: selectedSeat.code,
         fechaHoraFuncion: selectedShowtime.startsAt,
-        qrJsonPayload: JSON.stringify({ ticketId, seatId: selectedSeat.code, sig: 'mock_sig' }),
+        qrJsonPayload: JSON.stringify({
+          ticketId,
+          seatId: selectedSeat.code,
+          seatCode: selectedSeat.code,
+          showtimeId: selectedShowtime.id,
+          issuedAt,
+          sig,
+          signature: sig,
+          hashSignature: sig,
+          movieTitle: selectedShowtime.movieTitle,
+          salaNombre: selectedShowtime.roomName,
+        }),
         jpegImageBlob: 'final-mock',
         descargadoEn: new Date().toISOString(),
       };
@@ -144,7 +196,10 @@ export const App: React.FC = () => {
 
     // Telemetría de compra completada en cliente móvil (fire-and-forget)
     try {
-      fetch('http://localhost:8001/api/v1/logs/ingest', {
+      const logsApiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CHAT_API_URL)
+        ? import.meta.env.VITE_CHAT_API_URL.replace('/client-chat', '/logs/ingest')
+        : 'http://localhost:8001/api/v1/logs/ingest';
+      fetch(logsApiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -195,6 +250,18 @@ export const App: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Botón Acceso Rápido Asistente IA & Voz */}
+          <button
+            type="button"
+            data-testid="header-chat-btn"
+            onClick={() => setIsChatDrawerOpen((prev) => !prev)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/30 to-indigo-600/30 border border-blue-500/40 text-blue-300 hover:text-white hover:border-blue-400 transition"
+            title="Abrir Asistente de Cine IA & Voz"
+          >
+            <Bot className="w-4 h-4 text-blue-400 animate-pulse" />
+            <span className="text-xs font-bold hidden sm:inline">Chat IA</span>
+          </button>
+
           {/* Botón Campana Centro de Notificaciones */}
           <button
             type="button"
@@ -214,12 +281,34 @@ export const App: React.FC = () => {
             )}
           </button>
 
-          <a
-            href="http://localhost:5174"
-            className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
-          >
-            Portal Web (:5174)
-          </a>
+          {/* Botón / Perfil de Autenticación (Login, Registro y Demo 1-Clic) */}
+          {currentUser ? (
+            <button
+              type="button"
+              data-testid="user-profile-btn"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+              title="Ver Perfil de Cliente"
+            >
+              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center text-[10px] font-black text-white">
+                👤
+              </div>
+              <span className="text-xs font-bold truncate max-w-[85px] sm:max-w-[120px]">
+                {currentUser.fullName}
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              data-testid="open-auth-modal-btn"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-extrabold shadow-md shadow-rose-600/30 transition"
+              title="Iniciar Sesión o Registro"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Login / Demo</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -348,8 +437,11 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* Asistente Chatbot Deslizable Flotante */}
-      <ChatDrawer />
+      {/* Asistente Chatbot Deslizable Flotante con Reconocimiento de Voz */}
+      <ChatDrawer
+        isOpenExternal={isChatDrawerOpen}
+        onToggleExternal={() => setIsChatDrawerOpen((prev) => !prev)}
+      />
 
       {/* Barra de Navegación Inferior (PWA Tab Bar) */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-6 py-2.5 flex justify-around items-center max-w-lg mx-auto shadow-2xl">
@@ -398,6 +490,15 @@ export const App: React.FC = () => {
           setTab('billboard');
           handleResetFlow();
         }}
+      />
+
+      {/* Modal de Autenticación de Clientes (Login, Registro y Demo 1-Clic) */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        currentUser={currentUser}
+        onLoginSuccess={(user) => setCurrentUser(user)}
+        onLogout={handleLogout}
       />
     </div>
   );

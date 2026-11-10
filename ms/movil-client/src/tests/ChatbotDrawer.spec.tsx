@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { ChatDrawer } from '../components/Chatbot/ChatDrawer';
 import { db } from '../services/offline-storage.service';
@@ -36,6 +36,7 @@ describe('ChatDrawerAnimation', () => {
   beforeEach(() => {
     localStorage.clear();
   });
+
   it('debe abrir y contraer el panel retráctil de izquierda a derecha al pulsar el botón flotante', () => {
     render(<ChatDrawer />);
 
@@ -55,6 +56,120 @@ describe('ChatDrawerAnimation', () => {
     const closeBtn = screen.getByTestId('close-chat-drawer-btn');
     fireEvent.click(closeBtn);
     expect(panel).toHaveClass('-translate-x-full');
+  });
+
+  it('debe responder a props externas isOpenExternal y onToggleExternal', () => {
+    const handleToggle = vi.fn();
+    const { rerender } = render(<ChatDrawer isOpenExternal={false} onToggleExternal={handleToggle} />);
+
+    const panel = screen.getByTestId('chat-drawer-panel');
+    expect(panel).toHaveClass('-translate-x-full');
+
+    const toggleBtn = screen.getByTestId('chat-drawer-toggle-btn');
+    fireEvent.click(toggleBtn);
+    expect(handleToggle).toHaveBeenCalledTimes(1);
+
+    rerender(<ChatDrawer isOpenExternal={true} onToggleExternal={handleToggle} />);
+    expect(panel).toHaveClass('translate-x-0');
+  });
+});
+
+describe('ChatbotSpeechToText', () => {
+  let mockRecognitionInstance: any;
+
+  beforeEach(() => {
+    localStorage.clear();
+    setupChatFetchMock();
+
+    mockRecognitionInstance = {
+      lang: '',
+      continuous: false,
+      interimResults: false,
+      onstart: null,
+      onresult: null,
+      onerror: null,
+      onend: null,
+      start: vi.fn().mockImplementation(function (this: any) {
+        if (this.onstart) this.onstart();
+      }),
+      stop: vi.fn().mockImplementation(function (this: any) {
+        if (this.onend) this.onend();
+      }),
+      abort: vi.fn(),
+    };
+
+    (window as any).SpeechRecognition = vi.fn(() => mockRecognitionInstance);
+  });
+
+  afterEach(() => {
+    delete (window as any).SpeechRecognition;
+    delete (window as any).webkitSpeechRecognition;
+  });
+
+  it('debe iniciar la escucha al pulsar el botón de micrófono y transcribir el texto recibido', async () => {
+    render(<ChatDrawer />);
+
+    // Abrir drawer
+    fireEvent.click(screen.getByTestId('chat-drawer-toggle-btn'));
+
+    const micBtn = screen.getByTestId('chat-mic-btn');
+    expect(micBtn).toBeInTheDocument();
+
+    // Iniciar reconocimiento de voz
+    fireEvent.click(micBtn);
+
+    // Debe mostrar banner de escucha activa
+    expect(screen.getByTestId('speech-listening-banner')).toBeInTheDocument();
+    expect(screen.getByText(/Escuchando tu voz/i)).toBeInTheDocument();
+
+    // Simular evento onresult de la Web Speech API
+    mockRecognitionInstance.onresult({
+      resultIndex: 0,
+      results: [
+        [{ transcript: '¿Qué funciones de estreno tienen hoy?' }],
+      ],
+    });
+
+    // El input debe recibir el texto dictado por voz de forma reactiva
+    const input = screen.getByTestId('chat-input') as HTMLInputElement;
+    await waitFor(() => {
+      expect(input.value).toBe('¿Qué funciones de estreno tienen hoy?');
+    });
+
+    // Detener la escucha
+    fireEvent.click(micBtn);
+    expect(screen.queryByTestId('speech-listening-banner')).not.toBeInTheDocument();
+  });
+
+  it('debe manejar errores de permiso denegado en el micrófono', async () => {
+    render(<ChatDrawer />);
+    fireEvent.click(screen.getByTestId('chat-drawer-toggle-btn'));
+
+    const micBtn = screen.getByTestId('chat-mic-btn');
+    fireEvent.click(micBtn);
+
+    // Simular error not-allowed
+    mockRecognitionInstance.onerror({ error: 'not-allowed' });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Permiso de micrófono no concedido/i)).toBeInTheDocument();
+    });
+  });
+
+  it('debe enviar mensaje al pulsar chips de preguntas rápidas (Quick FAQ)', async () => {
+    render(<ChatDrawer />);
+    fireEvent.click(screen.getByTestId('chat-drawer-toggle-btn'));
+
+    const faqBtn = screen.getByText('¿Qué películas hay disponibles hoy?');
+    expect(faqBtn).toBeInTheDocument();
+
+    fireEvent.click(faqBtn);
+
+    // El mensaje debe aparecer en el historial (tanto en el botón chip como en la burbuja de chat)
+    await waitFor(() => {
+      const elements = screen.getAllByText('¿Qué películas hay disponibles hoy?');
+      expect(elements.length).toBeGreaterThanOrEqual(2);
+    });
   });
 });
 

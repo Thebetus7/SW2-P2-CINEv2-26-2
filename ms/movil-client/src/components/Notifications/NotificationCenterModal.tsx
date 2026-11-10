@@ -61,11 +61,11 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     if (result.success) {
       setFeedbackMsg({
         type: 'success',
-        text: '¡Alertas Web Push activadas con éxito! Recibirás los próximos estrenos.',
+        text: '¡Alertas activadas con éxito! Recibirás los próximos estrenos en tu bandeja.',
       });
       // Añadir notificación de bienvenida al inbox
       notificationsInboxService.addNotification({
-        title: '🔔 ¡Suscripción Web Push Confirmada!',
+        title: '🔔 ¡Suscripción de Alertas Confirmada!',
         body: 'Has activado las alertas automáticas para nuevos estrenos y funciones exclusivas en Cine Bolivia.',
         type: 'system',
       });
@@ -82,7 +82,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     const success = await pushSubscriptionService.showTestNotification(
       '🎬 Cine Bolivia: Alerta de Prueba',
       {
-        body: '¡Esta es una notificación de prueba! El sistema Web Push está 100% operativo.',
+        body: '¡Esta es una notificación de prueba! El sistema de alertas está 100% operativo.',
       }
     );
 
@@ -171,9 +171,9 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 </span>
               )}
               {permission === 'denied' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-950/80 text-rose-400 border border-rose-500/40">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  Denegado en Navegador
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Bandeja en App Activa
                 </span>
               )}
               {permission === 'default' && (

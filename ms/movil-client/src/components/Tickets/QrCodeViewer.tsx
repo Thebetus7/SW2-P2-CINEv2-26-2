@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { OfflineTicketRecord } from '../../services/offline-storage.service';
 import { Sun, ArrowLeft, ShieldCheck, Film, MapPin, Armchair } from 'lucide-react';
+import { RealQrCode } from './RealQrCode';
 
 interface QrCodeViewerProps {
   ticket: OfflineTicketRecord;
@@ -18,7 +19,7 @@ export const QrCodeViewer: React.FC<QrCodeViewerProps> = ({ ticket, onClose }) =
     parsedPayload = { raw: ticket.qrJsonPayload };
   }
 
-  const signature = (parsedPayload.hashSignature || parsedPayload.sig || 'HMAC-SHA256-VALID') as string;
+  const signature = (parsedPayload.hashSignature || parsedPayload.sig || parsedPayload.signature || 'HMAC-SHA256-VALID') as string;
 
   return (
     <div
@@ -52,7 +53,7 @@ export const QrCodeViewer: React.FC<QrCodeViewerProps> = ({ ticket, onClose }) =
         </button>
       </div>
 
-      {/* Contenido Central: QR de Alto Contraste */}
+      {/* Contenido Central: QR Real Criptográfico de Alto Contraste */}
       <div className="flex-1 flex flex-col items-center justify-center my-6 w-full max-w-sm">
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full text-center shadow-2xl flex flex-col items-center">
           <div className="flex items-center gap-2 mb-4 text-xs font-bold text-emerald-400 uppercase tracking-widest">
@@ -60,47 +61,15 @@ export const QrCodeViewer: React.FC<QrCodeViewerProps> = ({ ticket, onClose }) =
             <span>Código de Entrada Oficial</span>
           </div>
 
-          {/* Recuadro Blanco de Alto Contraste para lectura de la cámara */}
-          <div
-            data-testid="qr-high-contrast-box"
-            className={`p-6 bg-white rounded-2xl shadow-xl transition-all duration-300 ${
-              maxBrightness ? 'ring-4 ring-white/30 scale-105' : ''
-            }`}
-          >
-            {/* SVG estilizado que representa el código QR dinámico con patrón 2D */}
-            <svg
-              data-testid="dynamic-qr-svg"
-              className="w-48 h-48 mx-auto"
-              viewBox="0 0 100 100"
-              fill="black"
-            >
-              {/* Esquinas de alineación QR */}
-              <rect x="5" y="5" width="25" height="25" fill="#000" />
-              <rect x="8" y="8" width="19" height="19" fill="#fff" />
-              <rect x="11" y="11" width="13" height="13" fill="#000" />
-
-              <rect x="70" y="5" width="25" height="25" fill="#000" />
-              <rect x="73" y="8" width="19" height="19" fill="#fff" />
-              <rect x="76" y="11" width="13" height="13" fill="#000" />
-
-              <rect x="5" y="70" width="25" height="25" fill="#000" />
-              <rect x="8" y="73" width="19" height="19" fill="#fff" />
-              <rect x="11" y="76" width="13" height="13" fill="#000" />
-
-              {/* Módulos de datos simulados */}
-              <rect x="36" y="10" width="6" height="6" fill="#000" />
-              <rect x="48" y="15" width="6" height="6" fill="#000" />
-              <rect x="36" y="25" width="6" height="6" fill="#000" />
-              <rect x="42" y="36" width="16" height="16" fill="#000" />
-              <rect x="10" y="42" width="6" height="6" fill="#000" />
-              <rect x="22" y="48" width="6" height="6" fill="#000" />
-              <rect x="70" y="40" width="6" height="6" fill="#000" />
-              <rect x="82" y="52" width="6" height="6" fill="#000" />
-              <rect x="40" y="70" width="6" height="6" fill="#000" />
-              <rect x="55" y="80" width="6" height="6" fill="#000" />
-              <rect x="70" y="75" width="6" height="6" fill="#000" />
-              <rect x="85" y="85" width="6" height="6" fill="#000" />
-            </svg>
+          {/* Renderizado de Código QR 100% Real y Escaneable */}
+          <div data-testid="qr-high-contrast-box" className="my-1">
+            <RealQrCode
+              payload={ticket.qrJsonPayload}
+              size={185}
+              maxBrightness={maxBrightness}
+              headerText="CINE BOLIVIA"
+              showHmacText={true}
+            />
           </div>
 
           <p className="text-[11px] text-slate-400 mt-4">
@@ -108,7 +77,7 @@ export const QrCodeViewer: React.FC<QrCodeViewerProps> = ({ ticket, onClose }) =
           </p>
 
           {/* Firma Criptográfica HMAC */}
-          <div className="mt-3 py-1.5 px-3 bg-slate-950/80 rounded-lg border border-slate-800 text-[10px] font-mono text-slate-400 max-w-full truncate">
+          <div className="mt-3 py-1.5 px-3 bg-slate-950/80 rounded-lg border border-slate-800 text-[10px] font-mono text-slate-300 max-w-full truncate">
             Firma: {signature}
           </div>
         </div>
@@ -116,12 +85,12 @@ export const QrCodeViewer: React.FC<QrCodeViewerProps> = ({ ticket, onClose }) =
         {/* Ficha Resumen de la Función */}
         <div className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 mt-4 space-y-2">
           <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <Film className="w-4 h-4 text-blue-400" />
+            <Film className="w-4 h-4 text-rose-400" />
             <span>{ticket.peliculaTitulo}</span>
           </div>
           <div className="flex items-center justify-between text-xs text-slate-400">
             <div className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-blue-400" />
+              <MapPin className="w-3.5 h-3.5 text-amber-400" />
               <span>{ticket.salaNombre}</span>
             </div>
             <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
