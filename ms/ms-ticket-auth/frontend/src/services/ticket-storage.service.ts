@@ -129,7 +129,15 @@ export function emitPurchaseTelemetry(event: {
   metadata?: Record<string, any>;
 }): void {
   try {
-    fetch('http://localhost:8001/api/v1/logs/ingest', {
+    const host =
+      typeof window !== 'undefined' && window.location && window.location.hostname && window.location.hostname !== 'localhost'
+        ? window.location.hostname
+        : '20.102.51.189';
+    const iaMcpUrl =
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IA_MCP_URL) ||
+      `http://${host}:8001`;
+
+    fetch(`${iaMcpUrl}/api/v1/logs/ingest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

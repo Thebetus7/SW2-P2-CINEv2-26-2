@@ -1,4 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+
+const getCoreApiUrl = (): string => {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CORE_API_URL) {
+    return import.meta.env.VITE_CORE_API_URL;
+  }
+  // En producción (cuando se accede desde IP pública de Azure / GCP), usar el nodo GCP
+  if (typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost') {
+    return 'http://34.10.125.253:3000/api/v1';
+  }
+  return 'http://localhost:3000/api/v1';
+};
 
 export interface MovieItem {
   id: string;
@@ -85,10 +96,11 @@ export const BillboardView: React.FC<BillboardViewProps> = ({
     async function loadBillboardData() {
       try {
         setLoading(true);
-        // Cargar películas y funciones del microservicio cinema-core (:3000)
+        const coreApi = getCoreApiUrl();
+        // Cargar películas y funciones del microservicio cinema-core
         const [moviesRes, showtimesRes] = await Promise.all([
-          fetch('http://localhost:3000/api/v1/movies').catch(() => null),
-          fetch('http://localhost:3000/api/v1/showtimes/billboard').catch(() => null),
+          fetch(`${coreApi}/movies`).catch(() => fetch('http://localhost:3000/api/v1/movies').catch(() => null)),
+          fetch(`${coreApi}/showtimes/billboard`).catch(() => fetch('http://localhost:3000/api/v1/showtimes/billboard').catch(() => null)),
         ]);
 
         if (moviesRes && moviesRes.ok) {
@@ -119,7 +131,20 @@ export const BillboardView: React.FC<BillboardViewProps> = ({
     };
   }, []);
 
-  const genres = ['TODAS', 'Ciencia Ficción', 'Drama Histórico'];
+  const genres = useMemo(() => {
+    const list = ['TODAS'];
+    movies.forEach((m) => {
+      if (m.genre) {
+        m.genre.split(/[/,]/).forEach((g) => {
+          const trimmed = g.trim();
+          if (trimmed && !list.includes(trimmed)) {
+            list.push(trimmed);
+          }
+        });
+      }
+    });
+    return list;
+  }, [movies]);
 
   const filteredMovies = movies.filter((m) => {
     if (selectedGenre === 'TODAS') return true;

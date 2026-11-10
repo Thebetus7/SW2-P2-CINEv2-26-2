@@ -146,6 +146,71 @@ class NotificationsInboxService {
     this.saveToStorage();
     return newItem;
   }
+
+  /**
+   * Sincroniza la bandeja del cliente con las películas reales de ms-cinema-core (GCP :3000).
+   * Si el administrador crea una nueva película, genera la notificación de estreno en el móvil.
+   */
+  async syncBackendPremieres(coreApiUrl?: string): Promise<number> {
+    const apiUrl =
+      coreApiUrl ||
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CORE_API_URL) ||
+      'http://34.10.125.253:3000/api/v1';
+
+    try {
+      const endpoints = [apiUrl, 'http://34.10.125.253:3000/api/v1', 'http://localhost:3000/api/v1'];
+      let moviesData: any[] = [];
+
+      for (const base of endpoints) {
+        try {
+          const res = await fetch(`${base}/movies`);
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+              moviesData = data;
+              break;
+            }
+          }
+        } catch {}
+      }
+
+      if (moviesData.length === 0) return 0;
+
+      let addedCount = 0;
+      const currentTitles = new Set(this.items.map((i) => (i.movieTitle || '').toLowerCase().trim()));
+
+      for (const movie of moviesData) {
+        const titleKey = (movie.title || '').toLowerCase().trim();
+        // Si no está en la bandeja, agregar notificación de estreno
+        if (titleKey && !currentTitles.has(titleKey)) {
+          currentTitles.add(titleKey);
+          const newItem: AppNotificationItem = {
+            id: `notif-prem-${movie.id || Date.now()}`,
+            title: `🎬 ¡Estreno Disponible: ${movie.title}!`,
+            body:
+              movie.synopsis ||
+              `Nueva película agregada a la cartelera. Género: ${movie.genre || 'Estreno'}. Duración: ${movie.durationMinutes || 120} min. ¡Reserva tus butacas!`,
+            movieTitle: movie.title,
+            imageUrl: movie.posterUrl,
+            timestamp: new Date().toISOString(),
+            read: false,
+            type: 'premiere',
+            actionUrl: '/billboard',
+          };
+          this.items = [newItem, ...this.items];
+          addedCount++;
+        }
+      }
+
+      if (addedCount > 0) {
+        this.saveToStorage();
+      }
+      return addedCount;
+    } catch (e) {
+      console.warn('[notificationsInboxService] Error al sincronizar estrenos de backend:', e);
+      return 0;
+    }
+  }
 }
 
 export const notificationsInboxService = new NotificationsInboxService();

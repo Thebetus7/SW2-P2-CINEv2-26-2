@@ -40,8 +40,8 @@ export class CreateMovieUseCase {
 
     const saved = await this.movieRepo.save(movie);
 
-    // Emisión de telemetría asíncrona hacia Consola IA-MCP (RF-09.3, RB-02)
-    const mcpLogsUrl = process.env.IA_MCP_URL || 'http://localhost:8001';
+    // Emisión de telemetría asíncrona hacia Consola IA-MCP en Azure (RF-09.3, RB-02)
+    const mcpLogsUrl = process.env.IA_MCP_URL || 'http://20.102.51.189:8001';
     fetch(`${mcpLogsUrl}/api/v1/logs/ingest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -59,7 +59,24 @@ export class CreateMovieUseCase {
         },
       }),
     }).catch(() => {
-      // Fire-and-forget: no bloquear ni penalizar tiempos de respuesta
+      // Fallback local en caso de que esté en entorno local sin red
+      fetch('http://localhost:8001/api/v1/logs/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceService: 'ms-cinema-core',
+          actorRole: 'ADMIN',
+          actionType: 'PELICULA_CREADA',
+          severity: 'SUCCESS',
+          summary: `Película '${saved.title}' registrada en cartelera`,
+          metadata: {
+            movieId: saved.id,
+            title: saved.title,
+            genre: saved.genre,
+            status: saved.status,
+          },
+        }),
+      }).catch(() => {});
     });
 
     // Disparo automático asíncrono de notificación push de estreno (RF-08.5, RB-03)

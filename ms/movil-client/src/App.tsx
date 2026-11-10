@@ -74,8 +74,10 @@ export const App: React.FC = () => {
     const unsubscribe = notificationsInboxService.subscribe(() => {
       setUnreadCount(notificationsInboxService.getUnreadCount());
     });
+    // Sincronizar estrenos reales creados por el admin en ms-cinema-core (GCP :3000)
+    notificationsInboxService.syncBackendPremieres().catch(() => {});
     return () => unsubscribe();
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     showtimesApiService.getBillboard().then((billboard) => {
@@ -194,20 +196,20 @@ export const App: React.FC = () => {
     }
     setPurchaseStep(4);
 
-    // Telemetría de compra completada en cliente móvil (fire-and-forget)
+    // Telemetría de compra completada en cliente móvil hacia Bitácora IA-MCP (fire-and-forget)
     try {
       const logsApiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CHAT_API_URL)
         ? import.meta.env.VITE_CHAT_API_URL.replace('/client-chat', '/logs/ingest')
-        : 'http://localhost:8001/api/v1/logs/ingest';
+        : 'http://20.102.51.189:8001/api/v1/logs/ingest';
       fetch(logsApiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sourceService: 'movil-client',
           actorRole: 'CLIENTE_MOVIL',
-          actionType: 'PROCESO_COMPRA_FINALIZADA',
+          actionType: 'COMPRA_FINALIZADA',
           severity: 'SUCCESS',
-          summary: `Compra móvil de boleto para '${selectedShowtime.movieTitle}' confirmada en IndexedDB`,
+          summary: `Compra móvil de boleto para '${selectedShowtime.movieTitle}' (Butaca ${selectedSeat.code}) confirmada`,
           metadata: {
             ticketId,
             movieTitle: selectedShowtime.movieTitle,

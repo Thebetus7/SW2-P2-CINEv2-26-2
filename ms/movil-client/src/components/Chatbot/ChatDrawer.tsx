@@ -359,6 +359,30 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
       setConfirmedTicketId(confirmed.ticketId);
       setPurchaseStep('SUCCESS');
 
+      // Telemetría de compra asistida en chat hacia Bitácora IA-MCP
+      try {
+        const logsUrl = CHAT_API_URL.replace('/client-chat', '/logs/ingest');
+        fetch(logsUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sourceService: 'movil-client',
+            actorRole: 'CLIENTE_MOVIL',
+            actionType: 'COMPRA_ASISTIDA_CHAT_FINALIZADA',
+            severity: 'SUCCESS',
+            summary: `Compra asistida en chat para '${pendingInitiate.movieTitle}' (Butaca ${pendingInitiate.seatCode}) confirmada`,
+            metadata: {
+              ticketId: confirmed.ticketId,
+              movieTitle: pendingInitiate.movieTitle,
+              roomName: pendingInitiate.roomName,
+              seatCode: pendingInitiate.seatCode,
+              amount: pendingInitiate.amount,
+              paymentIntentId,
+            },
+          }),
+        }).catch(() => {});
+      } catch {}
+
       setMessages((prev) => [
         ...prev,
         {

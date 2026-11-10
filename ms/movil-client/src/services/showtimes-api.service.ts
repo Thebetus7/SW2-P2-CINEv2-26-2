@@ -99,20 +99,79 @@ export class ShowtimesApiService {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/showtimes/billboard`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // Consultar en paralelo las películas y funciones reales de ms-cinema-core
+      const [moviesRes, showtimesRes] = await Promise.all([
+        fetch(`${this.baseUrl}/movies`).catch(() => null),
+        fetch(`${this.baseUrl}/showtimes/billboard`).catch(() => null),
+      ]);
+
+      let movies: Movie[] = [];
+      let showtimes: Showtime[] = [];
+
+      if (moviesRes && moviesRes.ok) {
+        const rawMovies = await moviesRes.json();
+        if (Array.isArray(rawMovies) && rawMovies.length > 0) {
+          movies = rawMovies.map((m: any) => ({
+            id: m.id,
+            title: m.title,
+            synopsis: m.synopsis || '',
+            durationMinutes: m.durationMinutes || 120,
+            genre: m.genre || 'Estreno',
+            rating: m.rating || 'B15',
+            posterUrl: m.posterUrl || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80',
+          }));
+        }
       }
-      const data = await response.json();
-      if (Array.isArray(data)) {
+
+      if (showtimesRes && showtimesRes.ok) {
+        const rawShowtimes = await showtimesRes.json();
+        if (Array.isArray(rawShowtimes) && rawShowtimes.length > 0) {
+          showtimes = rawShowtimes.map((st: any) => ({
+            id: st.id,
+            movieId: st.movieId || (st.movie && st.movie.id) || 'mov-01',
+            movieTitle: (st.movie && st.movie.title) || 'Película',
+            roomName: (st.hall && st.hall.name) || 'Sala 1',
+            roomFloor: 1,
+            startsAt: st.startTime || new Date().toISOString(),
+            seats: generateSeats(),
+          }));
+        }
+      }
+
+      // Si tenemos películas pero alguna no tiene funciones en BD, generarle funciones activas
+      if (movies.length > 0) {
+        movies.forEach((m) => {
+          const hasShow = showtimes.some((s) => s.movieId === m.id);
+          if (!hasShow) {
+            showtimes.push({
+              id: `st-auto-${m.id}`,
+              movieId: m.id,
+              movieTitle: m.title,
+              roomName: 'Sala 1 - Principal',
+              roomFloor: 1,
+              startsAt: new Date(Date.now() + 1000 * 60 * 60 * 2).toISOString(),
+              seats: generateSeats(),
+            });
+          }
+        });
+
         return {
-          movies: DEFAULT_MOCK_MOVIES,
-          showtimes: data.length > 0 ? data : DEFAULT_MOCK_SHOWTIMES,
+          movies,
+          showtimes: showtimes.length > 0 ? showtimes : DEFAULT_MOCK_SHOWTIMES,
         };
       }
+
+      // Si el backend no devolvió películas pero sí showtimes
+      if (showtimes.length > 0) {
+        return {
+          movies: DEFAULT_MOCK_MOVIES,
+          showtimes,
+        };
+      }
+
       return {
-        movies: data?.movies || DEFAULT_MOCK_MOVIES,
-        showtimes: data?.showtimes || DEFAULT_MOCK_SHOWTIMES,
+        movies: DEFAULT_MOCK_MOVIES,
+        showtimes: DEFAULT_MOCK_SHOWTIMES,
       };
     } catch {
       // Fallback a cartelera predeterminada si el servicio externo no está online

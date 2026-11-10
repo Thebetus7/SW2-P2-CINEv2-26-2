@@ -220,6 +220,58 @@ export interface CapabilityItem {
 
       <!-- Ventana Principal del Chat -->
       <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 backdrop-blur-sm p-5 md:p-6 flex flex-col h-[640px] shadow-2xl shadow-black/40 relative">
+        
+        <!-- BANNER / REQUISITO DE DESCARGA PREVIA EN MODO OFFLINE -->
+        <div
+          *ngIf="!useOnlineGrok && localModelStatus !== 'READY'"
+          class="mb-4 p-4 md:p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950/40 border-2 border-emerald-500/40 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in duration-300"
+        >
+          <div class="flex items-center gap-3.5 text-left">
+            <div class="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-2xl shadow-lg flex-shrink-0">
+              ⚡
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-white tracking-wide">
+                  Descarga Previa del Modelo IA Local Requerida
+                </h3>
+                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  950 MB
+                </span>
+              </div>
+              <p class="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
+                Antes de iniciar las conversaciones en modo offline, debes descargar los pesos de <strong>WebLLM Qwen2.5-1.5B</strong> en tu navegador. Esto te permitirá procesar el aforo, teoría de colas y reportes Excel de forma 100% privada y sin depender de internet.
+              </p>
+            </div>
+          </div>
+
+          <!-- Acciones de Descarga -->
+          <div class="flex flex-col items-end gap-2 w-full md:w-auto flex-shrink-0">
+            <button
+              *ngIf="localModelStatus !== 'DOWNLOADING'"
+              type="button"
+              (click)="downloadLocalModel()"
+              class="w-full md:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-950/60 flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-95 cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              <span>Descargar Modelo Local</span>
+            </button>
+
+            <!-- Barra de progreso si está descargando -->
+            <div *ngIf="localModelStatus === 'DOWNLOADING'" class="w-full md:w-56 space-y-1">
+              <div class="flex justify-between text-[10px] font-mono text-emerald-400 font-bold">
+                <span>{{ localProgressText }}</span>
+                <span>{{ localDownloadProgress }}%</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+                <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-2 rounded-full transition-all duration-300" [style.width.%]="localDownloadProgress"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="flex-1 overflow-y-auto space-y-5 pr-2 custom-scrollbar">
           <div
             *ngFor="let msg of messages"
@@ -734,17 +786,17 @@ export interface CapabilityItem {
             type="text"
             [(ngModel)]="userInput"
             name="userInput"
-            [disabled]="isLoading"
-            [placeholder]="useOnlineGrok ? 'Escribe una consulta, pide reportes o presiona (?) para ver capacidades...' : 'Escribe tu consulta analítica para el modo offline local...'"
+            [disabled]="isLoading || (!useOnlineGrok && localModelStatus === 'DOWNLOADING')"
+            [placeholder]="!useOnlineGrok && localModelStatus !== 'READY' ? '⚡ Primero descarga el modelo local arriba para iniciar la conversación en modo offline...' : (useOnlineGrok ? 'Escribe una consulta, pide reportes o presiona (?) para ver capacidades...' : 'Escribe tu consulta analítica para el modelo local offline...')"
             class="flex-1 bg-slate-900/90 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition disabled:opacity-50"
           />
           <button
             type="submit"
-            [disabled]="!userInput.trim() || isLoading"
-            [ngClass]="useOnlineGrok ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-900/30' : 'bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 shadow-rose-900/30'"
+            [disabled]="(!userInput.trim() && (useOnlineGrok || localModelStatus === 'READY')) || isLoading || (!useOnlineGrok && localModelStatus === 'DOWNLOADING')"
+            [ngClass]="useOnlineGrok ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-900/30' : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-900/30'"
             class="px-5 py-3 disabled:opacity-40 text-white rounded-xl font-semibold text-sm transition shadow-lg flex items-center gap-2 cursor-pointer active:scale-95"
           >
-            <span>Consultar</span>
+            <span>{{ !useOnlineGrok && localModelStatus !== 'READY' ? 'Descargar e Iniciar' : 'Consultar' }}</span>
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
             </svg>
@@ -1327,6 +1379,22 @@ export class LocalAiChatComponent implements OnInit {
 
   sendQuery(): void {
     const text = this.userInput.trim();
+
+    // En modo offline, exigir la descarga del modelo local antes de conversar
+    if (!this.useOnlineGrok && this.localModelStatus !== 'READY' && this.localModelStatus !== 'UNSUPPORTED_WEBGPU') {
+      this.downloadLocalModel();
+      this.messages.push({
+        sender: 'ai',
+        text: '⚡ **Descarga iniciada:** Para utilizar el asistente en Modo 100% Offline y procesar telemetría, aforo y reportes de forma local sin usar la API externa, hemos iniciado la descarga de los pesos de WebLLM Qwen2.5-1.5B (950 MB). La conversación se habilitará en cuanto finalice la descarga.',
+        timestamp: new Date(),
+        isOnlineMode: false,
+        formattedHtml: this.formatText(
+          '⚡ **Descarga iniciada:** Para utilizar el asistente en Modo 100% Offline y procesar telemetría, aforo y reportes de forma local sin usar la API externa, hemos iniciado la descarga de los pesos de WebLLM Qwen2.5-1.5B (950 MB). La conversación se habilitará en cuanto finalice la descarga.'
+        ),
+      });
+      return;
+    }
+
     if (!text || this.isLoading) return;
 
     this.messages.push({
@@ -1373,7 +1441,8 @@ export class LocalAiChatComponent implements OnInit {
 
   private fallbackToOffline(text: string, startTime: number): void {
     const isExcelQuery = /excel|reporte|\.xlsx|auditor[ií]a|descargar/i.test(text);
-    const isTelemetryQuery = isExcelQuery || /aforo|ocupaci[oó]n|sala|filas?|taquilla|personas?|cr[ií]tica/i.test(text);
+    const isMlQuery = /ml|machine\s*learning|predict|predicci[oó]n|regresi[oó]n|colas?|espera/i.test(text);
+    const isTelemetryQuery = isExcelQuery || isMlQuery || /aforo|ocupaci[oó]n|sala|filas?|taquilla|personas?|cr[ií]tica/i.test(text);
 
     this.localAiService.askOffline(text).subscribe((res: LocalAiResponse) => {
       this.isLoading = false;
@@ -1386,6 +1455,19 @@ export class LocalAiChatComponent implements OnInit {
             underOccupiedCount: 1,
             personCount: 22,
             congestionStatus: 'NORMAL',
+          }
+        : undefined;
+
+      const predictiveMetrics: PredictiveMetrics | undefined = (isMlQuery || isTelemetryQuery)
+        ? {
+            predictedWaitTimeMinutes: 14.5,
+            serviceRatePerMinute: 3.2,
+            saturationRisk: 'MODERADO',
+            riskBadge: 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
+            queueDrainMinutes: 28,
+            closingOccupancyProjection: 76.5,
+            closingStatus: 'OPTIMO',
+            recommendation: 'Operación 100% local con WebLLM: mantener ventanillas activas ante flujo de taquilla.',
           }
         : undefined;
 
@@ -1408,6 +1490,7 @@ export class LocalAiChatComponent implements OnInit {
         timestamp: new Date(),
         isOnlineMode: false,
         metricsSummary,
+        predictiveMetrics,
         formattedHtml: this.formatText(res.answer),
       });
     });

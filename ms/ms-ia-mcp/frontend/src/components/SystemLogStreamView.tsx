@@ -74,6 +74,50 @@ export const SystemLogStreamView: React.FC<SystemLogStreamViewProps> = ({
 
   const feedContainerRef = useRef<HTMLDivElement>(null)
 
+  // Carga inicial inmediata de historial para garantizar visualización sin demoras
+  useEffect(() => {
+    const historyUrl = effectiveStreamUrl.replace('/stream', '/history');
+    fetch(historyUrl)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((history: SystemLogEvent[]) => {
+        if (Array.isArray(history) && history.length > 0) {
+          setEvents((prev) => {
+            const combined = [...prev, ...history];
+            const uniqueMap = new Map();
+            combined.forEach((item) => {
+              if (item && item.id) uniqueMap.set(item.id, item);
+            });
+            return Array.from(uniqueMap.values()).slice(0, 500);
+          });
+        }
+      })
+      .catch((e) => console.warn('No se pudo precargar historial de logs:', e));
+  }, [effectiveStreamUrl]);
+
+  // Polling de respaldo cada 5s si el stream SSE está desconectado o bloqueado por proxy
+  useEffect(() => {
+    if (isConnected) return;
+    const historyUrl = effectiveStreamUrl.replace('/stream', '/history');
+    const interval = setInterval(() => {
+      fetch(historyUrl)
+        .then((res) => (res.ok ? res.json() : []))
+        .then((history: SystemLogEvent[]) => {
+          if (Array.isArray(history) && history.length > 0) {
+            setEvents((prev) => {
+              const combined = [...history, ...prev];
+              const uniqueMap = new Map();
+              combined.forEach((item) => {
+                if (item && item.id) uniqueMap.set(item.id, item);
+              });
+              return Array.from(uniqueMap.values()).slice(0, 500);
+            });
+          }
+        })
+        .catch(() => {});
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isConnected, effectiveStreamUrl]);
+
   // Conexión EventSource (SSE)
   useEffect(() => {
     let eventSource: EventSource | null = null
