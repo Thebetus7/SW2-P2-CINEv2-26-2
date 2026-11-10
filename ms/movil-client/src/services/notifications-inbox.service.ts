@@ -3,6 +3,8 @@
  * Persiste el historial en localStorage y notifica cambios a los componentes suscritos.
  */
 
+import { resolvePosterUrl } from './showtimes-api.service';
+
 export interface AppNotificationItem {
   id: string;
   title: string;
@@ -191,7 +193,7 @@ class NotificationsInboxService {
               movie.synopsis ||
               `Nueva película agregada a la cartelera. Género: ${movie.genre || 'Estreno'}. Duración: ${movie.durationMinutes || 120} min. ¡Reserva tus butacas!`,
             movieTitle: movie.title,
-            imageUrl: movie.posterUrl,
+            imageUrl: resolvePosterUrl(movie.posterUrl),
             timestamp: new Date().toISOString(),
             read: false,
             type: 'premiere',

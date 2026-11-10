@@ -12,6 +12,34 @@ const getCoreApiUrl = (): string => {
   return 'http://localhost:3000/api/v1';
 };
 
+export const resolvePosterUrl = (url?: string): string => {
+  if (!url) {
+    return 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=800&q=80';
+  }
+  if (url.startsWith('data:image') || url.startsWith('blob:')) {
+    return url;
+  }
+
+  // Nodo AWS oficial donde corre MS MULTIMEDIA por puerto 3001
+  const awsHost = '3.89.228.24';
+
+  // Si la URL apunta al almacenamiento MinIO S3 interno (puerto 9000)
+  if (url.includes(':9000')) {
+    const match = url.match(/\/cine-posters\/(?:posters\/)?([^?#]+)/);
+    if (match && match[1]) {
+      return `http://${awsHost}:3001/api/v1/multimedia/movies/posters/${match[1]}`;
+    }
+    return url.replace(/localhost:9000|127\.0\.0\.1:9000/, `${awsHost}:3001`);
+  }
+
+  // Si la URL apunta a localhost:3001
+  if (url.includes('localhost:3001') || url.includes('127.0.0.1:3001')) {
+    return url.replace(/localhost:3001|127\.0\.0\.1:3001/, `${awsHost}:3001`);
+  }
+
+  return url;
+};
+
 export interface MovieItem {
   id: string;
   title: string;
@@ -107,8 +135,12 @@ export const BillboardView: React.FC<BillboardViewProps> = ({
         if (moviesRes && moviesRes.ok) {
           const moviesData: MovieItem[] = await moviesRes.json();
           if (isMounted && Array.isArray(moviesData) && moviesData.length > 0) {
-            setMovies(moviesData);
-            setHeroMovie(moviesData[0]);
+            const mappedMovies = moviesData.map((m) => ({
+              ...m,
+              posterUrl: resolvePosterUrl(m.posterUrl),
+            }));
+            setMovies(mappedMovies);
+            setHeroMovie(mappedMovies[0]);
           }
         }
 
@@ -234,7 +266,7 @@ export const BillboardView: React.FC<BillboardViewProps> = ({
           <div className="relative mx-auto max-w-xs w-full">
             <div className="aspect-[2/3] rounded-2xl overflow-hidden border-2 border-slate-700/80 shadow-2xl relative group">
               <img
-                src={heroMovie.posterUrl}
+                src={resolvePosterUrl(heroMovie.posterUrl)}
                 alt={heroMovie.title}
                 onError={(e) => {
                   // Fallback visual si la URL no carga
@@ -299,7 +331,7 @@ export const BillboardView: React.FC<BillboardViewProps> = ({
                 <div>
                   <div className="relative aspect-[16/10] rounded-xl overflow-hidden mb-4 bg-slate-950 border border-slate-800">
                     <img
-                      src={movie.posterUrl}
+                      src={resolvePosterUrl(movie.posterUrl)}
                       alt={movie.title}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src =

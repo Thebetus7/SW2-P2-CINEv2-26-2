@@ -13,6 +13,32 @@ const getCoreBaseUrl = (): string => {
 
 const REST_BASE_URL = getCoreBaseUrl();
 
+export const resolvePosterUrl = (url?: string): string => {
+  if (!url) {
+    return 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80';
+  }
+  if (url.startsWith('data:image') || url.startsWith('blob:')) {
+    return url;
+  }
+
+  const awsHost = '3.89.228.24';
+
+  // Si la URL apunta a MinIO S3 interno (puerto 9000)
+  if (url.includes(':9000')) {
+    const match = url.match(/\/cine-posters\/(?:posters\/)?([^?#]+)/);
+    if (match && match[1]) {
+      return `http://${awsHost}:3001/api/v1/multimedia/movies/cine-posters/posters/${match[1]}`;
+    }
+    return url.replace(/localhost:9000|127\.0\.0\.1:9000/, `${awsHost}:3001/api/v1/multimedia/movies/cine-posters`);
+  }
+
+  if (url.includes('localhost:3001') || url.includes('127.0.0.1:3001')) {
+    return url.replace(/localhost:3001|127\.0\.0\.1:3001/, `${awsHost}:3001`);
+  }
+
+  return url;
+};
+
 export const DEFAULT_MOCK_MOVIES: Movie[] = [
   {
     id: 'mov-01',
@@ -21,7 +47,7 @@ export const DEFAULT_MOCK_MOVIES: Movie[] = [
     durationMinutes: 166,
     genre: 'Ciencia Ficción',
     rating: 'B15',
-    posterUrl: 'http://localhost:9000/cine-posters/dune2.jpg',
+    posterUrl: 'http://3.89.228.24:3001/api/v1/multimedia/movies/cine-posters/dune2.jpg',
   },
   {
     id: 'mov-02',
@@ -30,7 +56,7 @@ export const DEFAULT_MOCK_MOVIES: Movie[] = [
     durationMinutes: 94,
     genre: 'Animación',
     rating: 'A',
-    posterUrl: 'http://localhost:9000/cine-posters/kungfupanda4.jpg',
+    posterUrl: 'http://3.89.228.24:3001/api/v1/multimedia/movies/cine-posters/kungfupanda4.jpg',
   },
   {
     id: 'mov-03',
@@ -39,7 +65,7 @@ export const DEFAULT_MOCK_MOVIES: Movie[] = [
     durationMinutes: 180,
     genre: 'Drama Histórico',
     rating: 'B15',
-    posterUrl: 'http://localhost:9000/cine-posters/oppenheimer.jpg',
+    posterUrl: 'http://3.89.228.24:3001/api/v1/multimedia/movies/cine-posters/oppenheimer.jpg',
   },
 ];
 
@@ -142,7 +168,7 @@ export class ShowtimesApiService {
             durationMinutes: m.durationMinutes || 120,
             genre: m.genre || 'Estreno',
             rating: m.rating || 'B15',
-            posterUrl: m.posterUrl || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80',
+            posterUrl: resolvePosterUrl(m.posterUrl),
           }));
         }
       }

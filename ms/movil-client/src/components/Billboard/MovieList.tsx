@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Movie } from '../../types';
-import showtimesApiService from '../../services/showtimes-api.service';
+import showtimesApiService, { resolvePosterUrl } from '../../services/showtimes-api.service';
 import { Film, Clock, Tag, AlertCircle } from 'lucide-react';
 
 interface MovieListProps {
@@ -85,14 +85,14 @@ export const MovieList: React.FC<MovieListProps> = ({
           >
             <div className="relative aspect-[2/3] w-full bg-slate-800 overflow-hidden">
               <img
-                src={movie.posterUrl}
+                src={resolvePosterUrl(movie.posterUrl)}
                 alt={movie.title}
                 className="w-full h-full object-cover"
                 loading="lazy"
                 onError={(e) => {
-                  // Fallback cuando la imagen no está disponible en MinIO S3
+                  // Fallback visual de alta definición si la imagen en S3 tarda o no está en disco
                   (e.target as HTMLImageElement).src =
-                    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450" viewBox="0 0 300 450" fill="%231e293b"><rect width="300" height="450"/><text x="50%" y="50%" fill="%2364748b" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16">Póster no disponible</text></svg>';
+                    'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=800&q=80';
                 }}
               />
               <span className="absolute top-3 right-3 bg-blue-600/90 backdrop-blur-sm text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">
