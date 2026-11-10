@@ -19,8 +19,8 @@ import { UpdateHallDto } from './dto/update-hall.dto';
 import { UpdateSeatTypeDto } from './dto/update-seat-type.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CinemaHall } from '../domain/cinema-hall.entity';
-import { Seat } from '../domain/seat.entity';
+import { CinemaHall, ProjectionType, HallStatus } from '../domain/cinema-hall.entity';
+import { Seat, SeatType } from '../domain/seat.entity';
 
 @Controller('api/v1/halls')
 export class HallsController {
@@ -43,9 +43,66 @@ export class HallsController {
 
   @Get()
   async findAll() {
-    return await this.hallRepo.find({
+    let halls = await this.hallRepo.find({
       order: { name: 'ASC' },
     });
+
+    // Auto-inicializar salas base si la base de datos no tiene ninguna sala registrada
+    if (!halls || halls.length === 0) {
+      const defaultHalls = [
+        { name: 'Sala 1 - IMAX Laser', rows: 10, cols: 12, type: ProjectionType.IMAX },
+        { name: 'Sala 2 - MacroXE RealD 3D', rows: 8, cols: 10, type: ProjectionType.THREE_D },
+        { name: 'Sala 3 - Dolby Atmos 2D', rows: 5, cols: 10, type: ProjectionType.TWO_D },
+        { name: 'Sala 4 - VIP Lounge Experience', rows: 4, cols: 8, type: ProjectionType.VIP },
+      ];
+
+      for (const dh of defaultHalls) {
+        try {
+          const h = this.hallRepo.create({
+            name: dh.name,
+            totalRows: dh.rows,
+            columnsPerRow: dh.cols,
+            totalCapacity: dh.rows * dh.cols,
+            projectionType: dh.type,
+            status: HallStatus.ACTIVA,
+          });
+          const saved = await this.hallRepo.save(h);
+
+          const seats: Seat[] = [];
+          for (let r = 0; r < dh.rows; r++) {
+            const rowLetter = String.fromCharCode(65 + r);
+            for (let c = 1; c <= dh.cols; c++) {
+              let type = SeatType.ESTANDAR;
+              if (dh.type === ProjectionType.VIP) {
+                type = SeatType.VIP;
+              } else if (r === 0 && (c === 1 || c === 2)) {
+                type = SeatType.DISCAPACIDAD;
+              }
+
+              seats.push(
+                this.seatRepo.create({
+                  hallId: saved.id,
+                  rowLetter,
+                  seatNumber: c,
+                  visibleCode: `${rowLetter}-${c}`,
+                  seatType: type,
+                  isActive: true,
+                }),
+              );
+            }
+          }
+          await this.seatRepo.save(seats);
+        } catch (e) {
+          console.warn(`No se pudo auto-sembrar la sala ${dh.name}:`, e);
+        }
+      }
+
+      halls = await this.hallRepo.find({
+        order: { name: 'ASC' },
+      });
+    }
+
+    return halls;
   }
 
   @Get(':id')

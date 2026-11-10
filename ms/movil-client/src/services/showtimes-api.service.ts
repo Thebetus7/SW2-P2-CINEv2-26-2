@@ -1,6 +1,17 @@
 import { BillboardResponse, Movie, Showtime } from '../types';
 
-const REST_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CORE_API_URL) || 'http://localhost:3000/api/v1';
+const getCoreBaseUrl = (): string => {
+  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<string, string> }).env : undefined;
+  if (metaEnv?.VITE_CORE_API_URL) {
+    return metaEnv.VITE_CORE_API_URL;
+  }
+  if (typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return 'http://34.10.125.253:3000/api/v1';
+  }
+  return 'http://localhost:3000/api/v1';
+};
+
+const REST_BASE_URL = getCoreBaseUrl();
 
 export const DEFAULT_MOCK_MOVIES: Movie[] = [
   {
@@ -99,11 +110,24 @@ export class ShowtimesApiService {
     }
 
     try {
+      const primaryUrl = this.baseUrl;
+      const remoteFallbackUrl = 'http://34.10.125.253:3000/api/v1';
+
       // Consultar en paralelo las películas y funciones reales de ms-cinema-core
-      const [moviesRes, showtimesRes] = await Promise.all([
-        fetch(`${this.baseUrl}/movies`).catch(() => null),
-        fetch(`${this.baseUrl}/showtimes/billboard`).catch(() => null),
+      let [moviesRes, showtimesRes] = await Promise.all([
+        fetch(`${primaryUrl}/movies`).catch(() => null),
+        fetch(`${primaryUrl}/showtimes/billboard`).catch(() => null),
       ]);
+
+      // Si el primario falló y no estábamos ya en el host remoto, probar fallback a GCP
+      if ((!moviesRes || !moviesRes.ok) && primaryUrl !== remoteFallbackUrl) {
+        const [fbMovies, fbShowtimes] = await Promise.all([
+          fetch(`${remoteFallbackUrl}/movies`).catch(() => null),
+          fetch(`${remoteFallbackUrl}/showtimes/billboard`).catch(() => null),
+        ]);
+        if (fbMovies && fbMovies.ok) moviesRes = fbMovies;
+        if (fbShowtimes && fbShowtimes.ok) showtimesRes = fbShowtimes;
+      }
 
       let movies: Movie[] = [];
       let showtimes: Showtime[] = [];

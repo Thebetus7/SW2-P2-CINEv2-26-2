@@ -946,7 +946,24 @@ export class HallDesignerComponent implements OnInit {
   notificationMessage: string | null = null;
   notificationType: 'success' | 'error' = 'success';
 
-  private readonly API_URL = 'http://localhost:3000/api/v1/halls';
+  get API_URL(): string {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hostParam = urlParams.get('core_host') || localStorage.getItem('core_host');
+      if (hostParam) {
+        return `http://${hostParam}:3000/api/v1/halls`;
+      }
+      if (
+        window.location &&
+        window.location.hostname &&
+        window.location.hostname !== 'localhost' &&
+        window.location.hostname !== '127.0.0.1'
+      ) {
+        return `http://${window.location.hostname}:3000/api/v1/halls`;
+      }
+    }
+    return 'http://localhost:3000/api/v1/halls';
+  }
 
   constructor(private http: HttpClient) {}
 

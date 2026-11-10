@@ -97,14 +97,18 @@ export interface HallOption {
             <div>
               <label class="block text-xs font-semibold text-slate-400 mb-1">Película</label>
               <select [(ngModel)]="form.movieId" name="movieId" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500">
+                <option value="" disabled [selected]="!form.movieId">-- Selecciona una Película ({{ movies.length }} disponibles) --</option>
                 <option *ngFor="let m of movies" [value]="m.id">{{ m.title }} ({{ m.durationMinutes }} min)</option>
               </select>
+              <p *ngIf="movies.length === 0" class="text-[11px] text-amber-400 mt-1">⚠️ No se encontraron películas registradas en el backend.</p>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-400 mb-1">Sala</label>
               <select [(ngModel)]="form.hallId" name="hallId" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500">
+                <option value="" disabled [selected]="!form.hallId">-- Selecciona una Sala ({{ halls.length }} disponibles) --</option>
                 <option *ngFor="let h of halls" [value]="h.id">{{ h.name }}</option>
               </select>
+              <p *ngIf="halls.length === 0" class="text-[11px] text-amber-400 mt-1">⚠️ Cargando o auto-generando salas estándar...</p>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-400 mb-1">Hora de Inicio</label>
@@ -138,53 +142,97 @@ export class ShowtimeCalendarComponent implements OnInit {
     basePrice: 45.0,
   };
 
-  private readonly BASE_URL = 'http://localhost:3000/api/v1';
-
   constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
     this.loadData();
   }
 
+  private getApiBaseUrl(): string {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hostParam = urlParams.get('core_host') || localStorage.getItem('core_host');
+      if (hostParam) {
+        return `http://${hostParam}:3000/api/v1`;
+      }
+      if (
+        window.location &&
+        window.location.hostname &&
+        window.location.hostname !== 'localhost' &&
+        window.location.hostname !== '127.0.0.1'
+      ) {
+        return `http://${window.location.hostname}:3000/api/v1`;
+      }
+    }
+    return 'http://localhost:3000/api/v1';
+  }
+
   loadData(): void {
-    this.http.get<ShowtimeItem[]>(`${this.BASE_URL}/showtimes/billboard`).subscribe({
-      next: (data) => (this.showtimes = data),
+    const baseUrl = this.getApiBaseUrl();
+
+    // 1. Cargar funciones reales desde el backend
+    this.http.get<ShowtimeItem[]>(`${baseUrl}/showtimes/billboard`).subscribe({
+      next: (data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          this.showtimes = data;
+        } else {
+          this.showtimes = data || [];
+        }
+      },
       error: () => {
-        // Fallback demo
-        this.showtimes = [
-          {
-            id: '1',
-            movieId: 'm1',
-            movie: { title: 'Avatar 2: El Sentido del Agua', durationMinutes: 192 },
-            hallId: 'h1',
-            hall: { name: 'Sala 1 - IMAX' },
-            startTime: '2026-11-03T18:00:00.000Z',
-            endTime: '2026-11-03T21:32:00.000Z',
-            basePrice: 50.0,
-            status: 'PROGRAMADA',
-          },
-        ];
+        console.warn('Fallback: no se pudo obtener billboard desde', baseUrl);
       },
     });
 
-    this.http.get<MovieOption[]>(`${this.BASE_URL}/movies`).subscribe({
+    // 2. Cargar películas reales desde el backend
+    this.http.get<MovieOption[]>(`${baseUrl}/movies`).subscribe({
       next: (data) => {
-        this.movies = data;
-        if (data.length > 0) this.form.movieId = data[0].id;
+        if (Array.isArray(data) && data.length > 0) {
+          this.movies = data;
+          if (!this.form.movieId) {
+            this.form.movieId = data[0].id;
+          }
+        }
+      },
+      error: (err) => {
+        console.error('Error al cargar películas desde el backend:', err);
       },
     });
 
-    this.http.get<HallOption[]>(`${this.BASE_URL}/halls`).subscribe({
+    // 3. Cargar salas reales (o auto-generadas) desde el backend
+    this.http.get<HallOption[]>(`${baseUrl}/halls`).subscribe({
       next: (data) => {
-        this.halls = data;
-        if (data.length > 0) this.form.hallId = data[0].id;
+        if (Array.isArray(data) && data.length > 0) {
+          this.halls = data;
+          if (!this.form.hallId) {
+            this.form.hallId = data[0].id;
+          }
+        }
+      },
+      error: (err) => {
+        console.error('Error al cargar salas desde el backend:', err);
       },
     });
   }
 
   scheduleShowtime(): void {
     this.overlapError = null;
-    this.http.post<ShowtimeItem>(`${this.BASE_URL}/showtimes`, this.form).subscribe({
+    const baseUrl = this.getApiBaseUrl();
+
+    if (!this.form.movieId) {
+      this.overlapError = 'Por favor selecciona una película del listado.';
+      return;
+    }
+    if (!this.form.hallId) {
+      this.overlapError = 'Por favor selecciona una sala del listado.';
+      return;
+    }
+    if (!this.form.startTime) {
+      this.overlapError = 'Por favor indica la fecha y hora de inicio de la función.';
+      return;
+    }
+
+    this.http.post<ShowtimeItem>(`${baseUrl}/showtimes`, this.form).subscribe({
       next: (created) => {
         this.openScheduleModal = false;
         this.loadData();
@@ -192,8 +240,10 @@ export class ShowtimeCalendarComponent implements OnInit {
       error: (err) => {
         if (err.status === 409 && err.error?.message) {
           this.overlapError = err.error.message;
+        } else if (err.error?.message) {
+          this.overlapError = Array.isArray(err.error.message) ? err.error.message.join(', ') : err.error.message;
         } else {
-          this.overlapError = 'Error al programar la función.';
+          this.overlapError = 'Error al programar la función. Verifica que el backend esté accesible.';
         }
       },
     });

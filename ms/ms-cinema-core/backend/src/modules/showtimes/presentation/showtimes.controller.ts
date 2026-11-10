@@ -38,6 +38,14 @@ export class ShowtimesController {
   }
 
   /**
+   * Listado general de funciones activas
+   */
+  @Get()
+  async findAll() {
+    return await this.getBillboard();
+  }
+
+  /**
    * Endpoint de Cartelera Pública consumido por MOVIL CLIENT (IC-02.3)
    */
   @Get('billboard')
