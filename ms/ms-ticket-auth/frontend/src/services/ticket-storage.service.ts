@@ -133,8 +133,9 @@ export function emitPurchaseTelemetry(event: {
       typeof window !== 'undefined' && window.location && window.location.hostname && window.location.hostname !== 'localhost'
         ? window.location.hostname
         : '20.102.51.189';
+    const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<string, string> }).env : undefined;
     const iaMcpUrl =
-      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IA_MCP_URL) ||
+      metaEnv?.VITE_IA_MCP_URL ||
       `http://${host}:8001`;
 
     fetch(`${iaMcpUrl}/api/v1/logs/ingest`, {

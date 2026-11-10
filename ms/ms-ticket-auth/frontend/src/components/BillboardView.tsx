@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
 const getCoreApiUrl = (): string => {
-  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CORE_API_URL) {
-    return import.meta.env.VITE_CORE_API_URL;
+  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<string, string> }).env : undefined;
+  if (metaEnv?.VITE_CORE_API_URL) {
+    return metaEnv.VITE_CORE_API_URL;
   }
   // En producción (cuando se accede desde IP pública de Azure / GCP), usar el nodo GCP
   if (typeof window !== 'undefined' && window.location && window.location.hostname !== 'localhost') {
