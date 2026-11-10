@@ -1460,14 +1460,18 @@ export class LocalAiChatComponent implements OnInit {
 
       const predictiveMetrics: PredictiveMetrics | undefined = (isMlQuery || isTelemetryQuery)
         ? {
-            predictedWaitTimeMinutes: 14.5,
-            serviceRatePerMinute: 3.2,
-            saturationRisk: 'MODERADO',
+            estimatedWaitTimeMinutes: 14.5,
+            queueDrainTimeMinutes: 28,
+            riskLevel: 'MODERADO',
             riskBadge: 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
-            queueDrainMinutes: 28,
-            closingOccupancyProjection: 76.5,
-            closingStatus: 'OPTIMO',
-            recommendation: 'Operación 100% local con WebLLM: mantener ventanillas activas ante flujo de taquilla.',
+            projectedOccupancyBoost: 12.0,
+            projectedFinalOccupancy: 76.5,
+            estimatedTicketsInQueue: 18,
+            prescriptiveRecommendation: 'Operación 100% local con WebLLM: mantener ventanillas activas ante flujo de taquilla.',
+            recommendedActions: [
+              'Habilitar 1 punto de atención adicional si la cola supera 25 personas',
+              'Monitoreo continuo de aforo en salas mediante modelo local',
+            ],
           }
         : undefined;
 
