@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MovieList } from './components/Billboard/MovieList';
 import { ShowtimeSelector } from './components/Billboard/ShowtimeSelector';
 import { SeatSelectionMap } from './components/Purchase/SeatSelectionMap';
@@ -7,12 +7,13 @@ import { StripeCheckoutWrapper } from './components/Purchase/StripeCheckoutWrapp
 import { MyTicketsList } from './components/Tickets/MyTicketsList';
 import { QrCodeViewer } from './components/Tickets/QrCodeViewer';
 import { GpsGuidanceCard } from './components/Navigation/GpsGuidanceCard';
+import { SidebarDrawer } from './components/Navigation/SidebarDrawer';
 import { ChatDrawer } from './components/Chatbot/ChatDrawer';
-import { DEFAULT_MOCK_MOVIES, DEFAULT_MOCK_SHOWTIMES, showtimesApiService } from './services/showtimes-api.service';
+import { showtimesApiService } from './services/showtimes-api.service';
 import { offlineStorageService, OfflineTicketRecord } from './services/offline-storage.service';
 import { initiatePurchase, confirmPurchase } from './graphql/mutations';
 import { Movie, Showtime, Seat } from './types';
-import { Film, Ticket, Navigation, ArrowLeft, Bell, LogIn, Bot } from 'lucide-react';
+import { Film, Ticket, Navigation, ArrowLeft, Bell, LogIn, Menu, Bot } from 'lucide-react';
 import { NotificationPermissionBanner } from './components/Notifications/NotificationPermissionBanner';
 import { NotificationCenterModal } from './components/Notifications/NotificationCenterModal';
 import { notificationsInboxService } from './services/notifications-inbox.service';
@@ -22,8 +23,12 @@ import { generateQrSignature } from './components/Tickets/RealQrCode';
 
 export const App: React.FC = () => {
   const [tab, setTab] = useState<'billboard' | 'tickets' | 'gps'>('billboard');
-  const [movies, setMovies] = useState<Movie[]>(DEFAULT_MOCK_MOVIES);
-  const [showtimes, setShowtimes] = useState<Showtime[]>(DEFAULT_MOCK_SHOWTIMES);
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [allShowtimes, setAllShowtimes] = useState<Showtime[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Estados del Menú Lateral / Sidebar Drawer (Rediseño UX/UI)
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
   // Estados del Centro de Notificaciones
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
@@ -82,35 +87,39 @@ export const App: React.FC = () => {
   }, [currentUser]);
 
   useEffect(() => {
+    let isMounted = true;
     const refreshData = () => {
       showtimesApiService.getBillboard().then((billboard) => {
+        if (!isMounted) return;
         if (billboard && billboard.movies && billboard.movies.length > 0) {
           setMovies(billboard.movies);
         }
         if (billboard && billboard.showtimes && billboard.showtimes.length > 0) {
-          setShowtimes(billboard.showtimes);
+          setAllShowtimes(billboard.showtimes);
         }
-      }).catch(() => {});
+        setIsLoading(false);
+      }).catch(() => {
+        if (isMounted) setIsLoading(false);
+      });
       notificationsInboxService.syncBackendPremieres().catch(() => {});
     };
 
     refreshData();
     // Sondeo reactivo cada 20 segundos para reflejar en vivo las películas creadas por el admin
     const timer = setInterval(refreshData, 20000);
-    return () => clearInterval(timer);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
   }, []);
+
+  const selectedMovieShowtimes = useMemo(() => {
+    if (!selectedMovie) return [];
+    return allShowtimes.filter((s) => s.movieId === selectedMovie.id);
+  }, [allShowtimes, selectedMovie]);
 
   const handleSelectMovie = (movie: Movie) => {
     setSelectedMovie(movie);
-    showtimesApiService.getShowtimesByMovieId(movie.id).then((sts: Showtime[]) => {
-      if (sts && sts.length > 0) {
-        setShowtimes(sts);
-      } else {
-        setShowtimes(DEFAULT_MOCK_SHOWTIMES.filter((s) => s.movieId === movie.id));
-      }
-    }).catch(() => {
-      setShowtimes(DEFAULT_MOCK_SHOWTIMES.filter((s) => s.movieId === movie.id));
-    });
   };
 
   const handleSelectShowtime = (showtime: Showtime) => {
@@ -122,8 +131,8 @@ export const App: React.FC = () => {
     if (!selectedShowtime) return;
     setSelectedSeat(seat);
     try {
-      const activeUserId = currentUser?.email || 'cliente-demo-01';
-      const initiated = await initiatePurchase(selectedShowtime.id, seat.id, activeUserId);
+      const activeUserId = localStorage.getItem('user_id') || '8be989be-05ac-4804-9c7b-22b81d907a9d';
+      const initiated = await initiatePurchase(selectedShowtime.id, seat.id, activeUserId, seat.price || 45.0);
       setTicketId(initiated.ticketId);
       setPreviewUrl(initiated.previewImageUrl);
       setPurchaseStep(2);
@@ -133,11 +142,10 @@ export const App: React.FC = () => {
       setPurchaseStep(2);
     }
 
-    // Telemetría de proceso de compra móvil (fire-and-forget)
     try {
       const logsApiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CHAT_API_URL)
         ? import.meta.env.VITE_CHAT_API_URL.replace('/client-chat', '/logs/ingest')
-        : 'http://localhost:8001/api/v1/logs/ingest';
+        : 'http://20.102.51.189:8001/api/v1/logs/ingest';
       fetch(logsApiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -206,7 +214,6 @@ export const App: React.FC = () => {
     }
     setPurchaseStep(4);
 
-    // Telemetría de compra completada en cliente móvil hacia Bitácora IA-MCP (fire-and-forget)
     try {
       const logsApiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CHAT_API_URL)
         ? import.meta.env.VITE_CHAT_API_URL.replace('/client-chat', '/logs/ingest')
@@ -245,29 +252,66 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-rose-600 selection:text-white pb-20">
-      {/* Header Superior Móvil */}
-      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between shadow-lg">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={handleResetFlow}>
-          <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-bold text-white shadow-md">
-            🎬
-          </div>
-          <div>
-            <span className="font-extrabold text-base tracking-wide bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">
-              Cine Bolivia
-            </span>
-            <span className="ml-2 text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-slate-800 text-rose-400 border border-rose-500/30">
-              MOVIL PWA :5173
-            </span>
+      {/* Menú Lateral Deslizable (Sidebar Drawer) */}
+      <SidebarDrawer
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        activeTab={tab}
+        onNavigateTab={(targetTab) => {
+          setTab(targetTab);
+          if (activeQrTicket) setActiveQrTicket(null);
+        }}
+        onOpenChat={() => setIsChatDrawerOpen(true)}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        unreadNotifications={unreadCount}
+        onOpenNotifications={() => setIsNotificationModalOpen(true)}
+      />
+
+      {/* Header Superior Móvil Rediseñado: Barra delgada con Botón Hamburguesa */}
+      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3.5 py-2.5 flex items-center justify-between shadow-lg">
+        {/* Lado Izquierdo: Botón Hamburguesa + Logo de Marca */}
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            data-testid="sidebar-hamburger-btn"
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition active:scale-95 cursor-pointer"
+            title="Abrir Menú Lateral"
+            aria-label="Abrir Menú Lateral"
+          >
+            <Menu className="w-5 h-5 text-rose-400" />
+          </button>
+
+          <div
+            className="flex items-center gap-2 cursor-pointer select-none"
+            onClick={handleResetFlow}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-bold text-white shadow-md text-base">
+              🎬
+            </div>
+            <div>
+              <span className="font-extrabold text-sm sm:text-base tracking-wide bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">
+                Cine Bolivia
+              </span>
+              <span className="hidden xs:inline-block ml-2 text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-slate-800 text-rose-400 border border-rose-500/30">
+                PWA
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Lado Derecho: Acceso Rápido Chat IA, Campana Notificaciones y Perfil */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Botón Acceso Rápido Asistente IA & Voz */}
           <button
             type="button"
             data-testid="header-chat-btn"
             onClick={() => setIsChatDrawerOpen((prev) => !prev)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/30 to-indigo-600/30 border border-blue-500/40 text-blue-300 hover:text-white hover:border-blue-400 transition"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/30 to-indigo-600/30 border border-blue-500/40 text-blue-300 hover:text-white hover:border-blue-400 transition cursor-pointer"
             title="Abrir Asistente de Cine IA & Voz"
           >
             <Bot className="w-4 h-4 text-blue-400 animate-pulse" />
@@ -279,7 +323,7 @@ export const App: React.FC = () => {
             type="button"
             data-testid="notifications-bell-btn"
             onClick={() => setIsNotificationModalOpen(true)}
-            className="relative p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+            className="relative p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
             title="Centro de Notificaciones"
           >
             <Bell className="w-4 h-4 text-rose-400" />
@@ -293,19 +337,19 @@ export const App: React.FC = () => {
             )}
           </button>
 
-          {/* Botón / Perfil de Autenticación (Login, Registro y Demo 1-Clic) */}
+          {/* Botón / Perfil de Autenticación */}
           {currentUser ? (
             <button
               type="button"
               data-testid="user-profile-btn"
               onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
               title="Ver Perfil de Cliente"
             >
               <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center text-[10px] font-black text-white">
                 👤
               </div>
-              <span className="text-xs font-bold truncate max-w-[85px] sm:max-w-[120px]">
+              <span className="text-xs font-bold truncate max-w-[70px] sm:max-w-[110px]">
                 {currentUser.fullName}
               </span>
             </button>
@@ -314,11 +358,11 @@ export const App: React.FC = () => {
               type="button"
               data-testid="open-auth-modal-btn"
               onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-extrabold shadow-md shadow-rose-600/30 transition"
+              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-extrabold shadow-md shadow-rose-600/30 transition cursor-pointer"
               title="Iniciar Sesión o Registro"
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>Login / Demo</span>
+              <span className="hidden xs:inline">Login</span>
             </button>
           )}
         </div>
@@ -336,7 +380,7 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedShowtime(null)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Volver a Horarios
@@ -393,7 +437,7 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedMovie(null)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Volver a Cartelera
@@ -401,13 +445,14 @@ export const App: React.FC = () => {
 
                 <ShowtimeSelector
                   movie={selectedMovie}
-                  showtimes={showtimes}
+                  showtimes={selectedMovieShowtimes}
                   onSelectShowtime={handleSelectShowtime}
                 />
               </div>
             ) : (
               <MovieList
                 movies={movies}
+                loading={isLoading}
                 onSelectMovie={handleSelectMovie}
               />
             )}
@@ -449,21 +494,24 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* Asistente Chatbot Deslizable Flotante con Reconocimiento de Voz */}
+      {/* Asistente Chatbot Deslizable Flotante con Reconocimiento de Voz y Paridad Web */}
       <ChatDrawer
         isOpenExternal={isChatDrawerOpen}
         onToggleExternal={() => setIsChatDrawerOpen((prev) => !prev)}
+        movies={movies}
+        showtimes={allShowtimes}
       />
 
       {/* Barra de Navegación Inferior (PWA Tab Bar) */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-6 py-2.5 flex justify-around items-center max-w-lg mx-auto shadow-2xl">
         <button
           type="button"
+          data-testid="bottom-nav-billboard"
           onClick={() => {
             setTab('billboard');
             if (activeQrTicket) setActiveQrTicket(null);
           }}
-          className={`flex flex-col items-center gap-1 text-xs font-semibold transition ${
+          className={`flex flex-col items-center gap-1 text-xs font-semibold transition cursor-pointer ${
             tab === 'billboard' ? 'text-rose-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -473,8 +521,9 @@ export const App: React.FC = () => {
 
         <button
           type="button"
+          data-testid="bottom-nav-tickets"
           onClick={() => setTab('tickets')}
-          className={`flex flex-col items-center gap-1 text-xs font-semibold transition ${
+          className={`flex flex-col items-center gap-1 text-xs font-semibold transition cursor-pointer ${
             tab === 'tickets' ? 'text-rose-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -484,8 +533,9 @@ export const App: React.FC = () => {
 
         <button
           type="button"
+          data-testid="bottom-nav-gps"
           onClick={() => setTab('gps')}
-          className={`flex flex-col items-center gap-1 text-xs font-semibold transition ${
+          className={`flex flex-col items-center gap-1 text-xs font-semibold transition cursor-pointer ${
             tab === 'gps' ? 'text-rose-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >

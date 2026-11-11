@@ -209,6 +209,50 @@ describe('ChatbotPurchaseFlow', () => {
       expect(screen.getByText('Previsualización de Entrada')).toBeInTheDocument();
     });
   });
+
+  it('debe utilizar la primera película y función disponibles en memoria viva en el fallback local', async () => {
+    // Simular que el endpoint remoto de chat falla para probar el fallback local
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+    const customLiveMovies = [
+      {
+        id: 'mov-live-99',
+        title: 'Película en Vivo Backend',
+        synopsis: 'Película traída en vivo desde el servidor.',
+        durationMinutes: 140,
+        genre: 'Acción',
+        rating: 'B15',
+        posterUrl: 'http://3.89.228.24:3001/api/v1/multimedia/movies/posters/live.jpg',
+      },
+    ];
+    const customLiveShowtimes = [
+      {
+        id: 'st-live-99',
+        movieId: 'mov-live-99',
+        movieTitle: 'Película en Vivo Backend',
+        roomName: 'Sala VIP 4DX',
+        roomFloor: 3,
+        startsAt: '2026-11-12T20:00:00Z',
+        seats: [
+          { id: 'seat-C-8', code: 'C-8', row: 'C', number: 8, isAvailable: true, price: 65.0 },
+        ],
+      },
+    ];
+
+    render(<ChatDrawer movies={customLiveMovies} showtimes={customLiveShowtimes} />);
+
+    fireEvent.click(screen.getByTestId('chat-drawer-toggle-btn'));
+    const input = screen.getByTestId('chat-input');
+    fireEvent.change(input, { target: { value: '¿Qué me sugieres hoy?' } });
+    fireEvent.click(screen.getByTestId('chat-send-btn'));
+
+    await waitFor(() => {
+      const card = screen.getByTestId('chat-suggested-card');
+      expect(card).toBeInTheDocument();
+      expect(within(card).getByText('Película en Vivo Backend')).toBeInTheDocument();
+      expect(within(card).getByText('Sala VIP 4DX')).toBeInTheDocument();
+    });
+  });
 });
 
 describe('Escenario 3: Interacción con el Chatbot Deslizable (SC-07.3.1)', () => {

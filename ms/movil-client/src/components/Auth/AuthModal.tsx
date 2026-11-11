@@ -47,7 +47,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const getGraphQLUrl = (): string => {
     const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<string, string> }).env : undefined;
     if (metaEnv?.VITE_GRAPHQL_URL) {
-      return metaEnv.VITE_CORE_API_URL || metaEnv.VITE_GRAPHQL_URL;
+      return metaEnv.VITE_GRAPHQL_URL;
     }
     if (typeof window !== 'undefined' && window.location && window.location.port === '5173' && window.location.hostname === 'localhost') {
       return 'http://localhost:8081/graphql';
@@ -97,6 +97,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       let fullName = 'Cliente Frecuente';
       let role = 'CLIENTE';
       let finalEmail = loginEmail.trim().toLowerCase();
+      let userId = '8be989be-05ac-4804-9c7b-22b81d907a9d';
 
       try {
         const res = await fetch(graphqlUrl, {
@@ -114,6 +115,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             fullName = json.data.login.user?.fullName || fullName;
             role = json.data.login.user?.role || role;
             finalEmail = json.data.login.user?.email || finalEmail;
+            userId = json.data.login.user?.id || userId;
           } else if (json.errors && json.errors.length > 0) {
             throw new Error(json.errors[0].message || 'Credenciales no válidas');
           }
@@ -140,6 +142,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       // Persistir sesión completa
       setAuthToken(token);
       localStorage.setItem('jwt_token', token);
+      localStorage.setItem('user_id', userId);
       localStorage.setItem('user_name', finalEmail.split('@')[0]);
       localStorage.setItem('full_name', fullName);
       localStorage.setItem('user_email', finalEmail);

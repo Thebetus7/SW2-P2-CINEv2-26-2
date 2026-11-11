@@ -40,6 +40,7 @@ export interface InitiatePurchasePayload {
   seatCode: string;
   movieTitle: string;
   roomName: string;
+  showtimeId?: string;
 }
 
 export interface ConfirmPurchasePayload {

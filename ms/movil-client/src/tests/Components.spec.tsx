@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MovieList } from '../components/Billboard/MovieList';
 import { ShowtimeSelector } from '../components/Billboard/ShowtimeSelector';
 import { SeatSelectionMap } from '../components/Purchase/SeatSelectionMap';
@@ -35,6 +35,21 @@ describe('MovieList Component', () => {
   it('debe mostrar el estado de skeleton cuando loading es true', () => {
     render(<MovieList loading={true} />);
     expect(screen.getByTestId('movie-list-loading')).toBeInTheDocument();
+  });
+
+  it('debe transicionar limpiamente de loading a películas cargadas sin quedar bloqueado en skeleton', () => {
+    const { rerender } = render(<MovieList movies={[]} loading={true} />);
+    expect(screen.getByTestId('movie-list-loading')).toBeInTheDocument();
+
+    rerender(<MovieList movies={DEFAULT_MOCK_MOVIES} loading={false} />);
+    expect(screen.queryByTestId('movie-list-loading')).not.toBeInTheDocument();
+    expect(screen.getByText('Dune: Parte 2')).toBeInTheDocument();
+  });
+
+  it('debe mostrar mensaje amigable de cartelera vacía cuando no hay películas', () => {
+    render(<MovieList movies={[]} loading={false} />);
+    expect(screen.getByTestId('movie-list-empty')).toBeInTheDocument();
+    expect(screen.getByText('No hay películas en cartelera')).toBeInTheDocument();
   });
 });
 
@@ -72,6 +87,22 @@ describe('ShowtimeSelector Component', () => {
 
     expect(handleSelect).toHaveBeenCalledTimes(1);
     expect(handleSelect).toHaveBeenCalledWith(movieShowtimes[0]);
+  });
+
+  it('debe disparar fetch de funciones cuando initialShowtimes se pasa como array vacío []', async () => {
+    const handleSelect = vi.fn();
+    render(
+      <ShowtimeSelector
+        movie={selectedMovie}
+        showtimes={[]}
+        onSelectShowtime={handleSelect}
+      />
+    );
+
+    // Debe mostrar loading o consultar y luego cargar las funciones
+    await waitFor(() => {
+      expect(screen.getByText(/Sala 2/)).toBeInTheDocument();
+    });
   });
 });
 

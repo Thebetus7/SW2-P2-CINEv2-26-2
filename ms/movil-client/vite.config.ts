@@ -34,17 +34,6 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/v1/showtimes'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'cine-showtimes-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
-              }
-            }
-          },
-          {
             urlPattern: ({ url }) => url.origin.includes(':9000'),
             handler: 'CacheFirst',
             options: {

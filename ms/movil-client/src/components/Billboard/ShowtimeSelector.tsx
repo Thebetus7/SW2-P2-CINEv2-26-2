@@ -19,11 +19,16 @@ export const ShowtimeSelector: React.FC<ShowtimeSelectorProps> = ({
   onBack,
 }) => {
   const [showtimes, setShowtimes] = useState<Showtime[]>(initialShowtimes || []);
-  const [loading, setLoading] = useState<boolean>(!initialShowtimes);
+  const [loading, setLoading] = useState<boolean>(!initialShowtimes || initialShowtimes.length === 0);
+
+  const initialShowtimesKey = initialShowtimes && initialShowtimes.length > 0
+    ? initialShowtimes.map((s) => s.id).join(',')
+    : '';
 
   useEffect(() => {
-    if (initialShowtimes) {
+    if (initialShowtimes && initialShowtimes.length > 0) {
       setShowtimes(initialShowtimes);
+      setLoading(false);
       return;
     }
     let isMounted = true;
@@ -46,7 +51,7 @@ export const ShowtimeSelector: React.FC<ShowtimeSelectorProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [movie.id, initialShowtimes]);
+  }, [movie.id, initialShowtimesKey]);
 
   const formatHour = (isoString: string): string => {
     try {
@@ -88,7 +93,8 @@ export const ShowtimeSelector: React.FC<ShowtimeSelectorProps> = ({
         </div>
       ) : showtimes.length === 0 ? (
         <div className="text-center p-8 bg-slate-900 border border-slate-800 rounded-2xl text-slate-400">
-          No hay funciones programadas para hoy.
+          <p className="text-sm font-semibold text-slate-200 mb-1">Próximamente en Cartelera</p>
+          <p className="text-xs text-slate-400">El administrador aún no ha habilitado horarios para esta película.</p>
         </div>
       ) : (
         <div className="space-y-4">

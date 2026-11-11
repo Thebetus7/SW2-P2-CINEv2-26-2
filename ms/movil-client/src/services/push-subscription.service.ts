@@ -25,7 +25,7 @@ export class PushSubscriptionService {
     ? 'http://localhost:3000/api/v1/push'
     : (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CORE_API_URL)
       ? `${import.meta.env.VITE_CORE_API_URL}/push`
-      : 'http://localhost:3000/api/v1/push';
+      : 'http://34.10.125.253:3000/api/v1/push';
 
   /**
    * Verifica si el navegador o WebView móvil soporta Service Worker y PushManager.
@@ -179,7 +179,7 @@ export class PushSubscriptionService {
 
       // Telemetría no bloqueante hacia Consola IA-MCP (RF-09.3, RB-02)
       try {
-        fetch('http://localhost:8001/api/v1/logs/ingest', {
+        fetch('http://20.102.51.189:8001/api/v1/logs/ingest', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

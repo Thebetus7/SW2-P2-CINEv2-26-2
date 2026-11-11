@@ -1,15 +1,10 @@
 import { BillboardResponse, Movie, Showtime } from '../types';
 
 const getCoreBaseUrl = (): string => {
-  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<string, string> }).env : undefined;
-  if (metaEnv?.VITE_CORE_API_URL) {
-    return metaEnv.VITE_CORE_API_URL;
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_CORE_API_URL) {
+    return import.meta.env.VITE_CORE_API_URL;
   }
-  // En desarrollo web puro en PC local (puerto 5173), permitir localhost
-  if (typeof window !== 'undefined' && window.location && window.location.port === '5173' && window.location.hostname === 'localhost') {
-    return 'http://localhost:3000/api/v1';
-  }
-  // En aplicación móvil (Capacitor Android) y despliegue remoto, apuntar al nodo oficial GCP
+  // Nodo oficial de producción en GCP
   return 'http://34.10.125.253:3000/api/v1';
 };
 
@@ -29,7 +24,7 @@ export const resolvePosterUrl = (url?: string): string => {
   if (url.includes(':9000')) {
     const match = url.match(/\/cine-posters\/(?:posters\/)?([^?#]+)/);
     if (match && match[1]) {
-      return `http://${awsHost}:3001/api/v1/multimedia/movies/cine-posters/posters/${match[1]}`;
+      return `http://${awsHost}:3001/api/v1/multimedia/movies/posters/${match[1]}`;
     }
     return url.replace(/localhost:9000|127\.0\.0\.1:9000/, `${awsHost}:3001/api/v1/multimedia/movies/cine-posters`);
   }
@@ -180,12 +175,12 @@ export class ShowtimesApiService {
         if (Array.isArray(rawShowtimes) && rawShowtimes.length > 0) {
           showtimes = rawShowtimes.map((st: any) => ({
             id: st.id,
-            movieId: st.movieId || (st.movie && st.movie.id) || 'mov-01',
-            movieTitle: (st.movie && st.movie.title) || 'Película',
-            roomName: (st.hall && st.hall.name) || 'Sala 1',
-            roomFloor: 1,
-            startsAt: st.startTime || new Date().toISOString(),
-            seats: generateSeats(),
+            movieId: st.movieId || st.movie?.id || 'mov-01',
+            movieTitle: st.movie?.title || st.movieTitle || 'Película',
+            roomName: st.hall?.name || st.roomName || 'Sala 1 - Principal',
+            roomFloor: st.roomFloor || st.hall?.floor || 1,
+            startsAt: st.startTime || st.startsAt || new Date().toISOString(),
+            seats: Array.isArray(st.seats) && st.seats.length > 0 ? st.seats : generateSeats(),
           }));
         }
       }

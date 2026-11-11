@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { showtimesApiService } from '../services/showtimes-api.service';
+import { showtimesApiService, resolvePosterUrl } from '../services/showtimes-api.service';
 
 describe('ShowtimesApiService', () => {
   it('debe obtener la cartelera con películas y funciones', async () => {
@@ -25,5 +25,16 @@ describe('ShowtimesApiService', () => {
     expect(st).toBeDefined();
     expect(st?.roomName).toBe('Sala 2');
     expect(st?.roomFloor).toBe(2);
+  });
+
+  it('debe resolver URLs de posters apuntando a MinIO S3 sin duplicar cine-posters/posters', () => {
+    const minioUrlWithPosters = 'http://localhost:9000/cine-posters/posters/gladiator2.jpg';
+    const resolved1 = resolvePosterUrl(minioUrlWithPosters);
+    expect(resolved1).toBe('http://3.89.228.24:3001/api/v1/multimedia/movies/posters/gladiator2.jpg');
+    expect(resolved1).not.toContain('cine-posters/posters');
+
+    const minioUrlDirect = 'http://localhost:9000/cine-posters/gladiator2.jpg';
+    const resolved2 = resolvePosterUrl(minioUrlDirect);
+    expect(resolved2).toBe('http://3.89.228.24:3001/api/v1/multimedia/movies/posters/gladiator2.jpg');
   });
 });

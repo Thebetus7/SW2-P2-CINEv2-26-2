@@ -16,26 +16,28 @@ import { initiatePurchase, confirmPurchase } from '../../graphql/mutations';
 import { offlineStorageService } from '../../services/offline-storage.service';
 import { StripeCheckoutWrapper } from '../Purchase/StripeCheckoutWrapper';
 import { TicketPreviewModal } from '../Purchase/TicketPreviewModal';
-import { InitiatePurchasePayload } from '../../types';
+import { InitiatePurchasePayload, Movie, Showtime } from '../../types';
+import {
+  ClientChatMessage,
+  ShowtimeCard,
+  RecommendedSeat,
+  PurchaseSummary,
+  ChatFlowState,
+} from '../../types/client-chat.types';
+import { ShowtimeCardList } from './ShowtimeCardList';
+import { SelectedShowtimeHero } from './SelectedShowtimeHero';
+import { SeatSelectorPills } from './SeatSelectorPills';
+import { PurchaseSummaryCard } from './PurchaseSummaryCard';
+import { EmptySearchCard } from './EmptySearchCard';
+import { ChatFaqHub } from './ChatFaqHub';
 
-export interface ChatMessage {
-  id: string;
-  sender: 'user' | 'assistant';
-  text: string;
-  suggestedAction?: {
-    type: 'SELECT_SEAT';
-    movieId: string;
-    movieTitle: string;
-    showtimeId: string;
-    roomName: string;
-    seatCode: string;
-    price: number;
-  };
-}
+export type ChatMessage = ClientChatMessage;
 
 export interface ChatDrawerProps {
   isOpenExternal?: boolean;
   onToggleExternal?: () => void;
+  movies?: Movie[];
+  showtimes?: Showtime[];
 }
 
 const getChatApiUrl = (): string => {
@@ -53,10 +55,17 @@ const CHAT_API_URL = getChatApiUrl();
 const CHAT_CACHE_KEY = 'cinema_client_chat_history_v1';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-const DEFAULT_WELCOME_MESSAGE: ChatMessage = {
+const DEFAULT_WELCOME_MESSAGE: ClientChatMessage = {
   id: 'm-0',
   sender: 'assistant',
   text: '¡Hola! Soy tu asistente de cine con IA. ¿Qué tipo de película o función buscas hoy? Puedes escribirme o usar el micrófono.',
+  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  quickChips: [
+    '¿Qué películas hay disponibles hoy?',
+    'Recomiéndame una película familiar o infantil',
+    '¿Cuáles son los precios en Sala IMAX Laser?',
+    '¿Qué funciones tienen sonido Dolby Atmos?',
+  ],
 };
 
 const QUICK_FAQ_PROMPTS = [
@@ -69,12 +78,19 @@ const QUICK_FAQ_PROMPTS = [
 export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   isOpenExternal,
   onToggleExternal,
+  movies = [],
+  showtimes = [],
 }) => {
   const [internalIsOpen, setInternalIsOpen] = useState<boolean>(false);
   const isOpen = isOpenExternal !== undefined ? isOpenExternal : internalIsOpen;
 
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
+
+  // Estados multi-turno para ms-ia-mcp
+  const [currentState, setCurrentState] = useState<ChatFlowState>('EXPLORING');
+  const [selectedShowtimeCard, setSelectedShowtimeCard] = useState<ShowtimeCard | null>(null);
+  const [selectedSeatCode, setSelectedSeatCode] = useState<string | null>(null);
 
   // Estados de Speech-to-Text (Reconocimiento de voz por micrófono)
   const [isListening, setIsListening] = useState<boolean>(false);
@@ -91,8 +107,8 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     }
   }, []);
 
-  // Hidratación reactiva desde caché persistente (RF-08.9, RB-10)
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+  // Hidratación reactiva desde caché persistente
+  const [messages, setMessages] = useState<ClientChatMessage[]>(() => {
     try {
       const raw = localStorage.getItem(CHAT_CACHE_KEY);
       if (raw) {
@@ -129,6 +145,9 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
       localStorage.removeItem(CHAT_CACHE_KEY);
     } catch {}
     setMessages([DEFAULT_WELCOME_MESSAGE]);
+    setCurrentState('EXPLORING');
+    setSelectedShowtimeCard(null);
+    setSelectedSeatCode(null);
     setPurchaseStep('NONE');
     setPendingInitiate(null);
     setSpeechError(null);
@@ -175,7 +194,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
 
     try {
       const recognition = new SpeechRecognitionClass();
-      recognition.lang = 'es-BO'; // Español (Bolivia / Internacional)
+      recognition.lang = 'es-BO';
       recognition.continuous = false;
       recognition.interimResults = true;
 
@@ -219,12 +238,15 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     }
   };
 
-  const handleSendMessage = async (e?: React.FormEvent, directText?: string) => {
+  const handleSendMessage = async (
+    e?: React.FormEvent,
+    directText?: string,
+    options?: { showtimeId?: string; seatCode?: string }
+  ) => {
     if (e) e.preventDefault();
     const textToSend = (directText !== undefined ? directText : inputMessage).trim();
     if (!textToSend) return;
 
-    // Si estaba escuchando el micrófono, detenerlo
     if (isListening && recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -233,16 +255,20 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     }
 
     const userText = textToSend;
-    const userMsg: ChatMessage = {
+    const userMsg: ClientChatMessage = {
       id: `usr-${Date.now()}`,
       sender: 'user',
       text: userText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
     setInputMessage('');
     setIsTyping(true);
     setSpeechError(null);
+
+    const targetShowtimeId = options?.showtimeId || selectedShowtimeCard?.showtimeId;
+    const targetSeatCode = options?.seatCode || selectedSeatCode || undefined;
 
     const historyPayload = [...messages, userMsg].slice(-6).map((m) => ({
       role: m.sender === 'user' ? 'user' : 'assistant',
@@ -256,37 +282,63 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
         body: JSON.stringify({
           message: userText,
           history: historyPayload,
+          currentState,
+          selectedShowtimeId: targetShowtimeId,
+          selectedSeatCode: targetSeatCode,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        const botMsg: ChatMessage = {
+        const replyText = data.reply || data.response || 'Tengo estas recomendaciones de cartelera para ti:';
+        const botMsg: ClientChatMessage = {
           id: `bot-${Date.now()}`,
           sender: 'assistant',
-          text: data.response || 'Tengo estas recomendaciones de cartelera para ti:',
+          text: replyText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          showtimeCards: data.showtimeCards,
+          recommendedSeats: data.recommendedSeats,
+          summary: data.summary,
+          quickChips: data.suggestedChips || data.quickChips,
+          emptyState: data.emptyState,
           suggestedAction: data.suggestedAction,
         };
+
+        if (data.nextState) {
+          setCurrentState(data.nextState);
+        }
+
         setMessages((prev) => [...prev, botMsg]);
         setIsTyping(false);
         return;
       }
     } catch {
-      // Fallback local con recomendación inteligente de cartelera (SC-07.3.1)
+      // Fallback local con recomendación inteligente de cartelera
     }
 
     // Respuesta inteligente automática según el texto del usuario
     setTimeout(() => {
+      const liveMovie = movies && movies.length > 0 ? movies[0] : null;
+      const liveShowtime = showtimes && showtimes.length > 0
+        ? (showtimes.find((s) => s.movieId === liveMovie?.id) || showtimes[0])
+        : null;
+
+      const defaultMovieTitle = liveMovie ? liveMovie.title : 'Dune: Parte 2';
+      const defaultMovieId = liveMovie ? liveMovie.id : 'mov-01';
+      const defaultShowtimeId = liveShowtime ? liveShowtime.id : 'st-01';
+      const defaultRoomName = liveShowtime ? liveShowtime.roomName : 'Sala 2';
+      const defaultPrice = liveShowtime?.seats?.[0]?.price || 45.0;
+
       let botResponseText =
-        'Te recomiendo "Dune: Parte 2" en la Sala 2. Es la película más aclamada de hoy con funciones disponibles.';
-      const suggestedAction: ChatMessage['suggestedAction'] = {
+        `Te recomiendo "${defaultMovieTitle}" en ${defaultRoomName}. Es una excelente opción con funciones disponibles hoy.`;
+      const suggestedAction: ClientChatMessage['suggestedAction'] = {
         type: 'SELECT_SEAT',
-        movieId: 'mov-01',
-        movieTitle: 'Dune: Parte 2',
-        showtimeId: 'st-01',
-        roomName: 'Sala 2',
+        movieId: defaultMovieId,
+        movieTitle: defaultMovieTitle,
+        showtimeId: defaultShowtimeId,
+        roomName: defaultRoomName,
         seatCode: 'C-8',
-        price: 45.0,
+        price: defaultPrice,
       };
 
       if (
@@ -295,12 +347,27 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
         userText.toLowerCase().includes('panda') ||
         userText.toLowerCase().includes('familiar')
       ) {
+        const animMovie = movies.find((m) =>
+          m.genre?.toLowerCase().includes('anim') ||
+          m.title?.toLowerCase().includes('panda') ||
+          m.genre?.toLowerCase().includes('familiar')
+        ) || (movies.length > 1 ? movies[1] : null);
+
+        const animShowtime = animMovie
+          ? showtimes.find((s) => s.movieId === animMovie.id)
+          : null;
+
+        const animTitle = animMovie ? animMovie.title : 'Kung Fu Panda 4';
+        const animMovieId = animMovie ? animMovie.id : 'mov-02';
+        const animShowtimeId = animShowtime ? animShowtime.id : 'st-03';
+        const animRoomName = animShowtime ? animShowtime.roomName : 'Sala 3';
+
         botResponseText =
-          'Para disfrutar en familia te recomiendo "Kung Fu Panda 4" en Sala 3.';
-        suggestedAction.movieId = 'mov-02';
-        suggestedAction.movieTitle = 'Kung Fu Panda 4';
-        suggestedAction.showtimeId = 'st-03';
-        suggestedAction.roomName = 'Sala 3';
+          `Para disfrutar en familia te recomiendo "${animTitle}" en ${animRoomName}.`;
+        suggestedAction.movieId = animMovieId;
+        suggestedAction.movieTitle = animTitle;
+        suggestedAction.showtimeId = animShowtimeId;
+        suggestedAction.roomName = animRoomName;
         suggestedAction.seatCode = 'B-3';
       }
 
@@ -310,6 +377,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           id: `bot-${Date.now()}`,
           sender: 'assistant',
           text: botResponseText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           suggestedAction,
         },
       ]);
@@ -317,16 +385,80 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     }, 400);
   };
 
-  const handleSelectSeatInChat = async (
-    action: NonNullable<ChatMessage['suggestedAction']>
-  ) => {
+  const handleSelectShowtimeCard = (card: ShowtimeCard) => {
+    setSelectedShowtimeCard(card);
+    setCurrentState('SHOWTIME_SELECTED');
+    handleSendMessage(undefined, `Quiero la función de ${card.movieTitle} (${card.startTime})`, {
+      showtimeId: card.showtimeId,
+    });
+  };
+
+  const handleSelectSeatPill = (seat: RecommendedSeat) => {
+    setSelectedSeatCode(seat.seatCode);
+    setCurrentState('SEAT_ASSIGNED');
+    handleSendMessage(undefined, `Elijo la butaca ${seat.seatCode}`, {
+      seatCode: seat.seatCode,
+    });
+  };
+
+  const handleSelectMultipleSeats = (seatCodes: string[]) => {
+    const joined = seatCodes.join(', ');
+    setSelectedSeatCode(joined);
+    setCurrentState('SEAT_ASSIGNED');
+    handleSendMessage(undefined, `Elijo las butacas ${joined}`, {
+      seatCode: joined,
+    });
+  };
+
+  const handleSummaryProceedToPayment = async (summary: PurchaseSummary) => {
     try {
+      const activeUserId = localStorage.getItem('user_id') || '8be989be-05ac-4804-9c7b-22b81d907a9d';
       const initiateData = await initiatePurchase(
-        action.showtimeId,
-        `seat-${action.seatCode}`
+        summary.showtimeId,
+        `seat-${summary.seatCode}`,
+        activeUserId,
+        summary.totalPrice || 45.0
       );
       setPendingInitiate({
         ...initiateData,
+        showtimeId: summary.showtimeId,
+        movieTitle: summary.movieTitle,
+        roomName: summary.hallName,
+        seatCode: summary.seatCode,
+        amount: summary.totalPrice,
+      });
+      setPurchaseStep('CHECKOUT');
+    } catch (err) {
+      console.error('Error al proceder al pago desde resumen:', err);
+      // Fallback a checkout directo
+      setPendingInitiate({
+        ticketId: `tck-${Date.now()}`,
+        previewImageUrl: '',
+        expiresAt: new Date(Date.now() + 60000).toISOString(),
+        amount: summary.totalPrice || 45.0,
+        seatCode: summary.seatCode,
+        movieTitle: summary.movieTitle,
+        roomName: summary.hallName,
+        showtimeId: summary.showtimeId,
+      });
+      setPurchaseStep('CHECKOUT');
+    }
+  };
+
+  const handleSelectSeatInChat = async (
+    action: NonNullable<ClientChatMessage['suggestedAction']>
+  ) => {
+    try {
+      const activeUserId = localStorage.getItem('user_id') || '8be989be-05ac-4804-9c7b-22b81d907a9d';
+      const initiateData = await initiatePurchase(
+        action.showtimeId,
+        `seat-${action.seatCode}`,
+        activeUserId,
+        action.price || 45.0
+      );
+      setPendingInitiate({
+        ...initiateData,
+        showtimeId: action.showtimeId,
         movieTitle: action.movieTitle,
         roomName: action.roomName,
         seatCode: action.seatCode,
@@ -350,11 +482,10 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
         pendingInitiate.ticketId,
         paymentIntentId
       );
-      // Persistir de inmediato en IndexedDB (RB-MOB-01)
       await offlineStorageService.saveTicketWithBlob(
         {
           ticketId: confirmed.ticketId,
-          showtimeId: 'st-01',
+          showtimeId: pendingInitiate.showtimeId || (movies.length > 0 && showtimes.length > 0 ? showtimes[0].id : 'st-01'),
           peliculaTitulo: pendingInitiate.movieTitle,
           salaNombre: pendingInitiate.roomName,
           butacaCodigo: pendingInitiate.seatCode,
@@ -367,8 +498,8 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
 
       setConfirmedTicketId(confirmed.ticketId);
       setPurchaseStep('SUCCESS');
+      setCurrentState('TICKET_ISSUED');
 
-      // Telemetría de compra asistida en chat hacia Bitácora IA-MCP
       try {
         const logsUrl = CHAT_API_URL.replace('/client-chat', '/logs/ingest');
         fetch(logsUrl, {
@@ -398,6 +529,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           id: `bot-success-${Date.now()}`,
           sender: 'assistant',
           text: `¡Excelente! Tu compra para ${pendingInitiate.movieTitle} (Butaca ${pendingInitiate.seatCode}) ha sido confirmada con éxito. Ya puedes ver tu boleto y QR en "Mis Boletos" incluso sin conexión a internet.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
     } catch (err) {
@@ -407,7 +539,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
 
   return (
     <>
-      {/* Botón Flotante Deslizable (Ubicado ergonómicamente a la derecha, por encima del tab bar inferior) */}
+      {/* Botón Flotante Deslizable */}
       <button
         type="button"
         data-testid="chat-drawer-toggle-btn"
@@ -490,7 +622,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
               }`}
             >
               <div
-                className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed ${
+                className={`max-w-[88%] p-3.5 rounded-2xl text-xs leading-relaxed ${
                   msg.sender === 'user'
                     ? 'bg-blue-600 text-white rounded-br-none shadow-md'
                     : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none shadow-lg'
@@ -499,36 +631,97 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
                 {msg.text}
               </div>
 
-              {/* Tarjeta de Sugerencia y Compra Asistida en el Chat (RB-MOB-03, SC-07.3.1) */}
-              {msg.suggestedAction &&
-                msg.suggestedAction.type === 'SELECT_SEAT' &&
-                purchaseStep === 'NONE' && (
-                  <div
-                    data-testid="chat-suggested-card"
-                    className="mt-2.5 w-[85%] bg-slate-900 border border-blue-500/40 rounded-2xl p-3.5 space-y-2.5 shadow-xl"
-                  >
-                    <div className="flex items-center gap-2 text-white font-bold text-xs">
-                      <Film className="w-4 h-4 text-blue-400" />
-                      <span>{msg.suggestedAction.movieTitle}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-300">
-                      <span>{msg.suggestedAction.roomName}</span>
-                      <span className="font-mono text-emerald-400 font-bold">
-                        Butaca {msg.suggestedAction.seatCode}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      data-testid="chat-buy-seat-btn"
-                      onClick={() => handleSelectSeatInChat(msg.suggestedAction!)}
-                      className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md shadow-blue-600/30"
-                    >
-                      <Armchair className="w-3.5 h-3.5" />
-                      Comprar Butaca {msg.suggestedAction.seatCode} (Bs.{' '}
-                      {msg.suggestedAction.price.toFixed(2)})
-                    </button>
-                  </div>
-                )}
+              {/* Componentes Ricos Interactivos de Cartelera y Compra */}
+              {msg.sender === 'assistant' && (
+                <div className="w-[88%] space-y-2 mt-1">
+                  {/* Hero de Función Seleccionada */}
+                  {selectedShowtimeCard && currentState !== 'EXPLORING' && (
+                    <SelectedShowtimeHero
+                      card={selectedShowtimeCard}
+                      onChangeShowtime={() => {
+                        setSelectedShowtimeCard(null);
+                        setCurrentState('EXPLORING');
+                        handleSendMessage(undefined, 'cambiar función');
+                      }}
+                    />
+                  )}
+
+                  {/* Lista de Tarjetas de Funciones */}
+                  {msg.showtimeCards && msg.showtimeCards.length > 0 && (
+                    <ShowtimeCardList
+                      cards={msg.showtimeCards}
+                      onSelect={handleSelectShowtimeCard}
+                    />
+                  )}
+
+                  {/* Selector de Butacas Óptimas Recomendadas por IA */}
+                  {msg.recommendedSeats && msg.recommendedSeats.length > 0 && (
+                    <SeatSelectorPills
+                      seats={msg.recommendedSeats}
+                      onSelect={handleSelectSeatPill}
+                      onSelectMultiple={handleSelectMultipleSeats}
+                    />
+                  )}
+
+                  {/* Resumen de Compra Pre-Pago */}
+                  {msg.summary && (
+                    <PurchaseSummaryCard
+                      summary={msg.summary}
+                      onProceedToPayment={() => handleSummaryProceedToPayment(msg.summary!)}
+                      onBackToSeats={() => {
+                        setCurrentState('SHOWTIME_SELECTED');
+                        handleSendMessage(undefined, 'cambiar butaca');
+                      }}
+                      onBackToShowtimes={() => {
+                        setSelectedShowtimeCard(null);
+                        setCurrentState('EXPLORING');
+                        handleSendMessage(undefined, 'cambiar función');
+                      }}
+                    />
+                  )}
+
+                  {/* Estado Vacío de Búsqueda Fallida */}
+                  {msg.emptyState && (
+                    <EmptySearchCard
+                      emptyState={msg.emptyState}
+                      onExploreGenre={(query) => handleSendMessage(undefined, query)}
+                      onExploreAll={() => handleSendMessage(undefined, 'Ver cartelera completa de hoy')}
+                    />
+                  )}
+
+                  {/* Tarjeta de Sugerencia Retrocompatible (RB-MOB-03, SC-07.3.1) */}
+                  {msg.suggestedAction &&
+                    msg.suggestedAction.type === 'SELECT_SEAT' &&
+                    purchaseStep === 'NONE' &&
+                    !msg.summary && (
+                      <div
+                        data-testid="chat-suggested-card"
+                        className="mt-2.5 w-full bg-slate-900 border border-blue-500/40 rounded-2xl p-3.5 space-y-2.5 shadow-xl"
+                      >
+                        <div className="flex items-center gap-2 text-white font-bold text-xs">
+                          <Film className="w-4 h-4 text-blue-400" />
+                          <span>{msg.suggestedAction.movieTitle}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-300">
+                          <span>{msg.suggestedAction.roomName}</span>
+                          <span className="font-mono text-emerald-400 font-bold">
+                            Butaca {msg.suggestedAction.seatCode}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          data-testid="chat-buy-seat-btn"
+                          onClick={() => handleSelectSeatInChat(msg.suggestedAction!)}
+                          className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md shadow-blue-600/30 cursor-pointer"
+                        >
+                          <Armchair className="w-3.5 h-3.5" />
+                          Comprar Butaca {msg.suggestedAction.seatCode} (Bs.{' '}
+                          {msg.suggestedAction.price.toFixed(2)})
+                        </button>
+                      </div>
+                    )}
+                </div>
+              )}
             </div>
           ))}
 
@@ -580,16 +773,23 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
               <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
               <h4 className="text-xs font-bold text-white">¡Compra Asistida Exitosa!</h4>
               <p className="text-[11px] text-slate-300">
-                Ticket #{confirmedTicketId} guardado offline.
+                Ticket #{confirmedTicketId} guardado offline en IndexedDB.
               </p>
               <button
                 type="button"
                 onClick={() => setPurchaseStep('NONE')}
-                className="text-[10px] text-blue-400 underline font-medium"
+                className="text-[10px] text-blue-400 underline font-medium cursor-pointer"
               >
                 Continuar conversando
               </button>
             </div>
+          )}
+
+          {/* Hub de Preguntas Frecuentes al Inicio */}
+          {messages.length <= 1 && (
+            <ChatFaqHub
+              onSelectQuestion={(q) => handleSendMessage(undefined, q)}
+            />
           )}
         </div>
 
@@ -600,7 +800,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
               key={prompt}
               type="button"
               onClick={() => handleSendMessage(undefined, prompt)}
-              className="shrink-0 text-[11px] font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-full border border-slate-800 transition active:scale-95"
+              className="shrink-0 text-[11px] font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-full border border-slate-800 transition active:scale-95 cursor-pointer"
             >
               {prompt}
             </button>
@@ -647,7 +847,6 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           onSubmit={(e) => handleSendMessage(e)}
           className="p-3 border-t border-slate-800 bg-slate-900 flex items-center gap-2"
         >
-          {/* Botón de Micrófono (Speech-to-Text estándar) */}
           <button
             type="button"
             data-testid="chat-mic-btn"
@@ -689,7 +888,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
             type="submit"
             data-testid="chat-send-btn"
             disabled={!inputMessage.trim() || isTyping}
-            className="p-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl transition disabled:opacity-40 shrink-0"
+            className="p-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl transition disabled:opacity-40 shrink-0 cursor-pointer"
           >
             <Send className="w-4 h-4" />
           </button>
