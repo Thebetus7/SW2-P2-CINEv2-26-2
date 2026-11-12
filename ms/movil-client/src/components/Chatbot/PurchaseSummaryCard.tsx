@@ -23,10 +23,10 @@ export const PurchaseSummaryCard: React.FC<PurchaseSummaryCardProps> = ({
       <div className="flex items-center justify-between border-b border-slate-800 pb-2">
         <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
           <Ticket className="w-4 h-4 text-rose-500" />
-          Resumen de Reserva Asistida
+          Resumen de selección
         </span>
         <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono border border-emerald-500/30">
-          Butaca Bloqueada (60s)
+          Reserva pendiente
         </span>
       </div>
 

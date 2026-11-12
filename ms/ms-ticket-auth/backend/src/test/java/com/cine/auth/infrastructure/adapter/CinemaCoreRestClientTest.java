@@ -1,6 +1,7 @@
 package com.cine.auth.infrastructure.adapter;
 
 import com.cine.auth.domain.exception.SeatAlreadyReservedException;
+import com.cine.auth.domain.exception.CinemaCoreUnavailableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -72,6 +73,63 @@ class CinemaCoreRestClientTest {
 
         boolean result = client.releaseSeat(showtimeId, seatId, "token");
         assertTrue(result);
+        mockServer.verify();
+    }
+
+    @Test
+    void shouldNotTreatServerFailureAsSeatLock() {
+        UUID showtimeId = UUID.randomUUID();
+        UUID seatId = UUID.randomUUID();
+        mockServer.expect(requestTo(baseUrl + "/api/v1/showtimes/" + showtimeId + "/seats/" + seatId + "/lock"))
+                .andRespond(withServerError());
+        assertThrows(CinemaCoreUnavailableException.class, () -> client.lockSeat(showtimeId, seatId, "token"));
+        mockServer.verify();
+    }
+
+    @Test
+    void shouldNotTreatMissingSeatAsSeatLock() {
+        UUID showtimeId = UUID.randomUUID();
+        UUID seatId = UUID.randomUUID();
+        mockServer.expect(requestTo(baseUrl + "/api/v1/showtimes/" + showtimeId + "/seats/" + seatId + "/lock"))
+                .andRespond(withResourceNotFound());
+        assertThrows(CinemaCoreUnavailableException.class, () -> client.lockSeat(showtimeId, seatId, "token"));
+        mockServer.verify();
+    }
+
+    @Test
+    void shouldPropagateFailureWhenConfirmingAndReleasing() {
+        UUID showtimeId = UUID.randomUUID();
+        UUID seatId = UUID.randomUUID();
+        String prefix = baseUrl + "/api/v1/showtimes/" + showtimeId + "/seats/" + seatId;
+        mockServer.expect(requestTo(prefix + "/confirm")).andRespond(withServerError());
+        mockServer.expect(requestTo(prefix + "/release")).andRespond(withServerError());
+        assertThrows(CinemaCoreUnavailableException.class, () -> client.confirmSeat(showtimeId, seatId, "token"));
+        assertThrows(CinemaCoreUnavailableException.class, () -> client.releaseSeat(showtimeId, seatId, "token"));
+        mockServer.verify();
+    }
+
+    @Test
+    void shouldConfirmSeatOnlyAfterSuccessfulResponse() {
+        UUID showtimeId = UUID.randomUUID();
+        UUID seatId = UUID.randomUUID();
+        mockServer.expect(requestTo(baseUrl + "/api/v1/showtimes/" + showtimeId + "/seats/" + seatId + "/confirm"))
+                .andRespond(withSuccess());
+        assertTrue(client.confirmSeat(showtimeId, seatId, "token"));
+        mockServer.verify();
+    }
+
+    @Test
+    void shouldReadTicketInfoForSelectedSeat() {
+        UUID showtimeId = UUID.randomUUID();
+        UUID seatId = UUID.randomUUID();
+        String body = """
+                {"movie":{"title":"Película"},"hall":{"name":"Sala 2"},
+                 "seats":[{"seatId":"%s","seat":{"visibleCode":"C-8"}}]}
+                """.formatted(seatId);
+        mockServer.expect(requestTo(baseUrl + "/api/v1/showtimes/" + showtimeId))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+        assertEquals(new CinemaCoreRestClient.TicketInfo("Película", "Sala 2", "C-8"),
+                client.getTicketInfo(showtimeId, seatId, "token"));
         mockServer.verify();
     }
 }

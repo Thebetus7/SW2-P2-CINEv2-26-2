@@ -1,4 +1,12 @@
 # Technical Plan: Módulo 07 - Chatbot Asistente de Compra para Clientes (CLIENT SALES CHATBOT)
+Constitution-SHA256: bf9282dc4cc5ac79d835e768865b29b9544a02c8cd2af2489d72cfc304cb8e84
+Spec-SHA256: 37417fedbe86643a80445c83155c35e05f134df1823b323475fa80002cc9ce94
+Status: APPROVED
+Version: 1
+
+Revisión técnica 2026-11-12: para cumplir RF-17.2 a RF-17.5, el orquestador consulta funciones y detalle de butacas de Cinema-Core; debe informar la indisponibilidad de la dependencia cuando no pueda verificarla. Los campos existentes del contrato se conservan. La heurística de IA utiliza únicamente datos obtenidos del servicio. La verificación del bloqueo en compra corresponde al flujo transaccional de Ticket-Auth.
+
+Para la transición de selección a compra, el resumen incluirá `seats` con pares de código visible e identificador de butaca devueltos por Cinema-Core. Es un campo adicional retrocompatible; nunca se deducirá un UUID a partir del código. La reserva continúa siendo responsabilidad de Ticket-Auth.
 
 > **Estado:** APPROVED  
 > **Módulo:** `docs/specs/07-client-chat/`  

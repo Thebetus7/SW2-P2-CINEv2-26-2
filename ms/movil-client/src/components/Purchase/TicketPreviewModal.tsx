@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Ticket, CreditCard, X, Film, MapPin, Armchair } from 'lucide-react';
 
 interface TicketPreviewModalProps {
@@ -22,6 +22,8 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
   onConfirmAndProceedToPayment,
   onClose,
 }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [ticketPreviewUrl]);
   if (!isOpen) return null;
 
   return (
@@ -50,19 +52,12 @@ export const TicketPreviewModal: React.FC<TicketPreviewModalProps> = ({
         <div className="p-5 overflow-y-auto space-y-4">
           {/* Imagen gráfica del Ticket desde MinIO S3 */}
           <div className="relative aspect-[16/9] w-full bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 shadow-inner flex items-center justify-center">
-            <img
-              src={ticketPreviewUrl}
-              alt="Credencial Gráfica del Boleto"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                // Fallback visual si MinIO aún no tiene la imagen física
-                (e.target as HTMLImageElement).src =
-                  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="340" viewBox="0 0 600 340" fill="%231e293b"><rect width="600" height="340" rx="16"/><text x="50%" y="45%" fill="%2338bdf8" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="22">CINE MULTIPLEX</text><text x="50%" y="60%" fill="%2394a3b8" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14">Credencial Grafica Generada</text></svg>';
-              }}
-            />
-            <span className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md text-[10px] text-slate-300 px-2 py-0.5 rounded font-mono">
-              MinIO S3 Preview
-            </span>
+            {ticketPreviewUrl && !imageFailed ? (
+              <img src={ticketPreviewUrl} alt="Credencial gráfica del boleto"
+                className="w-full h-full object-cover" onError={() => setImageFailed(true)} />
+            ) : (
+              <p className="p-4 text-center text-xs text-slate-300">La imagen de previsualización aún no está disponible.</p>
+            )}
           </div>
 
           {/* Ficha Resumen de la Función y Butaca */}

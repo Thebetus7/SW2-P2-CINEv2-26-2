@@ -1,88 +1,84 @@
 package com.cine.auth.infrastructure.adapter;
 
+import com.cine.auth.domain.exception.DomainException;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.nio.charset.StandardCharsets;
+import java.util.HexFormat;
 import java.util.UUID;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 class MultimediaRestClientTest {
-
-    private RestClient.Builder restClientBuilder;
-    private MockRestServiceServer mockServer;
-    private MultimediaRestClient multimediaRestClient;
-    private final String baseUrl = "http://localhost:3001";
+    private MockRestServiceServer server;
+    private MultimediaRestClient client;
+    private final UUID ticket = UUID.randomUUID(), showtime = UUID.randomUUID(), seat = UUID.randomUUID();
+    private final Instant issuedAt = Instant.parse("2026-11-12T16:00:00Z");
+    private String signature;
 
     @BeforeEach
-    void setUp() {
-        restClientBuilder = RestClient.builder();
-        mockServer = MockRestServiceServer.bindTo(restClientBuilder).build();
-        multimediaRestClient = new MultimediaRestClient(restClientBuilder, baseUrl);
+    void setup() throws Exception {
+        var builder = RestClient.builder();
+        server = MockRestServiceServer.bindTo(builder).build();
+        client = new MultimediaRestClient(builder, "http://localhost:3001");
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec("clave_secreta_universitaria_mcp".getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        signature = HexFormat.of().formatHex(mac.doFinal((ticket + ":" + seat + ":" + showtime + ":" + issuedAt).getBytes(StandardCharsets.UTF_8)));
     }
 
     @Test
-    @DisplayName("Debe invocar POST /api/v1/multimedia/tickets/generate y retornar ticketImageUrl y qrSignature")
-    void shouldGenerateTicketGraphic() {
-        UUID ticketId = UUID.randomUUID();
-        UUID showtimeId = UUID.randomUUID();
-        UUID seatId = UUID.randomUUID();
-
-        String jsonResponse = """
-            {
-                "ticketImageUrl": "http://localhost:9000/cine-tickets/ticket-123.jpg",
-                "qrSignature": "hmac_sha256_mock_signature",
-                "status": "GENERATED"
-            }
-        """;
-
-        mockServer.expect(requestTo(baseUrl + "/api/v1/multimedia/tickets/generate"))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
-
-        var result = multimediaRestClient.generateTicketGraphic(
-                ticketId,
-                showtimeId,
-                seatId,
-                "Juan Perez",
-                new BigDecimal("45.00")
-        );
-
-        assertNotNull(result);
-        assertEquals("http://localhost:9000/cine-tickets/ticket-123.jpg", result.ticketImageUrl());
-        assertEquals("hmac_sha256_mock_signature", result.qrSignature());
-        mockServer.verify();
+    void sendsVerifiedTicketDataAndReceivesCanonicalPayload() {
+        String response = """
+                {"ticketImageUrl":"http://localhost:9000/ticket.jpg",
+                 "qrCodePayload":{"ticketId":"%s","showtimeId":"%s","seatId":"%s","issuedAt":"%s","sig":"%s"}}
+                """.formatted(ticket, showtime, seat, issuedAt, signature);
+        server.expect(requestTo("http://localhost:3001/api/v1/multimedia/tickets/generate"))
+                .andExpect(jsonPath("$.movieTitle").value("Película"))
+                .andExpect(jsonPath("$.hallName").value("Sala 2"))
+                .andExpect(jsonPath("$.seatLabel").value("C-8"))
+                .andExpect(jsonPath("$.issuedAt").value(issuedAt.toString()))
+                .andRespond(withSuccess(response, MediaType.APPLICATION_JSON));
+        var result = client.generateTicketGraphic(ticket, showtime, seat, "Película", "Sala 2", "C-8", BigDecimal.valueOf(45), issuedAt);
+        assertEquals(signature, result.qrSignature());
+        server.verify();
     }
 
     @Test
-    @DisplayName("Debe proporcionar fallback resiliente en caso de desconexión con MS MULTIMEDIA")
-    void shouldFallbackWhenServiceUnavailable() {
-        UUID ticketId = UUID.randomUUID();
-        UUID showtimeId = UUID.randomUUID();
-        UUID seatId = UUID.randomUUID();
-
-        // En caso de no poder conectar al mock
-        mockServer.expect(requestTo(baseUrl + "/api/v1/multimedia/tickets/generate"))
+    void doesNotInventSignatureWhenMultimediaFails() {
+        server.expect(requestTo("http://localhost:3001/api/v1/multimedia/tickets/generate"))
                 .andRespond(withServerError());
+        assertThrows(DomainException.class, () -> client.generateTicketGraphic(ticket, showtime, seat, "Película", "Sala 2", "C-8", BigDecimal.valueOf(45), issuedAt));
+    }
 
-        var result = multimediaRestClient.generateTicketGraphic(
-                ticketId,
-                showtimeId,
-                seatId,
-                "Juan Perez",
-                new BigDecimal("45.00")
-        );
+    @Test
+    void rejectsMismatchedPayload() {
+        String response = """
+                {"ticketImageUrl":"http://localhost:9000/ticket.jpg",
+                 "qrCodePayload":{"ticketId":"different","showtimeId":"%s","seatId":"%s","issuedAt":"%s","sig":"%s"}}
+                """.formatted(showtime, seat, issuedAt, signature);
+        server.expect(requestTo("http://localhost:3001/api/v1/multimedia/tickets/generate"))
+                .andRespond(withSuccess(response, MediaType.APPLICATION_JSON));
+        assertThrows(DomainException.class, () -> client.generateTicketGraphic(ticket, showtime, seat, "Película", "Sala 2", "C-8", BigDecimal.valueOf(45), issuedAt));
+    }
 
-        assertNotNull(result);
-        assertTrue(result.ticketImageUrl().contains(ticketId.toString()));
-        assertTrue(result.qrSignature().contains("HMAC-SHA256"));
+    @Test
+    void rejectsInvalidSignature() {
+        String response = """
+                {"ticketImageUrl":"http://localhost:9000/ticket.jpg",
+                 "qrCodePayload":{"ticketId":"%s","showtimeId":"%s","seatId":"%s","issuedAt":"%s","sig":"%s"}}
+                """.formatted(ticket, showtime, seat, issuedAt, "0".repeat(64));
+        server.expect(requestTo("http://localhost:3001/api/v1/multimedia/tickets/generate"))
+                .andRespond(withSuccess(response, MediaType.APPLICATION_JSON));
+        assertThrows(DomainException.class, () -> client.generateTicketGraphic(ticket, showtime, seat, "Película", "Sala 2", "C-8", BigDecimal.valueOf(45), issuedAt));
     }
 }

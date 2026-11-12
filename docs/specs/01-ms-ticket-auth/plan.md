@@ -1,4 +1,12 @@
 # Plan Técnico: Módulo 01 - Autenticación Centralizada y Gestión de Boletos (MS TICKET-AUTH)
+Constitution-SHA256: bf9282dc4cc5ac79d835e768865b29b9544a02c8cd2af2489d72cfc304cb8e84
+Spec-SHA256: e593b8af21ae6ec46409a5c7583755f576fdabd7c27264265920041bac1909a6
+Status: APPROVED
+Version: 1
+
+Revisión técnica 2026-11-12: PLAN-04 debe propagar errores de Cinema-Core en bloqueo, liberación y confirmación en lugar de simular éxito. PLAN-03 no continuará con una respuesta de fallo. Las fallas de compensación se harán observables para recuperación; no se considerará demostrada la liberación sin respuesta exitosa.
+
+Para la credencial verificable, PLAN-03 consulta en Cinema-Core los datos de la función y butaca; PLAN-04 solicita a Multimedia el JPEG y payload firmado usando `Ticket.createdAt` como `issuedAt`. Verifica que la respuesta corresponda a los mismos identificadores y fecha antes de guardar la firma. Con esos datos existentes en Ticket, el cliente puede reconstruir el payload canónico sin nueva migración. Un fallo o payload incompleto no se sustituye por una firma simulada.
 
 > **Estado:** APPROVED  
 > **Versión:** 1.3.0  

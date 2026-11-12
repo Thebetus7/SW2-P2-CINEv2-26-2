@@ -1,5 +1,55 @@
 # Tasks: Módulo 06 - Aplicación Móvil del Cliente (MOVIL CLIENT)
 
+<!-- sdd:progress:start -->
+## Task Progress
+
+Status: IN_PROGRESS
+
+| Métrica | Cantidad |
+| --- | ---: |
+| Total de tareas | 1 |
+| Tareas realizadas | 0 |
+| Tareas por realizar | 1 |
+| Tareas bloqueadas | 0 |
+| Tareas en progreso | 1 |
+| Progreso | 0.0% |
+
+## Registro de tareas
+
+| ID | Estado | Tarea | Evidencia actual |
+| --- | --- | --- | --- |
+| T5.1 | IN_PROGRESS | [IMPL] Integración del chat móvil con el servicio del comprador | Parcial 2026-11-12: suite móvil 90 pruebas aprobadas antes de los últimos ajustes; posteriormente 16 pruebas específicas del chat y reserva y build aprobados, incluyendo selección de función escrita y reintento sin duplicación de mensajes. Con Cinema-Core real y base aislada, el servidor de chat devolvió la función, precio 27.50, únicamente la butaca libre y rechazó la ocupada; la prueba con el proveedor de IA devolvió respuesta del modelo. La base temporal fue eliminada. Queda validar interfaz visual, pago de prueba con servicios reales y compra múltiple. La herramienta visual no pudo crear sus archivos de ejecución. |
+
+## Checklist rápido
+
+- [/] T5.1 [IMPL] Integración del chat móvil con el servicio del comprador
+
+<!-- sdd:progress:end -->
+
+Plan-SHA256: ef751b5acd49064ca168a3a9ec73f684eaadc55df6a77b3db85b9017f6bcfb46
+
+Spec-SHA256: e6d29cba3a81aa89fc3e90e0c1ef84fe117ca70fdd5117ab92d0b808e94a91ca
+
+Version: 2
+
+## Trabajo actual
+
+### T5.1 [IMPL] Integración del chat móvil con el servicio del comprador
+**Status:** IN_PROGRESS
+**Depends on:** -
+**Traceability:** PLAN-03, SC-07.3.1
+**Files:** ms/movil-client/src/components/Chatbot/ChatDrawer.tsx; ms/movil-client/src/components/Chatbot/PurchaseSummaryCard.tsx; ms/movil-client/src/components/Purchase/TicketPreviewModal.tsx; ms/movil-client/src/graphql/mutations.ts; ms/movil-client/src/types/client-chat.types.ts; ms/movil-client/src/tests/ChatbotDrawer.spec.tsx; ms/movil-client/src/tests/ChatConnection.spec.tsx; ms/movil-client/src/tests/VerifiedPurchase.spec.ts
+**Objective:** Conectar el chat móvil al contrato conversacional real y evitar datos de respaldo inventados.
+**Work:** Revisar dirección, historial, estados, errores, reintento e inicio de compra; preservar los flujos existentes y probarlos.
+**Done when:** Las pruebas de contrato, errores, selección y compilación pasan; se documentan verificaciones reales y limitaciones.
+**Verification:** NOT_RUN
+**Command:** npm.cmd test; npm.cmd run build
+**Exit code:** -
+**Evidence:** Parcial 2026-11-12: suite móvil 90 pruebas aprobadas antes de los últimos ajustes; posteriormente 16 pruebas específicas del chat y reserva y build aprobados, incluyendo selección de función escrita y reintento sin duplicación de mensajes. Con Cinema-Core real y base aislada, el servidor de chat devolvió la función, precio 27.50, únicamente la butaca libre y rechazó la ocupada; la prueba con el proveedor de IA devolvió respuesta del modelo. La base temporal fue eliminada. Queda validar interfaz visual, pago de prueba con servicios reales y compra múltiple. La herramienta visual no pudo crear sus archivos de ejecución.
+
+## Historial anterior preservado
+
+
 ## Task Progress
 
 | Métrica | Cantidad |

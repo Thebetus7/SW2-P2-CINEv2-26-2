@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import {
   Bot,
   X,
@@ -45,10 +46,12 @@ const getChatApiUrl = (): string => {
   if (metaEnv?.VITE_CHAT_API_URL) {
     return metaEnv.VITE_CHAT_API_URL;
   }
-  if (typeof window !== 'undefined' && window.location && window.location.port === '5173' && window.location.hostname === 'localhost') {
-    return 'http://localhost:8001/api/v1/client-chat';
+  if (Capacitor.isNativePlatform()) {
+    return 'http://20.102.51.189:8001/api/v1/client-chat';
   }
-  return 'http://20.102.51.189:8001/api/v1/client-chat';
+  const host = typeof window !== 'undefined' && window.location.hostname
+    ? window.location.hostname : 'localhost';
+  return `http://${host}:8001/api/v1/client-chat`;
 };
 
 const CHAT_API_URL = getChatApiUrl();
@@ -78,7 +81,6 @@ const QUICK_FAQ_PROMPTS = [
 export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   isOpenExternal,
   onToggleExternal,
-  movies = [],
   showtimes = [],
 }) => {
   const [internalIsOpen, setInternalIsOpen] = useState<boolean>(false);
@@ -86,11 +88,18 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
 
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const purchasePendingRef = useRef(false);
+  const [retryMessage, setRetryMessage] = useState<{ text: string; showtimeId?: string; seatCode?: string } | null>(null);
+  const sendingRef = useRef(false);
+  const generationRef = useRef(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Estados multi-turno para ms-ia-mcp
   const [currentState, setCurrentState] = useState<ChatFlowState>('EXPLORING');
   const [selectedShowtimeCard, setSelectedShowtimeCard] = useState<ShowtimeCard | null>(null);
-  const [selectedSeatCode, setSelectedSeatCode] = useState<string | null>(null);
+  const [, setSelectedSeatCode] = useState<string | null>(null);
 
   // Estados de Speech-to-Text (Reconocimiento de voz por micrófono)
   const [isListening, setIsListening] = useState<boolean>(false);
@@ -125,6 +134,12 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     return [DEFAULT_WELCOME_MESSAGE];
   });
 
+  useEffect(() => {
+    if (isOpen && typeof messagesEndRef.current?.scrollIntoView === 'function') {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [messages, isTyping, isOpen, chatError, purchaseError]);
+
   // Guardado reactivo en caché
   useEffect(() => {
     try {
@@ -141,6 +156,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   }, [messages]);
 
   const handleClearChatHistory = () => {
+    generationRef.current += 1;
     try {
       localStorage.removeItem(CHAT_CACHE_KEY);
     } catch {}
@@ -151,6 +167,9 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     setPurchaseStep('NONE');
     setPendingInitiate(null);
     setSpeechError(null);
+    setChatError(null);
+    setPurchaseError(null);
+    setRetryMessage(null);
   };
 
   // Estados de Compra Asistida dentro del Chat (RB-MOB-03)
@@ -241,11 +260,13 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   const handleSendMessage = async (
     e?: React.FormEvent,
     directText?: string,
-    options?: { showtimeId?: string; seatCode?: string }
+    options?: { showtimeId?: string; seatCode?: string; retry?: boolean }
   ) => {
     if (e) e.preventDefault();
     const textToSend = (directText !== undefined ? directText : inputMessage).trim();
-    if (!textToSend) return;
+    if (!textToSend || sendingRef.current) return;
+    sendingRef.current = true;
+    const generation = generationRef.current;
 
     if (isListening && recognitionRef.current) {
       try {
@@ -262,22 +283,31 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const retryingLastMessage = options?.retry === true && messages[messages.length - 1]?.sender === 'user'
+      && messages[messages.length - 1]?.text === userText;
+    if (!retryingLastMessage) setMessages((prev) => [...prev, userMsg]);
     setInputMessage('');
     setIsTyping(true);
     setSpeechError(null);
+    setChatError(null);
 
-    const targetShowtimeId = options?.showtimeId || selectedShowtimeCard?.showtimeId;
-    const targetSeatCode = options?.seatCode || selectedSeatCode || undefined;
+    const refersToSeat = /butaca|asiento|\b[a-z]-\d{1,3}\b/i.test(userText);
+    const targetShowtimeId = options?.showtimeId ||
+      (options?.seatCode || refersToSeat ? selectedShowtimeCard?.showtimeId : undefined);
+    const targetSeatCode = options?.seatCode;
 
-    const historyPayload = [...messages, userMsg].slice(-6).map((m) => ({
+    const previousMessages = retryingLastMessage ? messages.slice(0, -1) : messages;
+    const historyPayload = previousMessages.slice(-6).map((m) => ({
       role: m.sender === 'user' ? 'user' : 'assistant',
       content: m.text,
     }));
 
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
     try {
       const response = await fetch(CHAT_API_URL, {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userText,
@@ -290,7 +320,9 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        const replyText = data.reply || data.response || 'Tengo estas recomendaciones de cartelera para ti:';
+        const replyText = data.reply || data.response;
+        if (typeof replyText !== 'string' || !replyText.trim()) throw new Error('Respuesta de chat inválida');
+        if (generation !== generationRef.current) return;
         const botMsg: ClientChatMessage = {
           id: `bot-${Date.now()}`,
           sender: 'assistant',
@@ -306,87 +338,33 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
 
         if (data.nextState) {
           setCurrentState(data.nextState);
+          if (data.nextState === 'SHOWTIME_SELECTED' && Array.isArray(data.showtimeCards) && data.showtimeCards.length === 1) {
+            setSelectedShowtimeCard(data.showtimeCards[0]);
+          } else if (data.nextState === 'EXPLORING') {
+            setSelectedShowtimeCard(null);
+            setSelectedSeatCode(null);
+          }
         }
 
         setMessages((prev) => [...prev, botMsg]);
-        setIsTyping(false);
+        setRetryMessage(null);
         return;
       }
+      throw new Error(`Chat HTTP ${response.status}`);
     } catch {
-      // Fallback local con recomendación inteligente de cartelera
-    }
-
-    // Respuesta inteligente automática según el texto del usuario
-    setTimeout(() => {
-      const liveMovie = movies && movies.length > 0 ? movies[0] : null;
-      const liveShowtime = showtimes && showtimes.length > 0
-        ? (showtimes.find((s) => s.movieId === liveMovie?.id) || showtimes[0])
-        : null;
-
-      const defaultMovieTitle = liveMovie ? liveMovie.title : 'Dune: Parte 2';
-      const defaultMovieId = liveMovie ? liveMovie.id : 'mov-01';
-      const defaultShowtimeId = liveShowtime ? liveShowtime.id : 'st-01';
-      const defaultRoomName = liveShowtime ? liveShowtime.roomName : 'Sala 2';
-      const defaultPrice = liveShowtime?.seats?.[0]?.price || 45.0;
-
-      let botResponseText =
-        `Te recomiendo "${defaultMovieTitle}" en ${defaultRoomName}. Es una excelente opción con funciones disponibles hoy.`;
-      const suggestedAction: ClientChatMessage['suggestedAction'] = {
-        type: 'SELECT_SEAT',
-        movieId: defaultMovieId,
-        movieTitle: defaultMovieTitle,
-        showtimeId: defaultShowtimeId,
-        roomName: defaultRoomName,
-        seatCode: 'C-8',
-        price: defaultPrice,
-      };
-
-      if (
-        userText.toLowerCase().includes('animacion') ||
-        userText.toLowerCase().includes('niños') ||
-        userText.toLowerCase().includes('panda') ||
-        userText.toLowerCase().includes('familiar')
-      ) {
-        const animMovie = movies.find((m) =>
-          m.genre?.toLowerCase().includes('anim') ||
-          m.title?.toLowerCase().includes('panda') ||
-          m.genre?.toLowerCase().includes('familiar')
-        ) || (movies.length > 1 ? movies[1] : null);
-
-        const animShowtime = animMovie
-          ? showtimes.find((s) => s.movieId === animMovie.id)
-          : null;
-
-        const animTitle = animMovie ? animMovie.title : 'Kung Fu Panda 4';
-        const animMovieId = animMovie ? animMovie.id : 'mov-02';
-        const animShowtimeId = animShowtime ? animShowtime.id : 'st-03';
-        const animRoomName = animShowtime ? animShowtime.roomName : 'Sala 3';
-
-        botResponseText =
-          `Para disfrutar en familia te recomiendo "${animTitle}" en ${animRoomName}.`;
-        suggestedAction.movieId = animMovieId;
-        suggestedAction.movieTitle = animTitle;
-        suggestedAction.showtimeId = animShowtimeId;
-        suggestedAction.roomName = animRoomName;
-        suggestedAction.seatCode = 'B-3';
-      }
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `bot-${Date.now()}`,
-          sender: 'assistant',
-          text: botResponseText,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          suggestedAction,
-        },
-      ]);
+      if (generation !== generationRef.current) return;
+      setChatError('No se pudo conectar con el asistente. Comprueba tu conexi\u00f3n y vuelve a intentarlo.');
+      setRetryMessage({ text: userText, showtimeId: targetShowtimeId, seatCode: targetSeatCode });
+    } finally {
+      window.clearTimeout(timeout);
+      sendingRef.current = false;
       setIsTyping(false);
-    }, 400);
+    }
   };
 
   const handleSelectShowtimeCard = (card: ShowtimeCard) => {
     setSelectedShowtimeCard(card);
+    setSelectedSeatCode(null);
     setCurrentState('SHOWTIME_SELECTED');
     handleSendMessage(undefined, `Quiero la función de ${card.movieTitle} (${card.startTime})`, {
       showtimeId: card.showtimeId,
@@ -411,13 +389,29 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   };
 
   const handleSummaryProceedToPayment = async (summary: PurchaseSummary) => {
+    if (purchasePendingRef.current || purchaseStep !== 'NONE') return;
+    const activeUserId = localStorage.getItem('user_id');
+    if (!activeUserId) {
+      setPurchaseError('Inicia sesión para reservar tu butaca.');
+      return;
+    }
+    if (summary.seats && summary.seats.length > 1) {
+      setPurchaseError('Por ahora la compra desde el chat admite una butaca por vez.');
+      return;
+    }
+    if (!summary.seats || summary.seats.length !== 1 || summary.seats[0].seatCode !== summary.seatCode) {
+      setPurchaseError('No se pudo iniciar la compra: selecciona una butaca verificable.');
+      return;
+    }
+    purchasePendingRef.current = true;
+    setPurchaseError(null);
     try {
-      const activeUserId = localStorage.getItem('user_id') || '8be989be-05ac-4804-9c7b-22b81d907a9d';
       const initiateData = await initiatePurchase(
         summary.showtimeId,
-        `seat-${summary.seatCode}`,
+        summary.seats[0].seatId,
         activeUserId,
-        summary.totalPrice || 45.0
+        summary.totalPrice,
+        true
       );
       setPendingInitiate({
         ...initiateData,
@@ -427,50 +421,29 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
         seatCode: summary.seatCode,
         amount: summary.totalPrice,
       });
-      setPurchaseStep('CHECKOUT');
+      setPurchaseStep('PREVIEW');
     } catch (err) {
       console.error('Error al proceder al pago desde resumen:', err);
-      // Fallback a checkout directo
-      setPendingInitiate({
-        ticketId: `tck-${Date.now()}`,
-        previewImageUrl: '',
-        expiresAt: new Date(Date.now() + 60000).toISOString(),
-        amount: summary.totalPrice || 45.0,
-        seatCode: summary.seatCode,
-        movieTitle: summary.movieTitle,
-        roomName: summary.hallName,
-        showtimeId: summary.showtimeId,
-      });
-      setPurchaseStep('CHECKOUT');
+      setPurchaseError('No se pudo reservar la butaca. Comprueba la disponibilidad y vuelve a intentarlo.');
+    } finally {
+      purchasePendingRef.current = false;
     }
   };
 
   const handleSelectSeatInChat = async (
     action: NonNullable<ClientChatMessage['suggestedAction']>
   ) => {
-    try {
-      const activeUserId = localStorage.getItem('user_id') || '8be989be-05ac-4804-9c7b-22b81d907a9d';
-      const initiateData = await initiatePurchase(
-        action.showtimeId,
-        `seat-${action.seatCode}`,
-        activeUserId,
-        action.price || 45.0
-      );
-      setPendingInitiate({
-        ...initiateData,
-        showtimeId: action.showtimeId,
-        movieTitle: action.movieTitle,
-        roomName: action.roomName,
-        seatCode: action.seatCode,
-        amount: action.price,
-      });
-      setPurchaseStep('PREVIEW');
-    } catch (err) {
-      console.error('Error al iniciar compra en chat:', err);
-    }
+    await handleSendMessage(undefined, `Elijo la butaca ${action.seatCode}`, {
+      showtimeId: action.showtimeId, seatCode: action.seatCode,
+    });
   };
 
   const handleConfirmPreview = () => {
+    if (!pendingInitiate || Date.parse(pendingInitiate.expiresAt) <= Date.now()) {
+      setPurchaseStep('NONE');
+      setPurchaseError('La reserva expiró. Selecciona nuevamente la butaca.');
+      return;
+    }
     setPurchaseStep('CHECKOUT');
   };
 
@@ -480,21 +453,25 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     try {
       const confirmed = await confirmPurchase(
         pendingInitiate.ticketId,
-        paymentIntentId
+        paymentIntentId,
+        true
       );
-      await offlineStorageService.saveTicketWithBlob(
-        {
+      if (!confirmed.finalImageUrl) throw new Error('La imagen del boleto no está disponible.');
+      const imageResponse = await fetch(confirmed.finalImageUrl);
+      if (!imageResponse.ok) throw new Error('No se pudo descargar la imagen del boleto.');
+      const ticketImage = await imageResponse.blob();
+      if (!ticketImage.size || !ticketImage.type.startsWith('image/')) throw new Error('La imagen del boleto no es válida.');
+      await offlineStorageService.saveTicket({
           ticketId: confirmed.ticketId,
-          showtimeId: pendingInitiate.showtimeId || (movies.length > 0 && showtimes.length > 0 ? showtimes[0].id : 'st-01'),
+          showtimeId: pendingInitiate.showtimeId,
           peliculaTitulo: pendingInitiate.movieTitle,
           salaNombre: pendingInitiate.roomName,
           butacaCodigo: pendingInitiate.seatCode,
-          fechaHoraFuncion: confirmed.startsAt || new Date().toISOString(),
+          fechaHoraFuncion: showtimes.find((showtime) => showtime.id === pendingInitiate.showtimeId)?.startsAt || '',
           qrJsonPayload: confirmed.qrJsonPayload,
+          jpegImageBlob: ticketImage,
           descargadoEn: new Date().toISOString(),
-        },
-        confirmed.finalImageUrl
-      );
+      });
 
       setConfirmedTicketId(confirmed.ticketId);
       setPurchaseStep('SUCCESS');
@@ -534,6 +511,8 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
       ]);
     } catch (err) {
       console.error('Error al confirmar compra en chat:', err);
+      setPurchaseStep('NONE');
+      setPurchaseError('No se pudo verificar el boleto. Consulta Mis Boletos antes de intentar otra compra.');
     }
   };
 
@@ -584,7 +563,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
               </h3>
               <p className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                En línea (GrokCloud / MS IA-MCP)
+              Asistente de cine
               </p>
             </div>
           </div>
@@ -614,7 +593,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           data-testid="chat-messages-container"
           className="flex-1 p-4 overflow-y-auto space-y-3"
         >
-          {messages.map((msg) => (
+          {messages.map((msg, index) => (
             <div
               key={msg.id}
               className={`flex flex-col ${
@@ -635,7 +614,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
               {msg.sender === 'assistant' && (
                 <div className="w-[88%] space-y-2 mt-1">
                   {/* Hero de Función Seleccionada */}
-                  {selectedShowtimeCard && currentState !== 'EXPLORING' && (
+                  {selectedShowtimeCard && currentState !== 'EXPLORING' && index === messages.length - 1 && (
                     <SelectedShowtimeHero
                       card={selectedShowtimeCard}
                       onChangeShowtime={() => {
@@ -689,6 +668,16 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
                     />
                   )}
 
+                  {messages.length > 1 && index === messages.length - 1 && msg.quickChips && msg.quickChips.length > 0 && (
+                    <div className="flex flex-wrap gap-2" aria-label="Opciones sugeridas">
+                      {msg.quickChips.map((chip) => (
+                        <button key={chip} type="button" disabled={isTyping}
+                          className="rounded-full border border-blue-500/40 px-3 py-1 text-xs text-blue-200 disabled:opacity-40"
+                          onClick={() => handleSendMessage(undefined, chip)}>{chip}</button>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Tarjeta de Sugerencia Retrocompatible (RB-MOB-03, SC-07.3.1) */}
                   {msg.suggestedAction &&
                     msg.suggestedAction.type === 'SELECT_SEAT' &&
@@ -734,6 +723,24 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
             </div>
           )}
 
+          {chatError && (
+            <div role="alert" className="rounded-xl border border-rose-500/40 bg-rose-950/40 p-3 text-xs text-rose-200">
+              <p>{chatError}</p>
+              {retryMessage && (
+                <button type="button" className="mt-2 underline" disabled={isTyping}
+                  onClick={() => handleSendMessage(undefined, retryMessage.text, { ...retryMessage, retry: true })}>
+                  Reintentar
+                </button>
+              )}
+            </div>
+          )}
+
+          {purchaseError && (
+            <div role="alert" className="rounded-xl border border-rose-500/40 bg-rose-950/40 p-3 text-xs text-rose-200">
+              {purchaseError}
+            </div>
+          )}
+
           {/* Stepper incrustado dentro del diálogo del Chatbot (RB-MOB-03) */}
           {purchaseStep === 'PREVIEW' && pendingInitiate && (
             <div data-testid="chat-stepper-preview" className="my-2">
@@ -758,9 +765,10 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
               <StripeCheckoutWrapper
                 ticketId={pendingInitiate.ticketId}
                 amount={pendingInitiate.amount}
-                initialSeconds={60}
+                initialSeconds={Math.max(0, Math.ceil((Date.parse(pendingInitiate.expiresAt) - Date.now()) / 1000))}
                 onPaymentSuccess={handlePaymentSuccessInChat}
                 onPaymentCancel={() => setPurchaseStep('NONE')}
+                onTimeout={() => { setPurchaseStep('NONE'); setPurchaseError('La reserva expiró. Selecciona nuevamente la butaca.'); }}
               />
             </div>
           )}
@@ -791,6 +799,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
               onSelectQuestion={(q) => handleSendMessage(undefined, q)}
             />
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Chips de Preguntas Frecuentes Rápidas (1-Click) */}

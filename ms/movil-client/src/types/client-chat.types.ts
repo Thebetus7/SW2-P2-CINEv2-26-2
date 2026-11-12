@@ -29,6 +29,7 @@ export interface PurchaseSummary {
   hallName: string;
   hallType?: string;
   seatCode: string;
+  seats?: Array<{ seatCode: string; seatId: string }>;
   startTime: string;
   unitPrice: number;
   totalPrice: number;

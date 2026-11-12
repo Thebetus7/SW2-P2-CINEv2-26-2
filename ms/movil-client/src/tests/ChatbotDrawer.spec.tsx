@@ -2,17 +2,27 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { ChatDrawer } from '../components/Chatbot/ChatDrawer';
 import { db } from '../services/offline-storage.service';
+import * as purchases from '../graphql/mutations';
+
+const SHOWTIME_ID = 'a0000001-0000-4000-8000-000000000001';
+const SEAT_ID = 'c0000008-0000-4000-8000-000000000001';
+const USER_ID = '8be989be-05ac-4804-9c7b-22b81d907a9d';
 
 const setupChatFetchMock = () => {
-  global.fetch = vi.fn().mockImplementation(async (url: string) => {
+  global.fetch = vi.fn().mockImplementation(async (url: string, options?: RequestInit) => {
     if (typeof url === 'string' && url.includes('client-chat')) {
-      const data = {
+      const request = JSON.parse(String(options?.body || '{}'));
+      const data = request.selectedSeatCode ? {
+        reply: 'Revisa tu selección', nextState: 'SEAT_ASSIGNED',
+        summary: { showtimeId: SHOWTIME_ID, movieTitle: 'Dune: Parte 2', hallName: 'Sala 2', seatCode: 'C-8',
+          seats: [{ seatCode: 'C-8', seatId: SEAT_ID }], startTime: '18:00', unitPrice: 45, totalPrice: 45 },
+      } : {
         response: 'Te recomiendo "Dune: Parte 2" en Sala 2.',
         suggestedAction: {
           type: 'SELECT_SEAT',
           movieId: 'mov-01',
           movieTitle: 'Dune: Parte 2',
-          showtimeId: 'st-01',
+          showtimeId: SHOWTIME_ID,
           roomName: 'Sala 2',
           seatCode: 'C-8',
           price: 45.0,
@@ -23,6 +33,9 @@ const setupChatFetchMock = () => {
         text: async () => JSON.stringify(data),
         json: async () => data,
       };
+    }
+    if (url === 'https://example.test/ticket.jpg') {
+      return { ok: true, blob: async () => new Blob(['imagen'], { type: 'image/jpeg' }) };
     }
     return {
       ok: false,
@@ -177,8 +190,11 @@ describe('ChatbotPurchaseFlow', () => {
   beforeEach(async () => {
     localStorage.clear();
     setupChatFetchMock();
+    localStorage.setItem('user_id', USER_ID);
+    vi.spyOn(purchases, 'initiatePurchase').mockResolvedValue({ ticketId: 'ticket-1', previewImageUrl: '', expiresAt: new Date(Date.now() + 60000).toISOString(), amount: 45, seatCode: 'C-8', movieTitle: 'Dune: Parte 2', roomName: 'Sala 2' });
     await db.offlineTickets.clear();
   });
+  afterEach(() => { vi.restoreAllMocks(); });
 
   it('debe permitir seleccionar la butaca sugerida e incrustar la previsualización del ticket en el drawer', async () => {
     render(<ChatDrawer />);
@@ -203,64 +219,59 @@ describe('ChatbotPurchaseFlow', () => {
     const buyBtn = screen.getByTestId('chat-buy-seat-btn');
     fireEvent.click(buyBtn);
 
+    fireEvent.click(await screen.findByTestId('proceed-payment-button'));
+
     // Debe incrustar la previsualización del ticket (RB-MOB-03)
     await waitFor(() => {
       expect(screen.getByTestId('chat-stepper-preview')).toBeInTheDocument();
       expect(screen.getByText('Previsualización de Entrada')).toBeInTheDocument();
     });
+    expect(purchases.initiatePurchase).toHaveBeenCalledWith(SHOWTIME_ID, SEAT_ID, USER_ID, 45, true);
   });
 
-  it('debe utilizar la primera película y función disponibles en memoria viva en el fallback local', async () => {
-    // Simular que el endpoint remoto de chat falla para probar el fallback local
-    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
-
-    const customLiveMovies = [
-      {
-        id: 'mov-live-99',
-        title: 'Película en Vivo Backend',
-        synopsis: 'Película traída en vivo desde el servidor.',
-        durationMinutes: 140,
-        genre: 'Acción',
-        rating: 'B15',
-        posterUrl: 'http://3.89.228.24:3001/api/v1/multimedia/movies/posters/live.jpg',
-      },
-    ];
-    const customLiveShowtimes = [
-      {
-        id: 'st-live-99',
-        movieId: 'mov-live-99',
-        movieTitle: 'Película en Vivo Backend',
-        roomName: 'Sala VIP 4DX',
-        roomFloor: 3,
-        startsAt: '2026-11-12T20:00:00Z',
-        seats: [
-          { id: 'seat-C-8', code: 'C-8', row: 'C', number: 8, isAvailable: true, price: 65.0 },
-        ],
-      },
-    ];
-
-    render(<ChatDrawer movies={customLiveMovies} showtimes={customLiveShowtimes} />);
-
+  it('muestra un error y no abre el pago si la reserva falla', async () => {
+    vi.mocked(purchases.initiatePurchase).mockRejectedValueOnce(new Error('Servicio no disponible'));
+    render(<ChatDrawer />);
     fireEvent.click(screen.getByTestId('chat-drawer-toggle-btn'));
-    const input = screen.getByTestId('chat-input');
-    fireEvent.change(input, { target: { value: '¿Qué me sugieres hoy?' } });
+    fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'Quiero una recomendación' } });
     fireEvent.click(screen.getByTestId('chat-send-btn'));
-
-    await waitFor(() => {
-      const card = screen.getByTestId('chat-suggested-card');
-      expect(card).toBeInTheDocument();
-      expect(within(card).getByText('Película en Vivo Backend')).toBeInTheDocument();
-      expect(within(card).getByText('Sala VIP 4DX')).toBeInTheDocument();
-    });
+    fireEvent.click(await screen.findByTestId('chat-buy-seat-btn'));
+    fireEvent.click(await screen.findByTestId('proceed-payment-button'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo reservar la butaca');
+    expect(screen.queryByTestId('chat-stepper-checkout')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('chat-stepper-preview')).not.toBeInTheDocument();
   });
+
+  it('informa el error de red y permite reintentar sin inventar funciones', async () => {
+    const fetchMock = vi.fn().mockRejectedValueOnce(new Error('Network error'))
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ reply: 'Respuesta real del servicio', nextState: 'EXPLORING' }) });
+    global.fetch = fetchMock;
+    render(<ChatDrawer />);
+    fireEvent.click(screen.getByTestId('chat-drawer-toggle-btn'));
+    fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'Quiero una recomendacion' } });
+    fireEvent.click(screen.getByTestId('chat-send-btn'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo conectar');
+    expect(screen.queryByTestId('chat-suggested-card')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText('Respuesta real del servicio')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByText('Quiero una recomendacion')).toHaveLength(1);
+    const retryPayload = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(retryPayload.history.some((item: { content: string }) => item.content === 'Quiero una recomendacion')).toBe(false);
+  });
+
 });
 
 describe('Escenario 3: Interacción con el Chatbot Deslizable (SC-07.3.1)', () => {
   beforeEach(async () => {
     localStorage.clear();
     setupChatFetchMock();
+    localStorage.setItem('user_id', USER_ID);
+    vi.spyOn(purchases, 'initiatePurchase').mockResolvedValue({ ticketId: 'ticket-1', previewImageUrl: '', expiresAt: new Date(Date.now() + 60000).toISOString(), amount: 45, seatCode: 'C-8', movieTitle: 'Dune: Parte 2', roomName: 'Sala 2' });
+    vi.spyOn(purchases, 'confirmPurchase').mockResolvedValue({ ticketId: 'ticket-1', status: 'CONFIRMED', qrJsonPayload: '{"sig":"fixture"}', finalImageUrl: 'https://example.test/ticket.jpg', seatCode: 'C-8', movieTitle: 'Dune: Parte 2', roomName: 'Sala 2', startsAt: '2030-01-01T18:00:00Z' });
     await db.offlineTickets.clear();
   });
+  afterEach(() => { vi.restoreAllMocks(); });
 
   it('debe completar la compra con tarjeta de prueba en Stripe sin salir del panel deslizable', async () => {
     render(<ChatDrawer />);
@@ -283,6 +294,8 @@ describe('Escenario 3: Interacción con el Chatbot Deslizable (SC-07.3.1)', () =
       expect(screen.getByTestId('chat-buy-seat-btn')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByTestId('chat-buy-seat-btn'));
+
+    fireEvent.click(await screen.findByTestId('proceed-payment-button'));
 
     // THEN dentro del mismo drawer se previsualiza la imagen JPEG del ticket
     await waitFor(() => {

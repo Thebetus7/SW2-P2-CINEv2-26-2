@@ -52,8 +52,12 @@ export async function initiatePurchase(
   showtimeId: string,
   seatId: string,
   userId: string = DEFAULT_DEMO_USER_ID,
-  pricePaid: number = 45.0
+  pricePaid: number = 45.0,
+  verified: boolean = false
 ): Promise<InitiatePurchasePayload> {
+  if (verified && (!UUID_REGEX.test(userId) || !UUID_REGEX.test(showtimeId) || !UUID_REGEX.test(seatId))) {
+    throw new Error('No se pudo verificar el usuario, la función o la butaca seleccionada.');
+  }
   const validUserId = ensureUuid(userId, DEFAULT_DEMO_USER_ID);
   const validShowtimeId = ensureUuid(showtimeId, 'a0000001-0000-4000-8000-000000000001');
   const validSeatId = ensureUuid(seatId, 'c0000008-0000-4000-8000-000000000001');
@@ -84,9 +88,14 @@ export async function initiatePurchase(
 
     if (response.data?.initiatePurchase?.ticket) {
       const { ticket, lockExpiresAt } = response.data.initiatePurchase;
+      if (verified && (!UUID_REGEX.test(ticket.id) || ticket.status !== 'PENDING_PAYMENT' ||
+          !Number.isFinite(Date.parse(lockExpiresAt)) || Date.parse(lockExpiresAt) <= Date.now() ||
+          ticket.pricePaid !== pricePaid)) {
+        throw new Error('La reserva recibida no es válida.');
+      }
       return {
         ticketId: ticket.id,
-        previewImageUrl: ticket.ticketImageUrl || `http://localhost:9000/cine-tickets/preview-${ticket.id}.jpg`,
+        previewImageUrl: ticket.ticketImageUrl || (verified ? '' : `http://localhost:9000/cine-tickets/preview-${ticket.id}.jpg`),
         expiresAt: lockExpiresAt,
         amount: ticket.pricePaid || pricePaid,
         seatCode: seatId.replace('seat-', ''),
@@ -94,7 +103,9 @@ export async function initiatePurchase(
         roomName: 'Sala 1 - IMAX',
       };
     }
+    if (verified) throw new Error('El servicio no confirmó la reserva.');
   } catch (err) {
+    if (verified) throw err;
     console.warn('[GraphQL initiatePurchase fallback local]:', err);
   }
 
@@ -113,8 +124,10 @@ export async function initiatePurchase(
 
 export async function confirmPurchase(
   ticketId: string,
-  paymentIntentId: string
+  paymentIntentId: string,
+  verified: boolean = false
 ): Promise<ConfirmPurchasePayload> {
+  if (verified && !UUID_REGEX.test(ticketId)) throw new Error('El identificador del boleto no es válido.');
   const validTicketId = ensureUuid(ticketId, 'b1110001-2026-4000-8000-000000000001');
   let confirmedQrSignature = '';
   let confirmedImageUrl = '';
@@ -126,6 +139,9 @@ export async function confirmPurchase(
         status: string;
         qrSignature?: string;
         ticketImageUrl?: string;
+        seatId: string;
+        showtimeId: string;
+        createdAt: string;
       };
     }>({
       mutation: CONFIRM_PURCHASE_MUTATION,
@@ -136,10 +152,30 @@ export async function confirmPurchase(
     });
 
     if (response.data?.confirmPurchase) {
-      confirmedQrSignature = response.data.confirmPurchase.qrSignature || '';
-      confirmedImageUrl = response.data.confirmPurchase.ticketImageUrl || '';
+      const ticket = response.data.confirmPurchase;
+      confirmedQrSignature = ticket.qrSignature || '';
+      confirmedImageUrl = ticket.ticketImageUrl || '';
+      if (verified) {
+        if (ticket.id !== ticketId || ticket.status !== 'CONFIRMED' || !UUID_REGEX.test(ticket.seatId) ||
+            !UUID_REGEX.test(ticket.showtimeId) || !ticket.createdAt || !/^[0-9a-f]{64}$/i.test(confirmedQrSignature) ||
+            !globalThis.crypto?.subtle) {
+          throw new Error('La respuesta no contiene un boleto firmado verificable.');
+        }
+        const canonical = `${ticket.id}:${ticket.seatId}:${ticket.showtimeId}:${ticket.createdAt}`;
+        const expectedSignature = await generateQrSignature(canonical);
+        if (expectedSignature !== confirmedQrSignature.toLowerCase()) {
+          throw new Error('La firma del boleto no coincide con sus datos.');
+        }
+        return {
+          ticketId: ticket.id, status: 'CONFIRMED',
+          qrJsonPayload: JSON.stringify({ ticketId: ticket.id, seatId: ticket.seatId, showtimeId: ticket.showtimeId, issuedAt: ticket.createdAt, sig: confirmedQrSignature }),
+          finalImageUrl: confirmedImageUrl, seatCode: '', movieTitle: '', roomName: '', startsAt: '',
+        };
+      }
     }
+    if (verified) throw new Error('El servicio no confirmó el boleto.');
   } catch (err) {
+    if (verified) throw err;
     console.warn('[GraphQL confirmPurchase fallback local]:', err);
   }
 

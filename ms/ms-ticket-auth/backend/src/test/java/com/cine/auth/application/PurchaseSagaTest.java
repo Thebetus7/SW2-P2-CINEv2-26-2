@@ -5,6 +5,7 @@ import com.cine.auth.application.dto.InitiatePurchaseDto;
 import com.cine.auth.application.usecase.PurchaseTicketSagaCoordinator;
 import com.cine.auth.domain.exception.PaymentExpiredException;
 import com.cine.auth.domain.exception.PaymentFailedException;
+import com.cine.auth.domain.exception.CinemaCoreUnavailableException;
 import com.cine.auth.domain.model.Ticket;
 import com.cine.auth.domain.model.TicketStatus;
 import com.cine.auth.domain.model.User;
@@ -70,6 +71,16 @@ class PurchaseSagaTest {
     }
 
     @Test
+    void shouldNotCreateTicketWhenSeatLockFails() {
+        InitiatePurchaseDto dto = new InitiatePurchaseDto(userId, showtimeId, seatId, BigDecimal.valueOf(45));
+        when(cinemaCoreClient.lockSeat(showtimeId, seatId, "token"))
+                .thenThrow(new CinemaCoreUnavailableException("Cinema-Core no disponible", null));
+
+        assertThrows(CinemaCoreUnavailableException.class, () -> sagaCoordinator.initiatePurchase(dto, "token"));
+        verify(ticketRepository, never()).save(any(Ticket.class));
+    }
+
+    @Test
     @DisplayName("Debe orquestar el flujo SAGA completo con éxito pasando a CONFIRMED")
     void shouldOrchestrateSuccessfulPurchase() {
         InitiatePurchaseDto initiateDto = new InitiatePurchaseDto(userId, showtimeId, seatId, BigDecimal.valueOf(45.00));
@@ -84,13 +95,12 @@ class PurchaseSagaTest {
         // Simular confirmación
         ConfirmPaymentDto confirmDto = new ConfirmPaymentDto(initiated.getId(), "pm_card_visa");
         when(ticketRepository.findById(initiated.getId())).thenReturn(Optional.of(initiated));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(
-                new User(userId, "Juan Perez", "juan@cine.local", "$2a$10$hash", UserRole.CLIENTE, Instant.now())
-        ));
+        when(cinemaCoreClient.getTicketInfo(showtimeId, seatId, "mock_token"))
+                .thenReturn(new CinemaCoreRestClient.TicketInfo("Película", "Sala", "C-8"));
         when(stripeAdapter.confirmPayment(anyString(), eq("pm_card_visa"))).thenReturn(
                 new StripePaymentGatewayAdapter.PaymentConfirmationResult("pi_123", "succeeded", true, null)
         );
-        when(multimediaClient.generateTicketGraphic(any(), any(), any(), any(), any())).thenReturn(
+        when(multimediaClient.generateTicketGraphic(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(
                 new MultimediaRestClient.GenerateTicketGraphicResponse("http://s3.local/ticket.jpg", "qr_sig_123")
         );
 
@@ -123,7 +133,8 @@ class PurchaseSagaTest {
         Ticket pendingTicket = Ticket.initiateReservation(userId, showtimeId, seatId, BigDecimal.valueOf(30.00));
         when(ticketRepository.findById(pendingTicket.getId())).thenReturn(Optional.of(pendingTicket));
         when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(cinemaCoreClient.getTicketInfo(showtimeId, seatId, "mock_token"))
+                .thenReturn(new CinemaCoreRestClient.TicketInfo("Película", "Sala", "C-8"));
         when(stripeAdapter.confirmPayment(anyString(), anyString())).thenReturn(
                 new StripePaymentGatewayAdapter.PaymentConfirmationResult("pi_fail", "failed", false, "Fondos insuficientes")
         );

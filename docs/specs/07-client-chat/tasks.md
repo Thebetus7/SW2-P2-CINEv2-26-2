@@ -1,5 +1,55 @@
 # Tasks: Módulo 07 - Chatbot Asistente de Compra para Clientes (CLIENT SALES CHATBOT)
 
+<!-- sdd:progress:start -->
+## Task Progress
+
+Status: IN_PROGRESS
+
+| Métrica | Cantidad |
+| --- | ---: |
+| Total de tareas | 1 |
+| Tareas realizadas | 0 |
+| Tareas por realizar | 1 |
+| Tareas bloqueadas | 0 |
+| Tareas en progreso | 1 |
+| Progreso | 0.0% |
+
+## Registro de tareas
+
+| ID | Estado | Tarea | Evidencia actual |
+| --- | --- | --- | --- |
+| T7.1 | IN_PROGRESS | [IMPL] Datos verificables del servicio conversacional | Parcial 2026-11-12: suite backend 63 pruebas aprobadas antes de agregar límite de 3 s; posteriormente 20 pruebas específicas aprobadas. Integración real con Cinema-Core en base aislada: función y precio 27.50 correctos, una butaca libre recomendada, butaca ocupada rechazada y UUID de butaca incluido en resumen; la consulta de lenguaje natural recibió respuesta del proveedor de IA. Se eliminó la base temporal. Falta verificar compra transaccional completa con servicios reales. |
+
+## Checklist rápido
+
+- [/] T7.1 [IMPL] Datos verificables del servicio conversacional
+
+<!-- sdd:progress:end -->
+
+Plan-SHA256: a0a2dc1f23c8480bb69b131a04e8f8366dd5a7282039a065259686b56e48c969
+
+Spec-SHA256: 37417fedbe86643a80445c83155c35e05f134df1823b323475fa80002cc9ce94
+
+Version: 1
+
+## Trabajo actual
+
+### T7.1 [IMPL] Datos verificables del servicio conversacional
+**Status:** IN_PROGRESS
+**Depends on:** -
+**Traceability:** RF-17.2, RF-17.4, RF-17.5, SC-17.1.2
+**Files:** ms/ms-ia-mcp/backend/app/presentation/client_chat_routes.py; ms/ms-ia-mcp/backend/app/infrastructure/service_clients.py; ms/ms-ia-mcp/backend/app/domain/seat_recommender.py; ms/ms-ia-mcp/backend/tests/conftest.py; ms/ms-ia-mcp/backend/tests/test_client_chat_verified.py
+**Objective:** Usar la cartelera y disponibilidad reales para las respuestas del chat compartido.
+**Work:** Consultar Cinema-Core sin datos inventados, validar asientos y precio, manejar errores y preservar heuristica basada en datos.
+**Done when:** Las pruebas cubren disponibilidad, seleccion, errores y datos reales, y se verifica el contrato con los consumidores.
+**Verification:** NOT_RUN
+**Command:** python -m pytest -q -p no:cacheprovider; python -m pytest tests/test_client_chat.py tests/test_client_chat_multi_turn.py tests/test_client_chat_verified.py -q -p no:cacheprovider
+**Exit code:** -
+**Evidence:** Parcial 2026-11-12: suite backend 63 pruebas aprobadas antes de agregar límite de 3 s; posteriormente 20 pruebas específicas aprobadas. Integración real con Cinema-Core en base aislada: función y precio 27.50 correctos, una butaca libre recomendada, butaca ocupada rechazada y UUID de butaca incluido en resumen; la consulta de lenguaje natural recibió respuesta del proveedor de IA. Se eliminó la base temporal. Falta verificar compra transaccional completa con servicios reales.
+
+## Historial anterior preservado
+
+
 > **Estado:** COMPLETED  
 > **Módulo:** `docs/specs/07-client-chat/`  
 > **Metodología:** SDD-Task (Vertical Slices Trazables)  

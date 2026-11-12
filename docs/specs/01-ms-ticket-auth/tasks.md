@@ -1,5 +1,70 @@
 # Tasks: Módulo 01 - Autenticación Centralizada y Gestión de Boletos (MS TICKET-AUTH)
 
+<!-- sdd:progress:start -->
+## Task Progress
+
+Status: IN_PROGRESS
+
+| Métrica | Cantidad |
+| --- | ---: |
+| Total de tareas | 2 |
+| Tareas realizadas | 1 |
+| Tareas por realizar | 1 |
+| Tareas bloqueadas | 0 |
+| Tareas en progreso | 1 |
+| Progreso | 50.0% |
+
+## Registro de tareas
+
+| ID | Estado | Tarea | Evidencia actual |
+| --- | --- | --- | --- |
+| T5.1 | COMPLETED | [IMPL] Propagar fallos de reserva y confirmacion | 2026-11-12: suite completa de Ticket-Auth, 49 pruebas aprobadas; incluyen errores 404/500, conflicto 409, bloqueo, confirmación y liberación, y ausencia de creación de boleto ante fallo de bloqueo. SHA-256 de CinemaCoreRestClient.java: 27c5da69e66d4848e8dd3566eb57f2a87ef74b1f82817eb37e06f46acb21c7e5. No se verificó la infraestructura real. |
+| T5.2 | IN_PROGRESS | [IMPL] Credencial emitida con datos verificables | Parcial 2026-11-12: suite completa de Ticket-Auth, 49 pruebas aprobadas, incluidas pruebas con servicios simulados para el payload, firma HMAC válida e inválida y errores de Multimedia. No se verificó el flujo con servicios reales ni la recuperación transaccional distribuida; permanece en progreso. |
+
+## Checklist rápido
+
+- [x] T5.1 [IMPL] Propagar fallos de reserva y confirmacion
+- [/] T5.2 [IMPL] Credencial emitida con datos verificables
+
+<!-- sdd:progress:end -->
+
+Plan-SHA256: b73284644128e423a426b9b5601eb038618de8a347d1512fafa5b1f681f65abb
+
+Spec-SHA256: e593b8af21ae6ec46409a5c7583755f576fdabd7c27264265920041bac1909a6
+
+Version: 1
+
+## Trabajo actual
+
+### T5.1 [IMPL] Propagar fallos de reserva y confirmacion
+**Status:** COMPLETED
+**Depends on:** -
+**Traceability:** PLAN-03, PLAN-04, RF-02.1
+**Files:** ms/ms-ticket-auth/backend/src/main/java/com/cine/auth/infrastructure/adapter/CinemaCoreRestClient.java; ms/ms-ticket-auth/backend/src/main/java/com/cine/auth/domain/exception/CinemaCoreUnavailableException.java; ms/ms-ticket-auth/backend/src/test/java/com/cine/auth/infrastructure/adapter/CinemaCoreRestClientTest.java; ms/ms-ticket-auth/backend/src/test/java/com/cine/auth/application/PurchaseSagaTest.java
+**Objective:** Evitar que las operaciones de butacas reporten exito cuando falla Cinema-Core.
+**Work:** Propagar errores y verificar los casos de bloqueo, liberacion y confirmacion.
+**Done when:** Las pruebas demuestran exito real y manejo explicito de fallos en las tres operaciones.
+**Verification:** PASS
+**Command:** ms/ms-ticket-auth/backend/mvnw.cmd test
+**Exit code:** 0
+**Evidence:** 2026-11-12: suite completa de Ticket-Auth, 49 pruebas aprobadas; incluyen errores 404/500, conflicto 409, bloqueo, confirmación y liberación, y ausencia de creación de boleto ante fallo de bloqueo. SHA-256 de CinemaCoreRestClient.java: 27c5da69e66d4848e8dd3566eb57f2a87ef74b1f82817eb37e06f46acb21c7e5. No se verificó la infraestructura real.
+
+### T5.2 [IMPL] Credencial emitida con datos verificables
+**Status:** IN_PROGRESS
+**Depends on:** T5.1
+**Traceability:** PLAN-03, PLAN-04, RF-02.2, RF-02.3
+**Files:** ms/ms-ticket-auth/backend/src/main/java/com/cine/auth/infrastructure/adapter/CinemaCoreRestClient.java; ms/ms-ticket-auth/backend/src/main/java/com/cine/auth/infrastructure/adapter/MultimediaRestClient.java; ms/ms-ticket-auth/backend/src/main/java/com/cine/auth/application/usecase/PurchaseTicketSagaCoordinator.java; ms/ms-ticket-auth/backend/src/test/java/com/cine/auth
+**Objective:** Emitir una credencial utilizando los datos y firma devueltos por Multimedia.
+**Work:** Consultar datos de función y butaca; enviar la fecha canónica; validar respuesta y propagar errores sin fabricar firmas.
+**Done when:** Pruebas cubren contrato, errores y consistencia del payload; integración se verifica con servicios reales.
+**Verification:** NOT_RUN
+**Command:** ms/ms-ticket-auth/backend/mvnw.cmd test
+**Exit code:** -
+**Evidence:** Parcial 2026-11-12: suite completa de Ticket-Auth, 49 pruebas aprobadas, incluidas pruebas con servicios simulados para el payload, firma HMAC válida e inválida y errores de Multimedia. No se verificó el flujo con servicios reales ni la recuperación transaccional distribuida; permanece en progreso.
+
+## Historial anterior preservado
+
+
 ## Task Progress
 
 | Métrica | Cantidad |

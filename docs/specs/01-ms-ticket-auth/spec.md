@@ -1,4 +1,8 @@
 # Specification: Módulo 01 - Autenticación Centralizada y Gestión de Boletos (MS TICKET-AUTH)
+Status: APPROVED
+Version: 1
+
+Revisión 2026-11-12: se conserva la aprobación previa. La reserva y confirmación requieren respuestas efectivas de Cinema-Core; un fallo de la dependencia no constituye una reserva exitosa. La corrección deriva del bloqueo y la compensación de la SAGA ya especificados.
 
 > **Estado:** APPROVED  
 > **Módulo:** `docs/specs/01-ms-ticket-auth/`  

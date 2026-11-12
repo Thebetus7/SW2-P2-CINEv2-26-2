@@ -1,4 +1,12 @@
 # Plan Técnico: Módulo 06 - Aplicación Móvil del Cliente (MOVIL CLIENT)
+Constitution-SHA256: bf9282dc4cc5ac79d835e768865b29b9544a02c8cd2af2489d72cfc304cb8e84
+Spec-SHA256: e6d29cba3a81aa89fc3e90e0c1ef84fe117ca70fdd5117ab92d0b808e94a91ca
+Status: APPROVED
+Version: 2
+
+Revisión técnica 2026-11-12 para IC-06.4 y PLAN-03: integrar el contrato de cliente del módulo 07, utilizar configuración explícita de URL con resolución por host en web, conservar el estado e historial entre turnos y mostrar errores recuperables. No generar datos de reserva cuando falle la operación. Las pruebas deberán cubrir solicitud, respuesta, selección, error y reintento. Las limitaciones de servicios externos y del backend compartido se verificarán por separado.
+
+En la compra desde chat se usarán los identificadores de asiento del resumen verificado por el módulo 07; el cliente no sustituye identificadores ni inventa reservas o confirmaciones si GraphQL falla. La compra de varias butacas requiere una operación transaccional que el contrato actual de Ticket-Auth no ofrece; debe permanecer explícitamente pendiente hasta disponer de un contrato atómico y su validación.
 
 > **Estado:** APPROVED  
 > **Versión:** 1.3.0  

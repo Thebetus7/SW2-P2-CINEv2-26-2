@@ -1,4 +1,8 @@
 # Specification: Módulo 07 - Chatbot Asistente de Compra para Clientes (CLIENT SALES CHATBOT)
+Status: APPROVED
+Version: 1
+
+Revisión 2026-11-12: se conserva la aprobación previa. RF-17.2 a RF-17.5 y RB-CCH-02 exigen datos reales de Cinema-Core; las respuestas de ejemplo y la ausencia de verificación observadas en la implementación no constituyen una regla de negocio aprobada. La contingencia de RB-CCH-05 se refiere a fallas del proveedor de IA con cartelera disponible, no autoriza inventar cartelera o disponibilidad cuando falla Cinema-Core.
 
 > **Estado:** APPROVED  
 > **Módulo:** `docs/specs/07-client-chat/`  

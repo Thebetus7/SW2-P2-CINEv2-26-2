@@ -26,6 +26,36 @@ class CinemaCoreClient:
         }
         self.transport = transport
 
+    async def get_verified_showtimes(self) -> List[Dict[str, Any]]:
+        """Consulta la cartelera sin sustituir errores por datos de demostración."""
+        async with httpx.AsyncClient(timeout=self.timeout, headers=self.headers, transport=self.transport) as client:
+            response = await client.get(f"{self.base_url}/api/v1/showtimes/billboard")
+            response.raise_for_status()
+            data = response.json()
+            if not isinstance(data, list):
+                raise ValueError("La cartelera de Cinema-Core no es una lista")
+            return data
+
+    async def get_showtime_seats(self, showtime_id: str) -> List[Dict[str, Any]]:
+        """Obtiene estados de butacas específicos de una función."""
+        async with httpx.AsyncClient(timeout=self.timeout, headers=self.headers, transport=self.transport) as client:
+            response = await client.get(f"{self.base_url}/api/v1/showtimes/{showtime_id}")
+            response.raise_for_status()
+            data = response.json()
+            if not isinstance(data, dict) or not isinstance(data.get("seats"), list):
+                raise ValueError("El detalle de la función no contiene butacas")
+            seats = []
+            for entry in data["seats"]:
+                seat = entry.get("seat") or {}
+                if not seat.get("isActive", False) or seat.get("seatType") == "PASILLO_BLOQUEADO":
+                    continue
+                row, number, code = seat.get("rowLetter"), seat.get("seatNumber"), seat.get("visibleCode")
+                if not row or not isinstance(number, int) or not code:
+                    continue
+                seats.append({"seatCode": code, "row": row, "number": number,
+                              "status": entry.get("status"), "seatId": entry.get("seatId")})
+            return seats
+
     async def get_occupancy_metrics(self) -> OccupancyMetricsResponse:
         """Invoca GET /api/v1/metrics/occupancy en MS CINEMA-CORE o computa telemetría viva."""
         url = f"{self.base_url}/api/v1/metrics/occupancy"

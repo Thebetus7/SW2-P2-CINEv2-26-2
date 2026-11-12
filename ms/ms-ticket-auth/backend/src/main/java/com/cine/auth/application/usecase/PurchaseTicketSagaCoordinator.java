@@ -116,18 +116,8 @@ public class PurchaseTicketSagaCoordinator {
             throw new PaymentExpiredException("La reserva de 60 segundos ha expirado para el boleto: " + ticket.getId());
         }
 
-        // Cancelar el temporizador si aún no disparó
-        ScheduledFuture<?> future = scheduledExpirations.remove(ticket.getId());
-        if (future != null) {
-            future.cancel(false);
-        }
-
-        // Obtener usuario para la credencial
-        String userFullName = "Cliente Cine";
-        Optional<User> userOpt = userRepository.findById(ticket.getUserId());
-        if (userOpt.isPresent()) {
-            userFullName = userOpt.get().getFullName();
-        }
+        // Los datos de la credencial proceden de la función y asiento reales.
+        var ticketInfo = cinemaCoreClient.getTicketInfo(ticket.getShowtimeId(), ticket.getSeatId(), authToken);
 
         // 4. Paso SAGA: Cobro en Stripe
         var paymentResult = stripeAdapter.confirmPayment(
@@ -148,8 +138,11 @@ public class PurchaseTicketSagaCoordinator {
                 ticket.getId(),
                 ticket.getShowtimeId(),
                 ticket.getSeatId(),
-                userFullName,
-                ticket.getPricePaid()
+                ticketInfo.movieTitle(),
+                ticketInfo.hallName(),
+                ticketInfo.seatLabel(),
+                ticket.getPricePaid(),
+                ticket.getCreatedAt()
         );
 
         // 6. Paso SAGA: Confirmación definitiva de butaca en MS CINEMA-CORE
@@ -157,7 +150,10 @@ public class PurchaseTicketSagaCoordinator {
 
         // 7. Transición final a CONFIRMED
         ticket.confirm(graphicResponse.ticketImageUrl(), graphicResponse.qrSignature());
-        return ticketRepository.save(ticket);
+        Ticket saved = ticketRepository.save(ticket);
+        ScheduledFuture<?> future = scheduledExpirations.remove(ticket.getId());
+        if (future != null) future.cancel(false);
+        return saved;
     }
 
     @Transactional(readOnly = true)

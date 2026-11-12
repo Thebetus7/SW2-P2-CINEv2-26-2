@@ -1,4 +1,8 @@
 # Specification: Módulo 06 - Aplicación Móvil del Cliente (MOVIL CLIENT)
+Status: APPROVED
+Version: 2
+
+Revisión funcional 2026-11-12: se conserva la aprobación previa; la actualización de IC-06.4 responde a la petición de equiparar el chat móvil con el chat web del comprador. Se revisaron permisos, estados, errores y recuperación para este alcance. Una falla de conexión debe comunicarse sin ofrecer funciones, asientos o compras inventados; el cliente puede reintentar. La disponibilidad y el pago siguen sujetos a los servicios responsables.
 
 > **Estado:** APPROVED  
 > **Módulo:** `docs/specs/06-movil-client/`  
@@ -134,7 +138,7 @@ And el cliente completa la compra sin salir del componente deslizable
 * **Con `MS TICKET-AUTH`:** Consumo de queries y mutaciones GraphQL federadas para cartelera, compras y autenticación.
 * **Con `MS CINEMA-CORE`:** Consulta de salas y disponibilidad de butacas.
 * **Con `MS MULTIMEDIA` y `MinIO S3`:** Descarga de portadas de películas y credenciales gráficas de tickets.
-* **Con `MS IA-MCP`:** Canal conversacional del Chatbot deslizable (`/api/v1/chat`).
+* **Con `MS IA-MCP`:** Canal conversacional del Chatbot deslizable (`/api/v1/client-chat`).
 * **Con `IndexedDB` y `Service Workers`:** Persistencia offline garantizada de credenciales.
 
 ---
@@ -158,6 +162,7 @@ And el cliente completa la compra sin salir del componente deslizable
 
 ### `IC-06.4` (Chatbot Conversacional hacia `MS IA-MCP`)
 - **Protocolo:** REST sobre HTTP/1.1
-- **Ruta:** `POST http://localhost:8001/api/v1/chat`
-- **Payload:** `{ userId, message }`
+- **Ruta:** `POST /api/v1/client-chat`
+- **Payload:** mensaje, historial y estado conversacional, con función y butaca seleccionadas cuando corresponda, conforme al contrato del módulo 07.
+- El asistente presenta las respuestas y opciones del servicio, permite continuar la conversación y comunica errores recuperables sin presentar datos inventados como disponibles.
 

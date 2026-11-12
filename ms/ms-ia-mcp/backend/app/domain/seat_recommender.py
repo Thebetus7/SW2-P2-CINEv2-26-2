@@ -17,17 +17,12 @@ def recommend_best_seats(
     Cada elemento en `seats` debe poseer 'row' (ej: 'C') o 'seatCode' (ej: 'C-8') y 'status' ('AVAILABLE' o 'FREE').
     """
     if not seats:
-        # Asientos predeterminados de contingencia si no se dispone de matriz
-        return [
-            RecommendedSeat(seatCode="C-7", row="C", number=7, isOptimal=True, badge="Mejor Visibilidad"),
-            RecommendedSeat(seatCode="C-8", row="C", number=8, isOptimal=True, badge="Punto Focal Audio"),
-            RecommendedSeat(seatCode="D-7", row="D", number=7, isOptimal=True, badge="Fila Central"),
-        ]
+        return []
 
     # 1. Filtrar solo asientos libres
     available = []
     for s in seats:
-        status = str(s.get("status", "AVAILABLE")).upper()
+        status = str(s.get("status", "")).upper()
         if status in ("AVAILABLE", "FREE", "LIBRE", "DISPONIBLE"):
             available.append(s)
 
